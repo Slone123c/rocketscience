@@ -1,30 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileState, type Proxy, type Status, type Streams } from "./mygo";
+import React, { useEffect, useRef, useState } from "react";
+import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileSummary, type Proxy, type Status, type Monitoring } from "./mygo";
+import {createRefreshQueue} from "./viewRefresh";
 import type * as Design from "../design-system/components/index";
 
 export function TrayPanel({ design: DS }: { design: typeof Design }) {
   const [wifi,setWifi]=useState<WiFiStatus|null>(null);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
-  const [profiles, setProfiles] = useState<ProfileState | null>(null);
+  const [profiles, setProfiles] = useState<ProfileSummary | null>(null);
   const [groups, setGroups] = useState<Proxy[]>([]);
-  const [streams, setStreams] = useState<Streams | null>(null);
+  const [streams, setStreams] = useState<Monitoring | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [delays, setDelays] = useState<Record<string, Record<string, number>>>({});
   const [error, setError] = useState("");
-  async function refresh() {
+  async function read() {
     const desktop = await Desktop.state();
     setReady(desktop.startupReady);
     if (!desktop.startupReady) return;
-    const [next, saved] = await Promise.all([Service.status(), Profiles.state()]);
+    const [next, saved] = await Promise.all([Service.status(), Profiles.summary()]);
     setStatus(next); setProfiles(saved); setWifi(await WiFi.state());
     if (next.running) {
-      const [g, s] = await Promise.all([Service.groups(), Service.streams()]);
+      const [g, s] = await Promise.all([Service.groups(), Service.monitoring()]);
       setGroups(g); setStreams(s);
     } else { setGroups([]); setStreams(null); }
   }
-  useEffect(() => { const update = () => void refresh().catch(e => setError(String(e))); update(); const id = setInterval(update, 3000); return () => clearInterval(id); }, []);
+  const refreshQueue=useRef<ReturnType<typeof createRefreshQueue>|null>(null);
+  if(!refreshQueue.current)refreshQueue.current=createRefreshQueue(read);
+  async function refresh(){await refreshQueue.current!.request()}
+  useEffect(()=>{let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;async function tick(){if(!document.hidden)try{await refresh()}catch(e){setError(String(e))}if(!stopped)timer=setTimeout(()=>void tick(),3000)}const visible=()=>{if(!document.hidden)void refresh().catch(e=>setError(String(e)))};void tick();document.addEventListener("visibilitychange",visible);return ()=>{stopped=true;if(timer)clearTimeout(timer);document.removeEventListener("visibilitychange",visible)}},[]);
   async function perform(fn: () => Promise<unknown>) {
     if (busy || !ready) return;
     setBusy(true); setError("");
@@ -33,7 +37,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   }
   async function setProxy(enabled: boolean) {
     await perform(async () => {
-      const previous = (await Profiles.state()).systemProxy;
+      const previous = (await Profiles.summary()).systemProxy;
       await Profiles.setSystemProxy(enabled);
       try { await Service.setSystemProxy(enabled); }
       catch (e) { await Profiles.setSystemProxy(previous); throw e; }

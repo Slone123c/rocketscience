@@ -9,6 +9,7 @@ import {NetworkCheck} from "./NetworkCheck";
 import {TrajectoryPanel} from "./TrajectoryPanel";
 import {ConnectionList} from "./ConnectionList";
 import {ProxyList} from "./ProxyList";
+import {createRefreshQueue,loadViewData} from "./viewRefresh";
 import {addLANPreset} from "./ruleTemplates";
 import {RuleWalkthrough} from "./RuleWalkthrough";
 import {SettingsPages} from "./SettingsPages";
@@ -31,9 +32,36 @@ function App() {
  useEffect(()=>{mainView.current?.scrollTo({top:0})},[page,topic]);
  const [tourOpen,setTourOpen]=useState(false), [showFirstRun,setShowFirstRun]=useState(()=>localStorage.getItem("rs-tour-dismissed")!=="1");
  useEffect(()=>{if(page!=="规则"||tourOpen)setRuleTourOpen(false)},[page,tourOpen]);
- useEffect(()=>{const id=setInterval(()=>void Desktop.state().then(async s=>{if(s.quitError){setError(s.quitError);await Desktop.clearQuitError()}else if(s.trayError)setError(s.trayError)}).catch(()=>{}),1500);return ()=>clearInterval(id)},[]);
- async function refresh() { try { const next=await Service.status();setProfileState(await Profiles.state());setOverrideState(await Profiles.overrides());setStatus(next);if(next.running){const [g,c,r,stream]=await Promise.all([Service.groups(),Service.connections(),Service.rules(),Service.streams()]);setGroups(g);setConnections(c);setRules(r);setStreams(stream)}else {setGroups([]);setConnections(null);setRules([]);setStreams(null);setDelays({});} } catch(e) { setError(String(e)); } }
- useEffect(()=>{let stopped=false;let timer:ReturnType<typeof setInterval>|undefined;async function initialize(){while(!stopped){try{const desktop=await Desktop.state();if(!desktop.startupReady){await new Promise(r=>setTimeout(r,400));continue}if(desktop.startupError)setError(desktop.startupError);const s=await Profiles.state();if(stopped)return;setProfileState(s);setPort(String(s.mixedPort));const active=s.profiles.find(p=>p.id===s.activeId);if(active){setSelected(active.id);setName(active.name);setSource(active.source);setUrl(active.url);setIntervalHours(active.interval);setEditingVersion(active.updatedAt);setYaml(active.content)}setInitialized(true);void refresh();timer=setInterval(()=>void refresh(),3000);return}catch(e){if(!stopped)setError(String(e));await new Promise(r=>setTimeout(r,1000))}}}void initialize();return ()=>{stopped=true;if(timer)clearInterval(timer)}},[]);
+ useEffect(()=>{const id=setInterval(()=>{if(document.hidden)return;void Desktop.state().then(async s=>{if(s.quitError){setError(s.quitError);await Desktop.clearQuitError()}else if(s.trayError)setError(s.trayError)}).catch(()=>{})},1500);return ()=>clearInterval(id)},[]);
+ const latestRoute=useRef({page,topic});if(latestRoute.current.page!==page||latestRoute.current.topic!==topic)latestRoute.current={page,topic};
+ const refreshQueue=useRef<ReturnType<typeof createRefreshQueue>|null>(null);
+ if(!refreshQueue.current)refreshQueue.current=createRefreshQueue(async()=>{
+   const route=latestRoute.current;
+   try{
+     const data=await loadViewData(route,{status:()=>Service.status(),profiles:()=>Profiles.state(),overrides:()=>Profiles.overrides(),groups:()=>Service.groups(),connections:()=>Service.connections(),rules:()=>Service.rules(),streams:()=>Service.streams(),monitoring:()=>Service.monitoring()});
+     if(route!==latestRoute.current)return;
+     setStatus(data.status);
+     if(data.profiles)setProfileState(data.profiles);
+     if(data.overrides)setOverrideState(data.overrides);
+     if(data.groups)setGroups(data.groups);
+     if(data.connections)setConnections(data.connections);
+     if(data.rules)setRules(data.rules);
+     if(data.streams)setStreams(data.streams);
+     if(data.monitoring)setStreams({...data.monitoring,logs:[]});
+     if(!data.status.running){setGroups([]);setConnections(null);setRules([]);setStreams(null);setDelays({})}
+   }catch(e){if(route===latestRoute.current)setError(String(e))}
+ });
+ async function refresh(){await refreshQueue.current!.request()}
+ useEffect(()=>{
+   if(!initialized)return;
+   let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;
+   async function tick(){if(!document.hidden)await refresh();if(!stopped)timer=setTimeout(()=>void tick(),3000)}
+   const visible=()=>{if(!document.hidden)void refresh()};
+   void tick();document.addEventListener("visibilitychange",visible);
+   return ()=>{stopped=true;if(timer)clearTimeout(timer);document.removeEventListener("visibilitychange",visible)};
+ },[initialized,page,topic]);
+ useEffect(()=>{if(page!=="代理")setGroups([]);if(page!=="总览"&&page!=="连接")setConnections(null);if(page!=="规则")setRules([]);if(page!=="规则"&&page!=="连接")setOverrideState(null);if(page!=="总览"&&page!=="日志"&&!(page==="设置"&&topic==="core"))setStreams(null)},[page,topic]);
+ useEffect(()=>{let stopped=false;async function initialize(){while(!stopped){try{const desktop=await Desktop.state();if(!desktop.startupReady){await new Promise(r=>setTimeout(r,400));continue}if(desktop.startupError)setError(desktop.startupError);const s=await Profiles.state();if(stopped)return;setProfileState(s);setPort(String(s.mixedPort));const active=s.profiles.find(p=>p.id===s.activeId);if(active){setSelected(active.id);setName(active.name);setSource(active.source);setUrl(active.url);setIntervalHours(active.interval);setEditingVersion(active.updatedAt);setYaml(active.content)}setInitialized(true);return}catch(e){if(!stopped)setError(String(e));await new Promise(r=>setTimeout(r,1000))}}}void initialize();return ()=>{stopped=true}},[]);
  function openProfile(p:Profile) {setSelected(p.id);setName(p.name);setSource(p.source);setUrl(p.url);setIntervalHours(p.interval);setEditingVersion(p.updatedAt);setFetchedAt("");setFetchedUsage(null);setYaml(p.content)}
  function newProfile(){setSelected("");setName("新配置");setSource("file");setUrl("");setIntervalHours(0);setEditingVersion("");setFetchedAt("");setFetchedUsage(null);setYaml(sample)}
  async function saveProfile(){if(saving||busy)return;setSaving(true);setError("");try{const old=profileState?.profiles.find(p=>p.id===selected);if(old && old.updatedAt!==editingVersion)throw new Error("配置已更新，请重新打开配置后编辑");const next=await Profiles.save({id:selected,name,source,url,interval,content:yaml,updatedAt:fetchedAt || old?.updatedAt || "0001-01-01T00:00:00Z",lastAttempt:fetchedAt || old?.lastAttempt || "0001-01-01T00:00:00Z",usage:fetchedAt ? fetchedUsage : old?.usage || null,lastError:""},editingVersion);setProfileState(next);const saved=selected?next.profiles.find(p=>p.id===selected):next.profiles[next.profiles.length-1];if(saved)openProfile(saved);await refresh()}catch(e){setError(String(e))}finally{setSaving(false)}}

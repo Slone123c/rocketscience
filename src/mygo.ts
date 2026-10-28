@@ -118,6 +118,13 @@ export interface MemoryUsage {
   connected: boolean;
 }
 
+/** Monitoring is the small snapshot used outside the log page. */
+export interface Monitoring {
+  telemetry: Telemetry;
+  memory: MemoryUsage;
+  history: TrafficHistory;
+}
+
 /** NodeRecommendation is an observation, not a route change. */
 export interface NodeRecommendation {
   group: string;
@@ -163,6 +170,12 @@ export interface Profile {
 
 export interface ProfileState {
   profiles: Profile[];
+  activeId: string;
+  mixedPort: number;
+  systemProxy: boolean;
+}
+
+export interface ProfileSummary {
   activeId: string;
   mixedPort: number;
   systemProxy: boolean;
@@ -298,6 +311,9 @@ export const Service = {
   /** LiveTelemetry avoids copying history and logs for native menu-bar updates. */
   liveTelemetry(): Promise<Telemetry> {
     return call("Service.LiveTelemetry");
+  },
+  monitoring(): Promise<Monitoring> {
+    return call("Service.Monitoring");
   },
   recoverGeoCache(): Promise<void> {
     return call("Service.RecoverGeoCache");
@@ -510,6 +526,10 @@ export const Profiles = {
   },
   state(): Promise<ProfileState> {
     return call("Profiles.State");
+  },
+  /** Summary omits YAML and subscription credentials from periodic tray snapshots. */
+  summary(): Promise<ProfileSummary> {
+    return call("Profiles.Summary");
   },
   trayDisplay(): Promise<string> {
     return call("Profiles.TrayDisplay");

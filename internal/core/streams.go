@@ -36,16 +36,34 @@ type Streams struct {
 	Logs      []LogEntry     `json:"logs"`
 }
 
-func (s *Service) Streams() Streams {
+// Monitoring is the small snapshot used outside the log page.
+type Monitoring struct {
+	Telemetry Telemetry      `json:"telemetry"`
+	Memory    MemoryUsage    `json:"memory"`
+	History   TrafficHistory `json:"history"`
+}
+
+func (s *Service) Monitoring() Monitoring {
 	s.streamMu.Lock()
 	defer s.streamMu.Unlock()
+	return Monitoring{Telemetry: s.telemetry, Memory: s.memory, History: s.trafficHistory()}
+}
+
+// Called with streamMu held. Every returned slice belongs to the caller.
+func (s *Service) trafficHistory() TrafficHistory {
 	history := TrafficHistory{Up: make([]int64, 0, s.trafficCount), Down: make([]int64, 0, s.trafficCount)}
 	for i := 0; i < s.trafficCount; i++ {
 		sample := s.trafficSamples[(s.trafficNext-s.trafficCount+i+len(s.trafficSamples))%len(s.trafficSamples)]
 		history.Up = append(history.Up, sample.up)
 		history.Down = append(history.Down, sample.down)
 	}
-	return Streams{Telemetry: s.telemetry, Memory: s.memory, History: history, Logs: append([]LogEntry{}, s.logs...)}
+	return history
+}
+
+func (s *Service) Streams() Streams {
+	s.streamMu.Lock()
+	defer s.streamMu.Unlock()
+	return Streams{Telemetry: s.telemetry, Memory: s.memory, History: s.trafficHistory(), Logs: append([]LogEntry{}, s.logs...)}
 }
 
 // LiveTelemetry avoids copying history and logs for native menu-bar updates.
