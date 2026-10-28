@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Desktop, Profiles, Service, type ProfileState, type Proxy, type Status, type Streams } from "./mygo";
+import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileState, type Proxy, type Status, type Streams } from "./mygo";
 import type * as Design from "../design-system/components/index";
 
 export function TrayPanel({ design: DS }: { design: typeof Design }) {
+  const [wifi,setWifi]=useState<WiFiStatus|null>(null);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const [profiles, setProfiles] = useState<ProfileState | null>(null);
@@ -17,7 +18,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     setReady(desktop.startupReady);
     if (!desktop.startupReady) return;
     const [next, saved] = await Promise.all([Service.status(), Profiles.state()]);
-    setStatus(next); setProfiles(saved);
+    setStatus(next); setProfiles(saved); setWifi(await WiFi.state());
     if (next.running) {
       const [g, s] = await Promise.all([Service.groups(), Service.streams()]);
       setGroups(g); setStreams(s);
@@ -27,7 +28,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   async function perform(fn: () => Promise<unknown>) {
     if (busy || !ready) return;
     setBusy(true); setError("");
-    try { await fn(); } catch (e) { setError(String(e)); }
+    try { await fn(); await WiFi.check(); } catch (e) { setError(String(e)); }
     finally { try { await refresh(); } catch (e) { setError(String(e)); } setBusy(false); }
   }
   async function setProxy(enabled: boolean) {
@@ -53,6 +54,8 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     onToggle={() => void perform(async () => { if (status?.running) await Service.stop(); else if (profiles?.activeId) await Profiles.startActive(); else throw new Error("请先在控制台保存并选择配置。"); })}
     onSystemProxyChange={busy || !ready || !status ? undefined : value => void setProxy(value)}
     onTunChange={busy || !ready || !status ? undefined : value => void perform(() => Profiles.changeTun(value))}
+    ssid={wifi?.ssid || undefined} ssidBypass={wifi?.enabled || false}
+    onSsidBypassChange={!ready || busy ? undefined : enabled => void perform(async()=>{const settings=await WiFi.settings();await WiFi.setSettings({...settings,enabled})})}
     onModeChange={value => void perform(() => Service.setMode(value))}
     onSelect={(group, node) => void perform(() => Service.select(group, node))}
     onTest={group => { setTesting(group); void Profiles.speedSettings().then(speed => Service.testGroup(group, speed.url, speed.timeoutMs)).then(result => setDelays(old => ({ ...old, [group]: result }))).catch(e => setError(String(e))).finally(() => setTesting(null)); }}

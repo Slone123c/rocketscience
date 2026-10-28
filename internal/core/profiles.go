@@ -51,6 +51,7 @@ type profileData struct {
 	Tun              bool            `json:"tun"`
 	AutoConnect      bool            `json:"autoConnect"`
 	TrayDisplay      string          `json:"trayDisplay,omitempty"`
+	WiFi             *WiFiSettings   `json:"wifi,omitempty"`
 	CoreOptions      *CoreOptions    `json:"coreOptions,omitempty"`
 }
 type ProfileState struct {

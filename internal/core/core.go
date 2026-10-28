@@ -28,6 +28,7 @@ type Service struct {
 	done              chan struct{}
 	port              int
 	controllerAddress string
+	modeRevision      uint64
 	mixedPort         int
 	secret            string
 	lastError         string
@@ -239,7 +240,13 @@ func (s *Service) Start(content string, mixedPort int) error {
 func (s *Service) start(content string, mixedPort int, bypass *[]string, lan LANSettings, options CoreOptions) error {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
-	return s.startLocked(content, mixedPort, bypass, lan, options)
+	err := s.startLocked(content, mixedPort, bypass, lan, options)
+	if err == nil {
+		s.mu.Lock()
+		s.modeRevision++
+		s.mu.Unlock()
+	}
+	return err
 }
 
 // startLocked serializes lifecycle operations with opMu.
@@ -596,6 +603,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 func (s *Service) Stop() error {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
+	s.mu.Lock()
+	s.modeRevision++
+	s.mu.Unlock()
 	return s.stopLocked()
 }
 

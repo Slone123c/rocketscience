@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"rocketscience/internal/core"
+	"rocketscience/internal/network"
 )
 
 //go:embed assets/tray.png
@@ -72,6 +73,11 @@ func (d *Desktop) SetOpenAtLogin(enabled bool) error {
 		return d.loginWrite(enabled)
 	}
 	return mygo.App.SetOpenAtLogin(enabled)
+}
+func (d *Desktop) RequestWiFiAccess() error {
+	var err error
+	mygo.RunOnMain(func() { err = network.RequestAccess() })
+	return err
 }
 func (d *Desktop) OpenDashboard() {
 	d.mu.Lock()

@@ -104,5 +104,9 @@ func (s *Service) SetMode(mode string) error {
 	if mode != "rule" && mode != "global" && mode != "direct" {
 		return errors.New("无效的出站模式")
 	}
-	return s.request("PATCH", "/configs", map[string]string{"mode": mode})
+	if err := s.request("PATCH", "/configs", map[string]string{"mode": mode}); err != nil {
+		return err
+	}
+	s.modeRevision++
+	return nil
 }

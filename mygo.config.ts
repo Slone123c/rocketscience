@@ -1,2 +1,2 @@
 import { defineConfig } from "mygo-cli";
-export default defineConfig({ name: "RocketScience", identifier: "app.rocketscience.desktop", version: "0.1.0", devUrl: "http://localhost:5173", devCommand: "bun run dev:web", buildCommand: "bun run build:web", frontendDist: "dist", bindings: "src/mygo.ts", out: "build" });
+export default defineConfig({ name: "RocketScience", identifier: "app.rocketscience.desktop", version: "0.1.0", devUrl: "http://localhost:5173", devCommand: "bun run dev:web", buildCommand: "bun run build:web", frontendDist: "dist", bindings: "src/mygo.ts", out: "build", macos: {infoPlist:{NSLocationUsageDescription:"读取当前 Wi-Fi 名称，以应用你设置的可信网络直连规则。",NSLocationWhenInUseUsageDescription:"读取当前 Wi-Fi 名称，以应用你设置的可信网络直连规则。"}} });

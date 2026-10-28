@@ -237,6 +237,21 @@ export interface TunOptions {
   dnsHijack: string[] | null;
 }
 
+export interface WiFiSettings {
+  enabled: boolean;
+  trusted: string[];
+}
+
+export interface WiFiStatus {
+  known: boolean;
+  ssid: string;
+  detail: string;
+  enabled: boolean;
+  trusted: boolean;
+  applied: boolean;
+  manualOverride: boolean;
+}
+
 // ---- Services ----
 
 /** Service owns the mihomo process and coordinates network takeover. */
@@ -334,6 +349,9 @@ export const Desktop = {
   },
   quit(): Promise<void> {
     return call("Desktop.Quit");
+  },
+  requestWiFiAccess(): Promise<void> {
+    return call("Desktop.RequestWiFiAccess");
   },
   setOpenAtLogin(enabled: boolean): Promise<void> {
     return call("Desktop.SetOpenAtLogin", enabled);
@@ -446,6 +464,9 @@ export const Profiles = {
   setTunSettings(value: TunOptions): Promise<TunOptions> {
     return call("Profiles.SetTunSettings", value);
   },
+  setWiFiSettings(value: WiFiSettings): Promise<WiFiSettings> {
+    return call("Profiles.SetWiFiSettings", value);
+  },
   speedSettings(): Promise<SpeedSettings> {
     return call("Profiles.SpeedSettings");
   },
@@ -475,5 +496,23 @@ export const Profiles = {
   },
   use(id: string): Promise<ProfileState> {
     return call("Profiles.Use", id);
+  },
+  wiFiSettings(): Promise<WiFiSettings> {
+    return call("Profiles.WiFiSettings");
+  },
+} as const;
+
+export const WiFi = {
+  check(): Promise<void> {
+    return call("WiFi.Check");
+  },
+  setSettings(value: WiFiSettings): Promise<WiFiSettings> {
+    return call("WiFi.SetSettings", value);
+  },
+  settings(): Promise<WiFiSettings> {
+    return call("WiFi.Settings");
+  },
+  state(): Promise<WiFiStatus> {
+    return call("WiFi.State");
   },
 } as const;

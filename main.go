@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"rocketscience/internal/core"
+	"rocketscience/internal/network"
 )
 
 func main() {
@@ -18,11 +19,24 @@ func main() {
 	desktop := &Desktop{service: service, profiles: profiles}
 	mygo.Bind(desktop)
 	mygo.Bind(profiles)
+	wifi := core.NewWiFi(profiles, service, func() (network.Snapshot, error) {
+		var snapshot network.Snapshot
+		var err error
+		mygo.RunOnMain(func() { snapshot, err = network.Read() })
+		return snapshot, err
+	})
+	mygo.Bind(wifi)
 	stopUpdates := make(chan struct{})
 	mygo.App.WhenReady(func() {
 		go core.RunUpdates(profiles, stopUpdates)
 		desktop.ready()
-		go func() { _ = service.RecoverGeoCache(); desktop.completeStartup(profiles.Initialize()) }()
+		go func() {
+			_ = service.RecoverGeoCache()
+			err := profiles.Initialize()
+			_ = wifi.Check()
+			desktop.completeStartup(err)
+			core.RunWiFi(wifi, stopUpdates)
+		}()
 	})
 	mygo.App.OnBeforeQuit(desktop.beforeQuit)
 	mygo.App.OnWindowAllClosed(func() {})
