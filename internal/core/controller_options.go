@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 	"unicode"
@@ -15,18 +16,30 @@ type ControllerOptions struct {
 }
 
 func controllerBind(v ControllerOptions) string {
-	if v.Address == "" || v.Address == "localhost" {
+	raw := strings.TrimSpace(v.Address)
+	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
+		raw = raw[1 : len(raw)-1]
+	}
+	if raw == "" || raw == "localhost" {
 		return "127.0.0.1"
 	}
-	if v.Address == "*" {
+	if raw == "*" {
 		return "0.0.0.0"
 	}
-	return v.Address
+	if addr, err := netip.ParseAddr(raw); err == nil {
+		return addr.String()
+	}
+	return raw
 }
 func validateControllerOptions(v ControllerOptions) error {
-	ip := net.ParseIP(controllerBind(v))
-	if ip == nil {
+	addr, err := netip.ParseAddr(controllerBind(v))
+	if err != nil {
 		return errors.New("控制接口地址必须为本机 IP 地址或 *")
+	}
+	if addr.Zone() != "" {
+		if _, err := net.InterfaceByName(addr.Zone()); err != nil {
+			return errors.New("控制接口 IPv6 网卡区域（Zone ID）无效")
+		}
 	}
 	if v.Port < 0 || v.Port > 65535 {
 		return errors.New("控制接口端口必须为 0 到 65535，0 表示自动选择")
@@ -34,7 +47,7 @@ func validateControllerOptions(v ControllerOptions) error {
 	if len(v.Secret) > 4096 || strings.IndexFunc(v.Secret, unicode.IsControl) >= 0 {
 		return errors.New("控制接口密钥包含无效字符或过长")
 	}
-	if !ip.IsLoopback() && v.Secret == "" {
+	if !addr.IsLoopback() && v.Secret == "" {
 		return errors.New("向本机回环地址以外开放控制接口时，必须设置密钥")
 	}
 	return nil
@@ -49,10 +62,11 @@ func validateControllerPorts(value ControllerOptions, mixed int, inbound *Inboun
 	return nil
 }
 func (s *Service) controllerAuthority() string {
-	if s.controllerAddress != "" {
-		return s.controllerAddress
+	auth := s.controllerAddress
+	if auth == "" {
+		auth = net.JoinHostPort("127.0.0.1", strconv.Itoa(s.port))
 	}
-	return net.JoinHostPort("127.0.0.1", strconv.Itoa(s.port))
+	return strings.ReplaceAll(auth, "%", "%25")
 }
 func (p *Profiles) ControllerSettings() (ControllerOptions, error) {
 	p.mu.Lock()

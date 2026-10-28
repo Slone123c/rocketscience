@@ -114,3 +114,33 @@ func TestControllerOptionsOccupiedPort(t *testing.T) {
 		t.Fatalf("occupied: %v", err)
 	}
 }
+
+func TestControllerOptionsIPv6BracketsAndZoneID(t *testing.T) {
+	p := NewProfiles(t.TempDir())
+	for _, raw := range []string{"[::1]", "::1"} {
+		got, err := p.SetControllerSettings(ControllerOptions{Address: raw, Port: 19090})
+		if err != nil {
+			t.Fatalf("SetControllerSettings(%q) failed: %v", raw, err)
+		}
+		if got.Address != "::1" {
+			t.Fatalf("Address(%q) = %q, want \"::1\"", raw, got.Address)
+		}
+	}
+	if _, err := p.SetControllerSettings(ControllerOptions{Address: "fe80::1%en0", Port: 19090}); err == nil {
+		t.Fatal("accepted link-local IPv6 without secret")
+	}
+	got, err := p.SetControllerSettings(ControllerOptions{Address: "[fe80::1%en0]", Port: 19090, Secret: "s"})
+	if err != nil {
+		t.Fatalf("SetControllerSettings([fe80::1%%en0]) failed: %v", err)
+	}
+	if got.Address != "fe80::1%en0" {
+		t.Fatalf("got.Address = %q, want \"fe80::1%%en0\"", got.Address)
+	}
+	if _, err := p.SetControllerSettings(ControllerOptions{Address: "fe80::1%nonexistent999", Port: 19090, Secret: "s"}); err == nil {
+		t.Fatal("accepted non-existent IPv6 Zone ID")
+	}
+	s := &Service{controllerAddress: net.JoinHostPort(got.Address, "19090")}
+	if _, err := http.NewRequest("GET", "http://"+s.controllerAuthority()+"/version", nil); err != nil {
+		t.Fatalf("controllerAuthority URL failed: %v (authority=%q)", err, s.controllerAuthority())
+	}
+}
