@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,6 +103,9 @@ func TestGeoManualUpdateAndFailure(t *testing.T) {
 		}
 		_ = os.WriteFile(filepath.Join(runtime, "geoip.metadb"), []byte("new"), 0600)
 		w.WriteHeader(status)
+		if status >= 400 {
+			_, _ = w.Write([]byte(`{"message":"database download blocked"}`))
+		}
 	}))
 	defer server.Close()
 	_, raw, _ := net.SplitHostPort(server.Listener.Addr().String())
@@ -122,6 +126,9 @@ func TestGeoManualUpdateAndFailure(t *testing.T) {
 	status = 500
 	if err = s.UpdateGeo(); err == nil || !s.geoDirtyFailed {
 		t.Fatal("failed update not recorded")
+	}
+	if !strings.Contains(err.Error(), "database download blocked") {
+		t.Fatalf("download detail lost: %v", err)
 	}
 	s.cmd = nil
 	if err = s.UpdateGeo(); err == nil {

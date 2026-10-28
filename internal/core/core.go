@@ -410,11 +410,12 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		os.RemoveAll(dir)
 		return err
 	}
-	test := exec.Command(bin, "-t", "-d", dir, "-f", configPath)
-	output, err := test.CombinedOutput()
+	validationContext, cancelValidation := context.WithTimeout(context.Background(), 2*time.Minute)
+	err = validateRuntimeWithContext(validationContext, bin, dir, configPath)
+	cancelValidation()
 	if err != nil {
 		os.RemoveAll(dir)
-		return fmt.Errorf("mihomo 校验失败：%s", strings.TrimSpace(string(output)))
+		return err
 	}
 	var geoCfg struct {
 		AutoUpdate bool `yaml:"geo-auto-update"`

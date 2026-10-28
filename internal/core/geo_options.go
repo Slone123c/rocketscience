@@ -1,8 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -82,13 +84,21 @@ func (s *Service) UpdateGeo() error {
 		s.mu.Unlock()
 		return fmt.Errorf("GEO 更新未完成：%w", err)
 	}
-	response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		var problem struct {
+			Message string `json:"message"`
+		}
+		_ = json.NewDecoder(io.LimitReader(response.Body, 64*1024)).Decode(&problem)
+		response.Body.Close()
 		s.mu.Lock()
 		s.geoDirtyFailed = true
 		s.mu.Unlock()
+		if problem.Message != "" {
+			return fmt.Errorf("GEO 更新失败：%s（%s）", problem.Message, response.Status)
+		}
 		return fmt.Errorf("GEO 更新失败：内核返回 %s", response.Status)
 	}
+	response.Body.Close()
 	// A TUN supervisor may need one heartbeat to return file ownership.
 	var saveErr error
 	for attempt := 0; attempt < 4; attempt++ {

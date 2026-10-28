@@ -19,6 +19,12 @@ bun run dev
 ROCKETSCIENCE_MIHOMO=/absolute/path/to/mihomo go test ./...
 ```
 
+GEO 外部下载验证需另行启用（会从 mihomo 默认的官方地址下载数据库，使用临时缓存与模拟系统代理，不修改当前网络设置）：
+
+```sh
+ROCKETSCIENCE_MIHOMO=/absolute/path/to/mihomo ROCKETSCIENCE_VERIFY_REMOTE_GEO=1 go test -race ./internal/core -run '^TestGeo' -count=1
+```
+
 ## 当前边界
 
 内核由本应用启动、重启和停止；关闭窗口隐藏到菜单栏，退出应用时先恢复网络并停止内核。启动前至少选择系统代理或 TUN 一种接管方式；运行中关闭最后一种接管方式也会恢复网络并停止内核。已实现系统代理恢复、TUN 授权启动、局域网共享和菜单栏。真实 macOS 权限、网络修改与恢复、TUN 路由和登录项尚待实机验证；目前使用模拟接管与独立 mihomo 验证功能。面向分发的开发者签名与公证尚未完成。不要将真实订阅密钥提交到项目。
