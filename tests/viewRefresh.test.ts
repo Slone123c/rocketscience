@@ -4,7 +4,7 @@ import type {Status} from "../src/mygo";
 
 function source(running=true) {
   const calls:string[]=[];
-  const readers=Object.fromEntries(["profiles","overrides","groups","connections","rules","streams","monitoring"].map(name=>[name,async()=>{calls.push(name);return {}}]));
+  const readers=Object.fromEntries(["profiles","overrides","previewGroups","groups","connections","rules","streams","monitoring"].map(name=>[name,async()=>{calls.push(name);return {}}]));
   return {calls,readers:{...readers,status:async()=>{calls.push("status");return {running} as Status}} as unknown as ViewSource};
 }
 function deferred(){let resolve!:()=>void;const promise=new Promise<void>(done=>{resolve=done});return {promise,resolve}}
@@ -25,7 +25,7 @@ describe("view data scope",()=>{
   test("stopped core still allows editing rules and profiles without runtime calls",async()=>{
     for(const page of ["总览","代理","日志","连接","规则","配置"]){
       const mock=source(false);await loadViewData({page,topic:"core"},mock.readers);
-      expect(mock.calls).toEqual(page==="规则"||page==="连接"?["status","overrides"]:page==="配置"?["status","profiles"]:["status"]);
+      expect(mock.calls).toEqual(page==="规则"||page==="连接"?["status","overrides"]:page==="配置"?["status","profiles"]:page==="代理"?["status","previewGroups"]:["status"]);
     }
   });
   test("a failed batch waits for its other outstanding reads before retry",async()=>{

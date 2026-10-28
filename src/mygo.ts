@@ -482,6 +482,13 @@ export const Profiles = {
   overrides(): Promise<OverrideState> {
     return call("Profiles.Overrides");
   },
+  /**
+   * PreviewGroups reads saved names and protocol metadata only. It never starts
+   * mihomo, fetches providers, or returns server addresses and credentials.
+   */
+  previewGroups(): Promise<Proxy[]> {
+    return call("Profiles.PreviewGroups");
+  },
   proxyBypass(): Promise<ProxyBypassSettings> {
     return call("Profiles.ProxyBypass");
   },

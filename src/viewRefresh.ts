@@ -3,7 +3,7 @@ import type {Status,ProfileState,Proxy,ConnectionSnapshot,Rule,Streams,Monitorin
 export interface ViewRoute {page:string;topic:string}
 export interface ViewSource {
   status:()=>Promise<Status>;profiles:()=>Promise<ProfileState>;overrides:()=>Promise<OverrideState>;
-  groups:()=>Promise<Proxy[]>;connections:()=>Promise<ConnectionSnapshot>;rules:()=>Promise<Rule[]>;
+  previewGroups:()=>Promise<Proxy[]>;groups:()=>Promise<Proxy[]>;connections:()=>Promise<ConnectionSnapshot>;rules:()=>Promise<Rule[]>;
   streams:()=>Promise<Streams>;monitoring:()=>Promise<Monitoring>;
 }
 export interface ViewData {
@@ -16,6 +16,7 @@ export async function loadViewData(route:ViewRoute,source:ViewSource):Promise<Vi
   const tasks:Promise<void>[]=[];
   if(route.page==="配置")tasks.push(source.profiles().then(v=>{data.profiles=v}));
   if(route.page==="规则"||route.page==="连接")tasks.push(source.overrides().then(v=>{data.overrides=v}));
+  if(!status.running&&route.page==="代理")tasks.push(source.previewGroups().then(v=>{data.groups=v}));
   if(status.running) {
     if(route.page==="代理")tasks.push(source.groups().then(v=>{data.groups=v}));
     if(route.page==="总览"||route.page==="连接")tasks.push(source.connections().then(v=>{data.connections=v}));

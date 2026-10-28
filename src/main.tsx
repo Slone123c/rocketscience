@@ -41,7 +41,7 @@ function App() {
  if(!refreshQueue.current)refreshQueue.current=createRefreshQueue(async()=>{
    const route=latestRoute.current;
    try{
-     const data=await loadViewData(route,{status:()=>Service.status(),profiles:()=>Profiles.state(),overrides:()=>Profiles.overrides(),groups:()=>Service.groups(),connections:()=>Service.connections(),rules:()=>Service.rules(),streams:()=>Service.streams(),monitoring:()=>Service.monitoring()});
+     const data=await loadViewData(route,{status:()=>Service.status(),profiles:()=>Profiles.state(),overrides:()=>Profiles.overrides(),previewGroups:()=>Profiles.previewGroups(),groups:()=>Service.groups(),connections:()=>Service.connections(),rules:()=>Service.rules(),streams:()=>Service.streams(),monitoring:()=>Service.monitoring()});
      if(route!==latestRoute.current)return;
      if(delaySession.current!==data.status.startedAt){delaySession.current=data.status.startedAt;setDelays({})}
      setStatus(data.status);
@@ -52,7 +52,7 @@ function App() {
      if(data.rules)setRules(data.rules);
      if(data.streams)setStreams(data.streams);
      if(data.monitoring)setStreams({...data.monitoring,logs:[]});
-     if(!data.status.running){setGroups([]);setConnections(null);setRules([]);setStreams(null);setDelays({})}
+     if(!data.status.running){if(!data.groups)setGroups([]);setConnections(null);setRules([]);setStreams(null);setDelays({})}
    }catch(e){if(route===latestRoute.current)setError(String(e))}
  });
  async function refresh(){await refreshQueue.current!.request()}
