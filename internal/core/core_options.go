@@ -149,6 +149,9 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 	if options.Controller != nil {
 		cfg["external-controller"] = net.JoinHostPort(controllerBind(*options.Controller), strconv.Itoa(controllerPort))
 	}
+	if err := validateCustomListeners(cfg, mixedPort, controllerPort, options.Inbound); err != nil {
+		return nil, err
+	}
 	// macOS system proxy and the app's own checks connect over loopback without credentials.
 	if auth, ok := cfg["authentication"].([]any); ok && len(auth) > 0 {
 		ensureLoopbackAuth(cfg)

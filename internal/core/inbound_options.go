@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"gopkg.in/yaml.v3"
 )
 
 type InboundOptions struct {
@@ -62,6 +64,59 @@ func ensureLoopbackAuth(cfg map[string]any) {
 	}
 	cfg["skip-auth-prefixes"] = prefixes
 }
+
+func validateCustomListeners(cfg map[string]any, mixedPort, controllerPort int, inbound *InboundOptions) error {
+	raw, ok := cfg["listeners"]
+	if !ok || raw == nil {
+		return nil
+	}
+	listeners, ok := raw.([]any)
+	if !ok {
+		return errors.New("配置中的 listeners 必须为列表")
+	}
+	for _, entry := range listeners {
+		m, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := m["name"].(string)
+		if name == "rocketscience-lan" {
+			continue
+		}
+		port := listenerPort(m["port"])
+		if port <= 0 {
+			continue
+		}
+		if port == mixedPort {
+			return fmt.Errorf("配置中的自定义监听器 %s 占用了混合端口 %d", name, port)
+		}
+		if controllerPort > 0 && port == controllerPort {
+			return fmt.Errorf("配置中的自定义监听器 %s 占用了控制接口端口 %d", name, port)
+		}
+		if inbound != nil && (port == inbound.HTTPPort || port == inbound.SOCKSPort) {
+			return fmt.Errorf("配置中的自定义监听器 %s 占用了独立入站端口 %d", name, port)
+		}
+	}
+	return nil
+}
+
+func listenerPort(v any) int {
+	switch p := v.(type) {
+	case int:
+		return p
+	case int64:
+		return int(p)
+	case uint64:
+		return int(p)
+	case *yaml.Node:
+		var n int
+		if p != nil && p.Decode(&n) == nil {
+			return n
+		}
+	}
+	return 0
+}
+
 func (p *Profiles) InboundSettings() (InboundOptions, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

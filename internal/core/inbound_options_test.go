@@ -113,3 +113,18 @@ func TestInboundOccupiedPortFailsBeforeStart(t *testing.T) {
 		t.Fatalf("occupied port: %v", err)
 	}
 }
+
+func TestProfileListenerCollidingWithManagedPorts(t *testing.T) {
+	src := "listeners:\n  - name: custom\n    type: mixed\n    port: 7890\nrules: [MATCH,DIRECT]\n"
+	if _, err := runtimeConfigWithOptions(src, 7890, 9090, "s", "", LANSettings{}, false, CoreOptions{}); err == nil {
+		t.Fatal("accepted profile listener colliding with mixed-port")
+	}
+	srcInbound := "listeners:\n  - name: custom\n    type: http\n    port: 17890\nrules: [MATCH,DIRECT]\n"
+	if _, err := runtimeConfigWithOptions(srcInbound, 7890, 9090, "s", "", LANSettings{}, false, CoreOptions{Inbound: &InboundOptions{HTTPPort: 17890}}); err == nil {
+		t.Fatal("accepted profile listener colliding with inbound HTTP port")
+	}
+	srcCtrl := "listeners:\n  - name: custom\n    type: socks\n    port: 9090\nrules: [MATCH,DIRECT]\n"
+	if _, err := runtimeConfigWithOptions(srcCtrl, 7890, 9090, "s", "", LANSettings{}, false, CoreOptions{}); err == nil {
+		t.Fatal("accepted profile listener colliding with controller port")
+	}
+}
