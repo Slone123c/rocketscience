@@ -48,7 +48,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     state={busy || !ready ? "igniting" : status?.running ? "orbit" : "idle"}
     since={status?.startedAt ? Date.parse(status.startedAt) : undefined}
     subtitle={status?.warning || undefined}
-    speed={{ up: streams?.telemetry.connected ? streams.telemetry.up : null, down: streams?.telemetry.connected ? streams.telemetry.down : null }}
+    speed={{ up: streams?.telemetry.connected ? streams.telemetry.up : null, down: streams?.telemetry.connected ? streams.telemetry.down : null, history: streams?.telemetry.connected ? streams.history : {up:[],down:[]} }}
     mode={mode === "global" || mode === "direct" ? mode : "rule"}
     groups={proxyGroups} testing={testing} systemProxy={!!status?.systemProxy} tun={!!status?.tun}
     onToggle={() => void perform(async () => { if (status?.running) await Service.stop(); else if (profiles?.activeId) await Profiles.startActive(); else throw new Error("请先在控制台保存并选择配置。"); })}

@@ -113,6 +113,11 @@ export interface LogEntry {
   payload: string;
 }
 
+export interface MemoryUsage {
+  inuse: number;
+  connected: boolean;
+}
+
 /** NodeRecommendation is an observation, not a route change. */
 export interface NodeRecommendation {
   group: string;
@@ -212,6 +217,8 @@ export interface Status {
 
 export interface Streams {
   telemetry: Telemetry;
+  memory: MemoryUsage;
+  history: TrafficHistory;
   logs: LogEntry[];
 }
 
@@ -232,6 +239,11 @@ export interface Telemetry {
   up: number;
   down: number;
   connected: boolean;
+}
+
+export interface TrafficHistory {
+  up: number[];
+  down: number[];
 }
 
 /** Nil values use RocketScience's TUN defaults. Enable is controlled separately. */
@@ -283,7 +295,7 @@ export const Service = {
   kernelInfo(): Promise<KernelInfo> {
     return call("Service.KernelInfo");
   },
-  /** LiveTelemetry avoids copying the log buffer for menu-bar updates. */
+  /** LiveTelemetry avoids copying history and logs for native menu-bar updates. */
   liveTelemetry(): Promise<Telemetry> {
     return call("Service.LiveTelemetry");
   },

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -35,7 +36,13 @@ type Service struct {
 	startedAt         time.Time
 	streamMu          sync.Mutex
 	streamGeneration  uint64
+	streamCancel      context.CancelFunc
+	streamFinished    <-chan struct{}
 	telemetry         Telemetry
+	memory            MemoryUsage
+	trafficSamples    [24]trafficSample
+	trafficNext       int
+	trafficCount      int
 	logs              []LogEntry
 	proxy             proxyController
 	useSystemProxy    bool

@@ -17,7 +17,7 @@ func TestTrafficStream(t *testing.T) {
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if s.Streams().Telemetry.Connected {
+		if v := s.Streams(); v.Telemetry.Connected && v.Memory.Connected && len(v.History.Up) > 0 {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)
