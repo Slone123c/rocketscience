@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/transfer"
 	"rocketscience/internal/core"
 	"rocketscience/internal/network"
 )
@@ -16,25 +17,26 @@ var trayAsset embed.FS
 
 // Desktop owns the macOS menu bar item and the windows.
 type Desktop struct {
-	mu           sync.Mutex
-	service      *core.Service
-	profiles     *core.Profiles
-	main         *mygo.Window
-	tray         *mygo.Tray
-	panel        *mygo.Window
-	quitting     bool
-	stopping     bool
-	quitError    string
-	startupReady bool
-	startupError string
-	trayError    string
-	loginRead    func() bool
-	loginWrite   func(bool) error
-	displayMu    sync.Mutex
-	display      string
-	trayStop     chan struct{}
-	trayWake     chan struct{}
-	trayIcon     []byte
+	mu             sync.Mutex
+	service        *core.Service
+	profiles       *core.Profiles
+	main           *mygo.Window
+	tray           *mygo.Tray
+	panel          *mygo.Window
+	quitting       bool
+	stopping       bool
+	quitError      string
+	startupReady   bool
+	startupError   string
+	trayError      string
+	loginRead      func() bool
+	loginWrite     func(bool) error
+	clipboardWrite func(string) error
+	displayMu      sync.Mutex
+	display        string
+	trayStop       chan struct{}
+	trayWake       chan struct{}
+	trayIcon       []byte
 }
 type DesktopState struct {
 	QuitError    string `json:"quitError"`
@@ -93,7 +95,22 @@ func (d *Desktop) CopyTerminalProxy(port int) error {
 	if port < 1 || port > 65535 {
 		return fmt.Errorf("代理端口无效")
 	}
-	mygo.Clipboard.WriteText(fmt.Sprintf("export http_proxy=http://127.0.0.1:%d https_proxy=http://127.0.0.1:%d all_proxy=socks5://127.0.0.1:%d", port, port, port))
+	return d.CopyText(fmt.Sprintf("export http_proxy=http://127.0.0.1:%d https_proxy=http://127.0.0.1:%d all_proxy=socks5://127.0.0.1:%d", port, port, port))
+}
+
+func (d *Desktop) CopyText(text string) error {
+	if text == "" {
+		return fmt.Errorf("没有可复制的内容")
+	}
+	var err error
+	if d.clipboardWrite != nil {
+		err = d.clipboardWrite(text)
+	} else {
+		err = mygo.Clipboard.Write(transfer.TextData(text))
+	}
+	if err != nil {
+		return fmt.Errorf("复制失败：%w", err)
+	}
 	return nil
 }
 func (d *Desktop) Quit() { mygo.App.Quit() }

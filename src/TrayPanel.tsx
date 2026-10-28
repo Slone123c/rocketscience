@@ -66,7 +66,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     onModeChange={value => void perform(() => Service.setMode(value))}
     onSelect={(group, node) => void perform(() => Service.select(group, node))}
     onTest={group => { setTesting(group); void Profiles.speedSettings().then(speed => Service.testGroup(group, speed.url, speed.timeoutMs)).then(result => setDelays(old => ({ ...old, [group]: {values:result,completedAt:Date.now()} }))).catch(e => setError(String(e))).finally(() => setTesting(null)); }}
-    onCopyCommand={() => void Desktop.copyTerminalProxy(profiles?.mixedPort || 7890).catch(e => setError(String(e)))}
+    onCopyCommand={async()=>{try{const saved=await Profiles.summary();await Desktop.copyTerminalProxy(saved.mixedPort)}catch(e){setError(String(e));throw e}}}
     onOpenDashboard={() => void Desktop.openDashboard().catch(e => setError(String(e)))}
     onQuit={() => void Desktop.quit().catch(e => setError(String(e)))}
   />{error && <div className="tray-error" role="alert">{error}<button onClick={() => setError("")} aria-label="关闭">×</button></div>}</div>;

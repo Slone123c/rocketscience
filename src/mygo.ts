@@ -396,6 +396,9 @@ export const Desktop = {
   copyTerminalProxy(port: number): Promise<void> {
     return call("Desktop.CopyTerminalProxy", port);
   },
+  copyText(text: string): Promise<void> {
+    return call("Desktop.CopyText", text);
+  },
   openAtLogin(): Promise<boolean> {
     return call("Desktop.OpenAtLogin");
   },
