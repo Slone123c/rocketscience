@@ -41,6 +41,9 @@ func TestTunFakeProcess(t *testing.T) {
 	mux.HandleFunc("/configs", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"mode": "rule", "tun": map[string]any{"enable": true}})
 	})
+	mux.HandleFunc("/proxies", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"proxies": map[string]any{}})
+	})
 	server := &http.Server{Addr: cfg.Controller, Handler: mux}
 	go func() { _ = server.ListenAndServe() }()
 	for {

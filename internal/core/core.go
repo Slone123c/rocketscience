@@ -250,7 +250,7 @@ func (s *Service) start(content string, mixedPort int, bypass *[]string, lan LAN
 }
 
 // startLocked serializes lifecycle operations with opMu.
-func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, lan LANSettings, options CoreOptions) error {
+func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, lan LANSettings, options CoreOptions, selections ...map[string]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd != nil {
@@ -564,6 +564,11 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			tunReady = s.get("/configs", &state) == nil && state.Tun.Enable
 		}
 		if s.get("/version", &v) == nil && tunReady {
+			for _, selected := range selections {
+				if err := s.restoreSelections(selected); err != nil {
+					return errors.Join(err, finishFailedStart())
+				}
+			}
 			s.startStreamsAt(s.controllerAuthority(), s.secret, done)
 			if s.useSystemProxy {
 				if s.proxy == nil {

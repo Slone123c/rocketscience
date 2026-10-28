@@ -90,6 +90,13 @@ export interface InboundOptions {
   authentication: string[] | null;
 }
 
+export interface KernelInfo {
+  available: boolean;
+  path: string;
+  version: string;
+  platform: string;
+}
+
 export interface LANInterface {
   name: string;
   address: string;
@@ -272,6 +279,10 @@ export const Service = {
   groups(): Promise<Proxy[]> {
     return call("Service.Groups");
   },
+  /** KernelInfo works while stopped and never starts a controller or takes over traffic. */
+  kernelInfo(): Promise<KernelInfo> {
+    return call("Service.KernelInfo");
+  },
   /** LiveTelemetry avoids copying the log buffer for menu-bar updates. */
   liveTelemetry(): Promise<Telemetry> {
     return call("Service.LiveTelemetry");
@@ -282,6 +293,13 @@ export const Service = {
   /** RecoverNetwork restores any recorded takeover before stopping the core. */
   recoverNetwork(): Promise<void> {
     return call("Service.RecoverNetwork");
+  },
+  /**
+   * Restart uses the supervised lifecycle rather than /restart, which would bypass
+   * the application's process ownership and network restoration guarantees.
+   */
+  restart(): Promise<void> {
+    return call("Service.Restart");
   },
   rules(): Promise<Rule[]> {
     return call("Service.Rules");

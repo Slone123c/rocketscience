@@ -63,6 +63,8 @@ func (s *Service) request(method, path string, body any) error {
 	return nil
 }
 func (s *Service) Select(group, node string) error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd == nil {
@@ -76,6 +78,8 @@ func (s *Service) Select(group, node string) error {
 
 // SelectRecommendation refuses a stale recommendation if the user has changed the group.
 func (s *Service) SelectRecommendation(group, current, node string) error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd == nil {
@@ -96,6 +100,8 @@ func (s *Service) SelectRecommendation(group, current, node string) error {
 	return errors.New("推荐节点已不存在，请重新检查")
 }
 func (s *Service) SetMode(mode string) error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd == nil {
