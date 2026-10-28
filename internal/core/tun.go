@@ -33,9 +33,12 @@ func (s *Service) SetTun(enabled bool) error {
 		return fmt.Errorf("读取内核状态失败：%w", err)
 	}
 	s.mu.Unlock()
-	var document map[string]any
-	if err := yaml.Unmarshal([]byte(content), &document); err != nil {
+	document, err := unmarshalConfigMap([]byte(content))
+	if err != nil {
 		return err
+	}
+	if document == nil {
+		return errors.New("配置不能为空")
 	}
 	if cfg.Mode != "" {
 		document["mode"] = cfg.Mode
