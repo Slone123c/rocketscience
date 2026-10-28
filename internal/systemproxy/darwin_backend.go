@@ -64,13 +64,15 @@ func (b DarwinBackend) Snapshot() ([]Service, error) {
 		return nil, fmt.Errorf("系统代理状态无效：%w", err)
 	}
 	seen := map[string]bool{}
+	filtered := make([]Service, 0, len(services))
 	for _, s := range services {
 		if s.ID == "" || seen[s.ID] {
-			return nil, errors.New("网络服务标识无效")
+			continue
 		}
 		seen[s.ID] = true
+		filtered = append(filtered, s)
 	}
-	return services, nil
+	return filtered, nil
 }
 func (b DarwinBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	in, err := json.Marshal(changes)

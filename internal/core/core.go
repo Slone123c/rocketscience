@@ -98,6 +98,11 @@ func corePath() string {
 	if p, err := exec.LookPath("mihomo"); err == nil {
 		return p
 	}
+	for _, candidate := range []string{"/opt/homebrew/bin/mihomo", "/usr/local/bin/mihomo"} {
+		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
+			return candidate
+		}
+	}
 	return ""
 }
 func (s *Service) Status() Status {
@@ -500,6 +505,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		if !isTun && privileged != nil {
 			orphanErr = cleanupOrdinaryOrphan(dir, bin)
 		}
+		logSummary := coreLogSummary(filepath.Join(dir, "tun-core.log"))
 		close(exited)
 		s.mu.Lock()
 		unexpected := s.cmd == cmd && !s.stopping
@@ -512,7 +518,11 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			s.cmd = nil
 			s.tunProcess = nil
 			if unexpected && waitErr != nil {
-				s.lastError = "内核已退出：" + waitErr.Error()
+				if logSummary != "" {
+					s.lastError = "内核已退出：" + logSummary
+				} else {
+					s.lastError = "内核已退出：" + waitErr.Error()
+				}
 			}
 		}
 		s.mu.Unlock()
@@ -564,6 +574,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		case <-exited:
 			s.cmd = nil
 			s.tunProcess = nil
+			if summary := coreLogSummary(filepath.Join(dir, "tun-core.log")); summary != "" {
+				return fmt.Errorf("内核启动失败：%s（%v）", summary, waitErr)
+			}
 			return fmt.Errorf("内核启动失败或授权已取消：%v", waitErr)
 		default:
 		}

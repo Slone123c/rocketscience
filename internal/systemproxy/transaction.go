@@ -90,11 +90,11 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 	j := journal{Version: 1}
 	for _, s := range services {
 		if s.ID == "" {
-			return errors.New("网络服务缺少标识")
+			continue
 		}
 		var enabled bool
 		if value, ok := s.Settings["__ProtocolEnabled"]; !ok || json.Unmarshal(value, &enabled) != nil {
-			return errors.New("无法读取网络服务的代理协议状态")
+			continue
 		}
 		desired := takeover(port)
 		groups := append([][]string(nil), keyGroups...)
@@ -115,6 +115,9 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 			j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, group), Desired: pickKeys(desired, group), Keys: append([]string(nil), group...)})
 		}
 		j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, guardKeys), Desired: desired, Keys: []string{"__ProtocolEnabled"}, GuardKeys: guardKeys})
+	}
+	if len(j.Changes) == 0 {
+		return errors.New("没有支持代理协议的网络服务")
 	}
 	if err = m.write(j); err != nil {
 		return err

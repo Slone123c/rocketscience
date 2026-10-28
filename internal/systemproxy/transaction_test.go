@@ -141,3 +141,20 @@ func TestRecoveryRecordIsExclusive(t *testing.T) {
 		t.Fatalf("expected one owner: %v, %v", a, b)
 	}
 }
+
+func TestSkipsServiceWithoutProxyProtocol(t *testing.T) {
+	b := &fakeBackend{services: []Service{
+		{ID: "vpn-without-proxies", Settings: Settings{}},
+		{ID: "wifi", Settings: Settings{"__ProtocolEnabled": json.RawMessage("false")}},
+	}}
+	m := New(b, filepath.Join(t.TempDir(), "journal"))
+	if err := m.Apply(7890); err != nil {
+		t.Fatalf("Apply failed when one service lacked proxy protocol: %v", err)
+	}
+	if string(b.services[1].Settings["HTTPPort"]) != "7890" {
+		t.Fatalf("wifi proxy not applied: %v", b.services[1].Settings)
+	}
+	if _, err := m.Restore(); err != nil {
+		t.Fatal(err)
+	}
+}

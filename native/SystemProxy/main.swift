@@ -21,7 +21,7 @@ if mode == "snapshot" {
     guard let prefs = SCPreferencesCreate(nil, "RocketScience" as CFString, nil) else { fail("无法打开系统网络配置") }
     var list: [[String: Any]] = []
     for service in serviceList(prefs, enabledOnly: true) {
-        guard let id = SCNetworkServiceGetServiceID(service) as String?, let (proto, dict) = config(service) else { fail("无法读取某个网络服务的代理协议") }
+        guard let id = SCNetworkServiceGetServiceID(service) as String?, !id.isEmpty, let (proto, dict) = config(service) else { continue }
         var state = relevant(dict)
         state["__ProtocolEnabled"] = SCNetworkProtocolGetEnabled(proto)
         list.append(["id": id, "name": (SCNetworkServiceGetName(service) as String?) ?? "", "settings": state])

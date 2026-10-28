@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -85,6 +86,10 @@ func (s *Service) CheckConnectivity(target string) (Connectivity, error) {
 				var best string
 				bestDelay := 0
 				for _, name := range group.All {
+					switch strings.ToUpper(name) {
+					case "DIRECT", "REJECT", "REJECT-DROP", "PASS":
+						continue
+					}
 					delay := delays[name]
 					if name != group.Now && delay > 0 && (bestDelay == 0 || delay < bestDelay) {
 						best, bestDelay = name, delay

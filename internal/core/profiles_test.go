@@ -74,4 +74,18 @@ func TestFetchSubscription(t *testing.T) {
 	if _, err = p.Fetch("file:///tmp/foo"); err == nil || !strings.Contains(err.Error(), "HTTP") {
 		t.Fatal("invalid URL accepted")
 	}
+	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(direct))
+	}))
+	defer tlsServer.Close()
+	if _, err = p.Fetch(tlsServer.URL); err == nil || (!strings.Contains(err.Error(), "certificate") && !strings.Contains(err.Error(), "x509")) {
+		t.Fatalf("expected TLS certificate detail in fetch error, got: %v", err)
+	}
+	redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "ftp://example.com/sub.yaml", http.StatusFound)
+	}))
+	defer redirectServer.Close()
+	if _, err = p.Fetch(redirectServer.URL); err == nil || !strings.Contains(err.Error(), "不支持的重定向协议") {
+		t.Fatalf("expected redirect scheme error, got: %v", err)
+	}
 }

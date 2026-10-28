@@ -359,7 +359,14 @@ func downloadProfile(raw string) (string, *SubscriptionUsage, error) {
 	}}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", nil, errors.New("下载失败，请检查订阅地址和网络")
+		if errors.Is(err, context.DeadlineExceeded) {
+			return "", nil, errors.New("下载订阅超时（30s），请检查订阅地址或网络")
+		}
+		var uErr *url.Error
+		if errors.As(err, &uErr) && uErr.Err != nil {
+			return "", nil, fmt.Errorf("下载失败：%w", uErr.Err)
+		}
+		return "", nil, fmt.Errorf("下载失败：%w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {

@@ -49,3 +49,29 @@ func tunLogFailure(path string) string {
 	}
 	return ""
 }
+
+func coreLogSummary(path string) string {
+	if failure := tunLogFailure(path); failure != "" {
+		return failure
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	if info, err := f.Stat(); err == nil && info.Size() > 8192 {
+		_, _ = f.Seek(-8192, io.SeekEnd)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 8192))
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(string(data), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" && line != "running" {
+			return line
+		}
+	}
+	return ""
+}
