@@ -1,0 +1,44 @@
+import {execFileSync,spawnSync} from "node:child_process";
+import {cpSync,existsSync,mkdirSync,mkdtempSync,rmSync,symlinkSync} from "node:fs";
+import {dirname,join,resolve} from "node:path";
+import {tmpdir} from "node:os";
+
+const root=resolve(import.meta.dir,"..");
+const args=process.argv.slice(2);
+const requested=args.find(arg=>arg.startsWith("--arch="))?.slice(7);
+const native=process.arch==="arm64"?"arm64":"amd64";
+const target=requested||native;
+let stage:string|undefined;
+function run(command:string,arguments_:string[],cwd:string){
+  const result=spawnSync(command,arguments_,{cwd,stdio:"inherit",env:{...process.env,ROCKETSCIENCE_ARCH:target}});
+  if(result.error)throw result.error;
+  if(result.status!==0)throw new Error(`${command} 未完成构建（退出码 ${result.status}）`);
+}
+try {
+  if(process.platform!=="darwin")throw new Error("macOS 应用打包需要在 macOS 运行");
+  if(!["arm64","amd64"].includes(target)||args.some(arg=>arg!==`--arch=${target}`)||args.length>1)
+    throw new Error("用法：bun run build [--arch=arm64|--arch=amd64]");
+  let project=root;
+  if(target!==native){
+    stage=mkdtempSync(join(tmpdir(),"rocketscience-cross-build-"));
+    // Include current tracked edits and untracked source, respecting Git ignores.
+    // Cross builds must not overwrite the native resources used by mygo dev.
+    const files=execFileSync("git",["ls-files","-z","--cached","--others","--exclude-standard"],{cwd:root,encoding:"utf8"}).split("\0").filter(Boolean);
+    for(const file of new Set(files)){
+      const source=join(root,file);if(!existsSync(source))continue;
+      const destination=join(stage,file);mkdirSync(dirname(destination),{recursive:true});cpSync(source,destination,{recursive:true});
+    }
+    symlinkSync(join(root,"node_modules"),join(stage,"node_modules"),"dir");
+    mkdirSync(join(root,".cache","mihomo"),{recursive:true});mkdirSync(join(stage,".cache"),{recursive:true});
+    symlinkSync(join(root,".cache","mihomo"),join(stage,".cache","mihomo"),"dir");
+    project=stage;
+  }
+  run("sh",["scripts/build-core.sh"],project);
+  run("sh",["scripts/build-helper.sh"],project);
+  run("bun",["x","mygo","build","-platform",`darwin/${target}`,"-o",join(root,"build")],project);
+  run("bun",["scripts/verify-bundle.ts",`--arch=${target}`,join(root,"build",`darwin-${target}`,"RocketScience.app")],root);
+}catch(error){
+  console.error(error instanceof Error?error.message:String(error));process.exitCode=1;
+}finally{
+  if(stage)rmSync(stage,{recursive:true,force:true});
+}

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "sh scripts/build-core.sh && sh scripts/build-helper.sh && mygo dev",
-    "build": "sh scripts/build-core.sh && sh scripts/build-helper.sh && mygo build && bun run verify:bundle",
+    "build": "bun scripts/build-macos.ts",
     "verify:bundle": "bun scripts/verify-bundle.ts",
     "generate": "mygo generate",
     "dev:web": "vite",

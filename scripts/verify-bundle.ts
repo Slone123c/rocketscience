@@ -1,5 +1,8 @@
 import {execFileSync} from "node:child_process";
-import {existsSync, readFileSync, statSync} from "node:fs";
+import {cpSync,existsSync,mkdtempSync, readFileSync,rmSync,statSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {createHash} from "node:crypto";
+import {gunzipSync} from "node:zlib";
 import {join, resolve} from "node:path";
 
 function run(command:string, args:string[]):string {
@@ -20,10 +23,31 @@ function exceeds(actual:string,declared:string):boolean {
   return false;
 }
 
+function unsignedCodeHash(path:string):string {
+  const data=readFileSync(path);
+  requireCondition(data.readUInt32LE(0)===0xfeedfacf,"mihomo 必须为单架构 64 位 Mach-O");
+  const count=data.readUInt32LE(16);
+  let offset=32;
+  for(let i=0;i<count;i++){
+    requireCondition(offset+8<=data.length,"Mach-O 加载命令损坏");
+    const command=data.readUInt32LE(offset),size=data.readUInt32LE(offset+4);
+    requireCondition(size>=8&&offset+size<=data.length,"Mach-O 加载命令长度无效");
+    if(command===0x19&&size>=72&&data.toString("ascii",offset+8,offset+24).replace(/\0/g,"")==="__LINKEDIT"){
+      // codesign can grow virtual reserve without changing the unsigned bytes.
+      // Normalize only that reserve; preserve every actual data/code byte.
+      data.writeBigUInt64LE(data.readBigUInt64LE(offset+48),offset+32);
+    }
+    offset+=size;
+  }
+  return createHash("sha256").update(data).digest("hex");
+}
+
 try {
   requireCondition(process.platform==="darwin","应用包检查需要在 macOS 运行");
-  const target=process.arch==="arm64"?"arm64":"amd64";
-  const app=resolve(process.argv[2]||`build/darwin-${target}/RocketScience.app`);
+  const args=process.argv.slice(2);
+  const target=args.find(arg=>arg.startsWith("--arch="))?.slice(7)||(process.arch==="arm64"?"arm64":"amd64");
+  requireCondition(target==="arm64"||target==="amd64","架构必须为 arm64 或 amd64");
+  const app=resolve(args.find(arg=>!arg.startsWith("--"))||`build/darwin-${target}/RocketScience.app`);
   const contents=join(app,"Contents");
   const plist=JSON.parse(run("plutil",["-convert","json","-o","-",join(contents,"Info.plist")]));
   requireCondition(plist.CFBundleIdentifier==="app.rocketscience.desktop","应用标识不匹配");
@@ -53,8 +77,22 @@ try {
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
   const license=join(resources,"licenses","mihomo-GPL-3.0.txt");
   requireCondition(existsSync(license)&&readFileSync(license,"utf8").includes("GNU GENERAL PUBLIC LICENSE"),"缺少 mihomo 许可证");
-  const coreVersion=run(join(resources,"bin","mihomo"),["-v"]);
-  requireCondition(coreVersion.startsWith("Mihomo ")&&coreVersion.includes("v1.19.33"),"应用内 mihomo 版本与固定版本不一致");
+  const archivePath=`.cache/mihomo/mihomo-darwin-${target}-v1.19.33.gz`;
+  requireCondition(existsSync(archivePath),"缺少固定版本内核的下载缓存，请先运行对应架构的构建");
+  const archive=readFileSync(archivePath);
+  const expected=target==="arm64"?"060b64b0f2c9a310831db0fe4adb2878de67bfa606c311813c1f13966aa504b6":"551ae54ef8d77a5e21f7a8185a59b441fb13a0fb0514fcdef5ca2816f6f50015";
+  requireCondition(createHash("sha256").update(archive).digest("hex")===expected,"mihomo 原始下载包校验失败");
+  const comparison=mkdtempSync(join(tmpdir(),"rocketscience-core-verify-"));
+  try{
+    const original=join(comparison,"original"),bundled=join(comparison,"bundled");
+    writeFileSync(original,gunzipSync(archive));cpSync(join(resources,"bin","mihomo"),bundled);
+    run("codesign",["--remove-signature",original]);run("codesign",["--remove-signature",bundled]);
+    requireCondition(unsignedCodeHash(original)===unsignedCodeHash(bundled),"应用内 mihomo 与固定下载包的程序内容不一致");
+  }finally{rmSync(comparison,{recursive:true,force:true})}
+  if(target===(process.arch==="arm64"?"arm64":"amd64")){
+    const coreVersion=run(join(resources,"bin","mihomo"),["-v"]);
+    requireCondition(coreVersion.startsWith("Mihomo ")&&coreVersion.includes("v1.19.33"),"应用内 mihomo 版本与固定版本不一致");
+  }
   run("codesign",["--verify","--deep","--strict",app]);
   const dmg=join(app,"..",`rocketscience-${plist.CFBundleShortVersionString}-${target==="arm64"?"arm64":"amd64"}.dmg`);
   requireCondition(existsSync(dmg),"缺少 DMG 安装镜像");
