@@ -168,3 +168,29 @@ func TestSchedulerRunsDueSubscription(t *testing.T) {
 		t.Fatal("due subscription was not updated")
 	}
 }
+
+func TestParseUsageDecimalScientificAndCaseInsensitive(t *testing.T) {
+	u := parseUsage("total=1125899906842624; DOWNLOAD=123.0; Upload=1.5e9")
+	if u == nil {
+		t.Fatal("parseUsage returned nil")
+	}
+	if u.Upload != 1500000000 {
+		t.Fatalf("upload: got %d, want 1500000000", u.Upload)
+	}
+	if u.Download != 123 {
+		t.Fatalf("download: got %d, want 123", u.Download)
+	}
+	if u.Total != 1125899906842624 {
+		t.Fatalf("total: got %d, want 1125899906842624", u.Total)
+	}
+	if u.Expire != 0 {
+		t.Fatalf("expire: got %d, want 0", u.Expire)
+	}
+	withExpire := parseUsage("expire=2000000000.0; upload=-5")
+	if withExpire == nil || withExpire.Expire != 2000000000 || withExpire.Upload != 0 {
+		t.Fatalf("withExpire: %+v", withExpire)
+	}
+	if parseUsage("upload=-1; download=NaN; total=Inf") != nil {
+		t.Fatal("expected nil for all-invalid usage")
+	}
+}

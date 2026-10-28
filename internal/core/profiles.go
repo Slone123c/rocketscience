@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -374,6 +375,18 @@ func downloadProfile(raw string) (string, *SubscriptionUsage, error) {
 	return string(b), parseUsage(resp.Header.Get("subscription-userinfo")), nil
 }
 
+func parseUsageNumber(raw string) (uint64, bool) {
+	v := strings.TrimSpace(raw)
+	if n, err := strconv.ParseUint(v, 10, 63); err == nil {
+		return n, true
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) || f < 0 || f > float64(math.MaxInt64) {
+		return 0, false
+	}
+	return uint64(f), true
+}
+
 func parseUsage(raw string) *SubscriptionUsage {
 	if strings.TrimSpace(raw) == "" {
 		return nil
@@ -385,8 +398,8 @@ func parseUsage(raw string) *SubscriptionUsage {
 		if !ok {
 			continue
 		}
-		n, err := strconv.ParseUint(strings.TrimSpace(value), 10, 63)
-		if err != nil {
+		n, ok := parseUsageNumber(value)
+		if !ok {
 			continue
 		}
 		switch strings.TrimSpace(strings.ToLower(key)) {
