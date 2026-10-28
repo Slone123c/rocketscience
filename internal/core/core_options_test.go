@@ -1,6 +1,7 @@
 package core
 
 import (
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -89,4 +90,44 @@ func TestCoreOptionsRunningApplyAndReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	check()
+}
+
+func TestNoOpSaveDoesNotReloadCore(t *testing.T) {
+	puts := 0
+	s := metadataService(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "GET" && r.URL.Path == "/configs":
+			_, _ = w.Write([]byte(`{"mode":"rule"}`))
+		case r.Method == "GET" && r.URL.Path == "/proxies":
+			_, _ = w.Write([]byte(`{"proxies":{}}`))
+		case r.Method == "PUT" && r.URL.Path == "/configs":
+			puts++
+			w.WriteHeader(204)
+		}
+	})
+	s.currentContent = "rules:\n  - MATCH,DIRECT\n"
+	s.mixedPort = 7890
+	s.secret = "s"
+	s.coreOptions = CoreOptions{LogLevel: ptr("warning")}
+
+	if ok, err := s.applyCoreOptions(CoreOptions{LogLevel: ptr("warning")}); err != nil || !ok {
+		t.Fatalf("applyCoreOptions: %v %v", ok, err)
+	}
+	if puts != 0 {
+		t.Fatalf("no-op applyCoreOptions triggered %d PUT /configs?force=true calls", puts)
+	}
+
+	if ok, err := s.reloadIfRunning(s.currentContent); err != nil || !ok {
+		t.Fatalf("reloadIfRunning: %v %v", ok, err)
+	}
+	if puts != 0 {
+		t.Fatalf("no-op reloadIfRunning triggered %d PUT /configs?force=true calls", puts)
+	}
+
+	if err := s.commitConfiguration(s.currentContent, func() error { return nil }); err != nil {
+		t.Fatalf("commitConfiguration: %v", err)
+	}
+	if puts != 0 {
+		t.Fatalf("no-op commitConfiguration triggered %d PUT /configs?force=true calls", puts)
+	}
 }

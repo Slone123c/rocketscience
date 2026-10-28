@@ -238,6 +238,12 @@ func (s *Service) reloadIfRunning(content string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
+	if s.currentContent != "" {
+		if previous, prevErr := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, current.Mode, s.lan, s.useTun, s.coreOptions); prevErr == nil && string(data) == string(previous) {
+			s.currentContent = content
+			return true, nil
+		}
+	}
 	if err = s.markGeoAuto(data); err != nil {
 		return true, err
 	}

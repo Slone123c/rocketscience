@@ -192,6 +192,10 @@ func (s *Service) applyCoreOptions(options CoreOptions) (bool, error) {
 	if err != nil {
 		return true, err
 	}
+	if string(next) == string(previous) {
+		s.coreOptions = options
+		return true, nil
+	}
 	if err = s.markGeoAuto(next); err != nil {
 		return true, err
 	}

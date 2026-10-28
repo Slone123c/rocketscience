@@ -44,6 +44,13 @@ func (s *Service) commitConfiguration(content string, persist func() error) erro
 	if err != nil {
 		return err
 	}
+	if string(next) == string(previous) {
+		if err := persist(); err != nil {
+			return fmt.Errorf("保存配置失败：%w", err)
+		}
+		s.currentContent = content
+		return nil
+	}
 	apply := func(payload []byte) error {
 		if err := s.markGeoAuto(payload); err != nil {
 			return err
