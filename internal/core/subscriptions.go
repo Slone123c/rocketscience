@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -91,48 +90,24 @@ func (p *Profiles) Update(id string) (ProfileState, error) {
 		return ProfileState{}, errors.New("配置在更新期间发生变化，请重新更新")
 	}
 	current.LastAttempt = time.Now().UTC()
-	var merged, oldMerged string
 	if fetchErr == nil {
-		merged, _, _, _, fetchErr = mergeOverrides(content, d.Overrides)
-	}
-	if fetchErr == nil && merged != content {
-		fetchErr = validateProfile(merged)
-	}
-	if fetchErr == nil {
-		oldMerged, _, _, _, fetchErr = mergeOverrides(current.Content, d.Overrides)
-	}
-	if fetchErr == nil && d.ActiveID == id && p.service != nil {
-		var running bool
-		running, fetchErr = p.service.reloadIfRunning(merged)
-		if fetchErr != nil && running {
-			if _, rollbackErr := p.service.reloadIfRunning(oldMerged); rollbackErr != nil {
-				fetchErr = fmt.Errorf("%v；恢复运行配置失败：%w", fetchErr, rollbackErr)
-			}
+		next := current
+		next.Content, next.Usage = content, usage
+		next.UpdatedAt, next.LastError = current.LastAttempt, ""
+		d.Profiles[index] = next
+		if d.ActiveID == id {
+			fetchErr = p.commitProfile(d, content)
+		} else {
+			fetchErr = p.write(d)
 		}
 	}
 	if fetchErr != nil {
 		current.LastError = fetchErr.Error()
 		d.Profiles[index] = current
 		if err = p.write(d); err != nil {
-			return ProfileState{}, err
+			return ProfileState{}, errors.Join(fetchErr, err)
 		}
 		return ProfileState{d.Profiles, d.ActiveID, d.MixedPort, d.SystemProxy}, fetchErr
-	}
-	current.Content = content
-	current.Usage = usage
-	current.UpdatedAt = current.LastAttempt
-	current.LastError = ""
-	d.Profiles[index] = current
-	if err = p.write(d); err != nil {
-		if d.ActiveID == id && p.service != nil {
-			if _, rollbackErr := p.service.reloadIfRunning(oldMerged); rollbackErr != nil {
-				return ProfileState{}, fmt.Errorf("保存失败：%v；恢复运行配置失败：%w", err, rollbackErr)
-			}
-		}
-		return ProfileState{}, err
-	}
-	if d.ActiveID == id {
-		p.draft = content
 	}
 	return ProfileState{d.Profiles, d.ActiveID, d.MixedPort, d.SystemProxy}, nil
 }

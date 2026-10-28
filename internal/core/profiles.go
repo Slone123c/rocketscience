@@ -215,11 +215,9 @@ func (p *Profiles) Save(v Profile, expectedUpdatedAt string) (ProfileState, erro
 	if err != nil {
 		return ProfileState{}, err
 	}
-	if p.service != nil && v.ID != "" && v.ID == d.ActiveID && p.service.Status().Running {
-		return ProfileState{}, errors.New("停止内核后修改当前配置")
-	}
 	v.Name = strings.TrimSpace(v.Name)
 	v.LastError = ""
+	v.UpdatedAt = time.Now().UTC()
 	if v.ID == "" {
 		id := make([]byte, 16)
 		if _, err = rand.Read(id); err != nil {
@@ -247,7 +245,12 @@ func (p *Profiles) Save(v Profile, expectedUpdatedAt string) (ProfileState, erro
 			return ProfileState{}, errors.New("配置不存在")
 		}
 	}
-	if err = p.write(d); err != nil {
+	if v.ID == d.ActiveID {
+		err = p.commitProfile(d, v.Content)
+	} else {
+		err = p.write(d)
+	}
+	if err != nil {
 		return ProfileState{}, err
 	}
 	return ProfileState{d.Profiles, d.ActiveID, d.MixedPort, d.SystemProxy}, nil
@@ -259,13 +262,12 @@ func (p *Profiles) Use(id string) (ProfileState, error) {
 	if err != nil {
 		return ProfileState{}, err
 	}
-	if p.service != nil && p.service.Status().Running {
-		return ProfileState{}, errors.New("停止内核后切换配置")
-	}
 	found := false
+	var content string
 	for _, v := range d.Profiles {
 		if v.ID == id {
 			found = true
+			content = v.Content
 			break
 		}
 	}
@@ -273,7 +275,7 @@ func (p *Profiles) Use(id string) (ProfileState, error) {
 		return ProfileState{}, errors.New("配置不存在")
 	}
 	d.ActiveID = id
-	if err = p.write(d); err != nil {
+	if err = p.commitProfile(d, content); err != nil {
 		return ProfileState{}, err
 	}
 	return ProfileState{d.Profiles, d.ActiveID, d.MixedPort, d.SystemProxy}, nil

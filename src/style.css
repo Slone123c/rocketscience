@@ -21,3 +21,5 @@
 .dns-list textarea{min-width:220px;min-height:84px;resize:vertical;padding:10px;background:#111311;border:1px solid #555950;border-radius:6px;color:#eee;font:12px/1.5 ui-monospace,monospace}.dns-list label{display:block;margin-top:8px;font-size:12px}.dns-list label input{width:auto}
 
 .connection-tools{display:flex;align-items:center;gap:12px;margin:16px 0}.connection-tools select{padding:8px;background:#181a18;color:#eee;border:1px solid #555950;border-radius:6px}
+
+fieldset.profile-list{border:0;padding:0;min-width:0;margin-inline:0}

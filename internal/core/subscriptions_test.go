@@ -143,7 +143,7 @@ func TestSchedulerRunsDueSubscription(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(direct)) }))
 	defer server.Close()
 	p := NewProfiles(t.TempDir())
-	_, err := p.Save(Profile{Name: "test", Source: "url", URL: server.URL, Content: direct, Interval: 6}, "")
+	_, err := p.Save(Profile{Name: "test", Source: "url", URL: server.URL, Content: direct, Interval: 6, LastAttempt: time.Now().Add(-7 * time.Hour)}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestSchedulerRunsDueSubscription(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		if !state.Profiles[0].UpdatedAt.IsZero() {
+		if time.Since(state.Profiles[0].LastAttempt) < time.Minute {
 			updated = true
 			break
 		}
