@@ -23,6 +23,8 @@ import (
 
 // Service owns the mihomo process and coordinates network takeover.
 type Service struct {
+	// savedSelections remembers Selector choices across stop/start; the core's temp work dir drops cache.db.
+	savedSelections   map[string]string
 	opMu              sync.Mutex
 	mu                sync.Mutex
 	cmd               *exec.Cmd
@@ -571,6 +573,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			tunReady = s.get("/configs", &state) == nil && state.Tun.Enable
 		}
 		if s.get("/version", &v) == nil && tunReady {
+			s.restoreSavedSelections()
 			for _, selected := range selections {
 				if err := s.restoreSelections(selected); err != nil {
 					return errors.Join(err, finishFailedStart())
@@ -631,6 +634,7 @@ func (s *Service) stopLocked() error {
 		s.mu.Unlock()
 		return nil
 	}
+	s.snapshotSelections()
 	if s.proxy != nil && s.ownsProxy {
 		conflicts, err := s.proxy.Restore()
 		if err != nil {

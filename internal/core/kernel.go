@@ -99,3 +99,29 @@ func (s *Service) restoreSelections(selected map[string]string) error {
 	}
 	return nil
 }
+
+// snapshotSelections records current Selector choices. Called with mu held;
+// on failure the previous snapshot is kept.
+func (s *Service) snapshotSelections() {
+	var groups struct {
+		Proxies map[string]Proxy `json:"proxies"`
+	}
+	if err := s.get("/proxies", &groups); err != nil {
+		return
+	}
+	saved := make(map[string]string)
+	for name, group := range groups.Proxies {
+		if group.Type == "Selector" && group.Now != "" {
+			saved[name] = group.Now
+		}
+	}
+	s.savedSelections = saved
+}
+
+// restoreSavedSelections is best effort: groups or nodes missing from the new
+// profile are skipped. Called with mu held, before system takeover.
+func (s *Service) restoreSavedSelections() {
+	for group, node := range s.savedSelections {
+		_ = s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node})
+	}
+}
