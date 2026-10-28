@@ -33,6 +33,15 @@ export async function loadViewData(route:ViewRoute,source:ViewSource):Promise<Vi
 
 // At most one batch runs at a time. Concurrent refreshes request one follow-up
 // batch, which reads the latest route/state after an operation has completed.
+export function shouldStopInputKeyPropagation(event:{key?:string;isComposing?:boolean;target?:unknown}):boolean {
+  const el=event.target as {tagName?:string;isContentEditable?:boolean}|null;
+  if(!el)return false;
+  const tag=(el.tagName||"").toUpperCase();
+  if(tag!=="INPUT"&&tag!=="TEXTAREA"&&tag!=="SELECT"&&!el.isContentEditable)return false;
+  if(event.isComposing)return true;
+  return event.key===" "||event.key==="Enter"||event.key==="Backspace"||event.key==="Escape"||event.key==="ArrowLeft"||event.key==="ArrowRight";
+}
+
 export function createRefreshQueue(run:()=>Promise<void>) {
   let running=false;
   let waiters:Array<{resolve:()=>void;reject:(error:unknown)=>void}>=[];
@@ -45,5 +54,15 @@ export function createRefreshQueue(run:()=>Promise<void>) {
     }
     running=false;
   }
-  return {request:()=>new Promise<void>((resolve,reject)=>{waiters.push({resolve,reject});if(!running)void drain()})};
+  const request=()=>new Promise<void>((resolve,reject)=>{waiters.push({resolve,reject});if(!running)void drain()});
+  if(typeof window!=="undefined"&&typeof window.addEventListener==="function"){
+    const onWake=()=>{if(typeof document==="undefined"||!document.hidden)void request().catch(()=>{})};
+    const onKey=(e:KeyboardEvent)=>{if(shouldStopInputKeyPropagation(e))e.stopPropagation()};
+    window.addEventListener("focus",onWake);
+    window.addEventListener("storage",onWake);
+    if(typeof document!=="undefined"&&typeof document.addEventListener==="function"){
+      document.addEventListener("keydown",onKey);
+    }
+  }
+  return {request};
 }

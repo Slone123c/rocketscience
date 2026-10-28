@@ -11,8 +11,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
+	"unsafe"
 
 	"gopkg.in/yaml.v3"
 )
@@ -161,5 +163,43 @@ func TestTunSettingsAndConfig(t *testing.T) {
 	}
 	if q, err := shellArgument("/tmp/a'b"); err != nil || q != "'/tmp/a'\\''b'" {
 		t.Fatalf("shell escaping: %q %v", q, err)
+	}
+	profileMap, ok := doc["profile"].(map[string]any)
+	if !ok || profileMap["store-fake-ip"] != true {
+		t.Fatalf("expected profile.store-fake-ip=true by default, got: %v", doc["profile"])
+	}
+}
+
+func TestFakeIPCacheDBPersistsAcrossRestartAndQuarantineCleared(t *testing.T) {
+	runtimeDir := t.TempDir()
+	cache := geoCache{dir: t.TempDir()}
+	if err := os.WriteFile(filepath.Join(runtimeDir, "cache.db"), []byte("fakeip-mappings-v1"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cache.save(runtimeDir); err != nil {
+		t.Fatal(err)
+	}
+	nextRuntime := t.TempDir()
+	if err := cache.seed(nextRuntime); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(nextRuntime, "cache.db"))
+	if err != nil || string(got) != "fakeip-mappings-v1" {
+		t.Fatalf("cache.db not preserved across restart: %q %v", got, err)
+	}
+
+	// Verify quarantine extended attribute stripping on helper/core binary
+	binPath := filepath.Join(t.TempDir(), "helper-bin")
+	if err := os.WriteFile(binPath, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	p, _ := syscall.BytePtrFromString(binPath)
+	attr, _ := syscall.BytePtrFromString("com.apple.quarantine")
+	val := []byte("0081;00000000;Safari;")
+	_, _, _ = syscall.Syscall6(syscall.SYS_SETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), uintptr(unsafe.Pointer(&val[0])), uintptr(len(val)), 0, 0)
+	clearQuarantineAttr(binPath)
+	r1, _, errno := syscall.Syscall6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), 0, 0, 0, 0)
+	if int(r1) > 0 && errno == 0 {
+		t.Fatalf("expected com.apple.quarantine xattr to be removed")
 	}
 }

@@ -1,6 +1,6 @@
 import {describe,test,expect} from "bun:test";
-import {filterConnections,filterProxyGroups} from "../src/listFilters";
-import type {Connection,Proxy} from "../src/mygo";
+import {filterConnections,filterProxyGroups,filterRules} from "../src/listFilters";
+import type {Connection,Proxy,Rule} from "../src/mygo";
 const connections:Connection[]=[
   {id:"one",metadata:{host:"example.com",destinationIP:"1.2.3.4",destinationPort:"443",network:"tcp",process:"Browser"},chains:["Tokyo","Proxy"],rule:"DOMAIN",rulePayload:"example.com",upload:0,download:0,start:""},
   {id:"two",metadata:{host:"dns.test",destinationIP:"1.1.1.1",destinationPort:"53",network:"udp",process:"Resolver"},chains:["DIRECT"],rule:"MATCH",rulePayload:"",upload:0,download:0,start:""}
@@ -19,5 +19,17 @@ describe("connection and proxy filters",()=>{
     expect(groups[0].all).toEqual(["Tokyo","London"]);
     expect(filterProxyGroups(groups,"missing")).toEqual([]);
     expect(filterProxyGroups(groups,"")).toBe(groups);
+  });
+  test("windows and filters tens of thousands of rules without allocating full results",()=>{
+    const rules:Rule[]=Array.from({length:12000},(_,i)=>({
+      type:i%2===0?"DOMAIN-SUFFIX":"IP-CIDR",
+      payload:i===9999?"special.internal.corp":`host-${i}.example.com`,
+      proxy:i%3===0?"DIRECT":"Proxy"
+    }));
+    const windowed=filterRules(rules,"",500);
+    expect(windowed).toHaveLength(500);
+    expect(windowed[0].payload).toBe("host-0.example.com");
+    const matched=filterRules(rules,"special.internal",500);
+    expect(matched).toEqual([{type:"IP-CIDR",payload:"special.internal.corp",proxy:"DIRECT"}]);
   });
 });

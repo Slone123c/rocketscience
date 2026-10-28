@@ -16,6 +16,7 @@ import (
 var geoNames = map[string]bool{
 	"country.mmdb": true, "geoip.db": true, "geoip.metadb": true,
 	"geoip.dat": true, "geosite.dat": true, "asn.mmdb": true,
+	"cache.db": true,
 }
 
 type geoCache struct {

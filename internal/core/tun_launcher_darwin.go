@@ -11,8 +11,27 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unsafe"
 )
+
+func clearQuarantineAttr(paths ...string) {
+	attr, err := syscall.BytePtrFromString("com.apple.quarantine")
+	if err != nil {
+		return
+	}
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		p, err := syscall.BytePtrFromString(path)
+		if err != nil {
+			continue
+		}
+		_, _, _ = syscall.Syscall(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), 0)
+	}
+}
 
 // tunLauncher owns the unprivileged osascript process and a private watchdog file.
 // The privileged supervisor terminates mihomo when this file goes stale.
@@ -55,6 +74,7 @@ func launchTun(core, dir string) (*tunLauncher, error) {
 	if err != nil {
 		return nil, err
 	}
+	clearQuarantineAttr(supervisor, core)
 	arguments := []string{supervisor, core, dir, strconv.Itoa(os.Getuid())}
 	quoted := make([]string, len(arguments))
 	for i, arg := range arguments {
@@ -92,6 +112,7 @@ func launchUnprivileged(core, dir string) (*tunLauncher, error) {
 	if err != nil {
 		return nil, err
 	}
+	clearQuarantineAttr(supervisor, core)
 	for _, name := range []string{"heartbeat", "tun-core.log", "core.pid"} {
 		if err = os.WriteFile(filepath.Join(dir, name), []byte("running\n"), 0600); err != nil {
 			return nil, err

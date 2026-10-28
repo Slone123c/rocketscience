@@ -29,6 +29,7 @@ func newTestService(t *testing.T) *Service {
 	t.Helper()
 	s := New()
 	s.proxy = &fakeProxy{}
+	s.geo.dir = t.TempDir()
 	if err := s.SetSystemProxy(true); err != nil {
 		t.Fatal(err)
 	}

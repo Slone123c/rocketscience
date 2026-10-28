@@ -1,5 +1,5 @@
 import {describe,expect,test} from "bun:test";
-import {createRefreshQueue,loadViewData,type ViewSource} from "../src/viewRefresh";
+import {createRefreshQueue,loadViewData,shouldStopInputKeyPropagation,type ViewSource} from "../src/viewRefresh";
 import type {Status} from "../src/mygo";
 
 function source(running=true) {
@@ -50,5 +50,13 @@ describe("refresh queue",()=>{
   test("a rejected request does not poison subsequent operation refreshes",async()=>{
     let attempts=0;const queue=createRefreshQueue(async()=>{if(++attempts===1)throw new Error("offline")});
     await expect(queue.request()).rejects.toThrow("offline");await queue.request();expect(attempts).toBe(2);
+  });
+  test("stops Space, Enter, Backspace, Escape, and IME composition in inputs from bubbling to outer cards or popovers",()=>{
+    for(const key of [" ","Enter","Backspace","Escape","ArrowLeft","ArrowRight"]){
+      expect(shouldStopInputKeyPropagation({key,target:{tagName:"INPUT"}})).toBe(true);
+      expect(shouldStopInputKeyPropagation({key,target:{tagName:"TEXTAREA"}})).toBe(true);
+      expect(shouldStopInputKeyPropagation({key,target:{tagName:"DIV"}})).toBe(false);
+    }
+    expect(shouldStopInputKeyPropagation({key:"a",isComposing:true,target:{tagName:"INPUT"}})).toBe(true);
   });
 });

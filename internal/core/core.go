@@ -226,6 +226,19 @@ func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, s
 	if mode != "" {
 		cfg["mode"] = mode
 	}
+	profileSection, ok := cfg["profile"].(map[string]any)
+	if !ok && cfg["profile"] == nil {
+		profileSection = map[string]any{}
+	}
+	if profileSection != nil {
+		if _, exists := profileSection["store-fake-ip"]; !exists {
+			profileSection["store-fake-ip"] = true
+		}
+		if _, exists := profileSection["store-selected"]; !exists {
+			profileSection["store-selected"] = false
+		}
+		cfg["profile"] = profileSection
+	}
 	return yaml.Marshal(cfg)
 }
 

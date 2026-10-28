@@ -13,8 +13,8 @@ func TestBypassTakeoverAndRestoration(t *testing.T) {
 		expected string
 	}{
 		{"keep system", nil, `["original"]`},
-		{"custom", &[]string{"*.local", "192.168.0.0/16"}, `["*.local","192.168.0.0/16"]`},
-		{"explicit empty", &[]string{}, `[]`},
+		{"custom", &[]string{"*.local", "192.168.0.0/16"}, `["127.0.0.1","localhost","*.local","169.254/16","192.168.0.0/16"]`},
+		{"explicit empty", &[]string{}, `["127.0.0.1","localhost","*.local","169.254/16"]`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

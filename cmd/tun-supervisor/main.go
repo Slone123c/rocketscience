@@ -7,12 +7,29 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+	"unsafe"
 )
+
+func clearQuarantineAttr(path string) {
+	if path == "" {
+		return
+	}
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
+	}
+	attr, err := syscall.BytePtrFromString("com.apple.quarantine")
+	if err != nil {
+		return
+	}
+	_, _, _ = syscall.Syscall(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), 0)
+}
 
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
 
@@ -26,7 +43,7 @@ func returnGeoOwnership(dir string, uid int) {
 	if err != nil {
 		return
 	}
-	allowed := map[string]bool{"country.mmdb": true, "geoip.db": true, "geoip.metadb": true, "geoip.dat": true, "geosite.dat": true, "asn.mmdb": true}
+	allowed := map[string]bool{"country.mmdb": true, "geoip.db": true, "geoip.metadb": true, "geoip.dat": true, "geosite.dat": true, "asn.mmdb": true, "cache.db": true}
 	for _, entry := range entries {
 		if !allowed[strings.ToLower(entry.Name())] {
 			continue
@@ -101,6 +118,7 @@ func run(args []string) error {
 	}
 	output := os.NewFile(uintptr(fd), "tun-log")
 	defer output.Close()
+	clearQuarantineAttr(core)
 	cmd := exec.Command(core, "-d", dir, "-f", config)
 	cmd.Stdout = output
 	cmd.Stderr = output
@@ -130,6 +148,22 @@ func run(args []string) error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigCh)
+	stopCore := func() error {
+		_ = cmd.Process.Signal(os.Interrupt)
+		select {
+		case <-done:
+			returnGeoOwnership(dir, uid)
+			return nil
+		case <-time.After(3 * time.Second):
+			_ = cmd.Process.Kill()
+			<-done
+			returnGeoOwnership(dir, uid)
+			return nil
+		}
+	}
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	var lastModTime time.Time
@@ -139,6 +173,8 @@ func run(args []string) error {
 		case err = <-done:
 			returnGeoOwnership(dir, uid)
 			return err
+		case <-sigCh:
+			return stopCore()
 		case <-ticker.C:
 			returnGeoOwnership(dir, uid)
 			state, readErr := os.ReadFile(heartbeat)
@@ -153,17 +189,7 @@ func run(args []string) error {
 				lastModTime = info.ModTime()
 			}
 			if stopRequested || staleTicks >= 4 {
-				_ = cmd.Process.Signal(os.Interrupt)
-				select {
-				case <-done:
-					returnGeoOwnership(dir, uid)
-					return nil
-				case <-time.After(3 * time.Second):
-					_ = cmd.Process.Kill()
-					<-done
-					returnGeoOwnership(dir, uid)
-					return nil
-				}
+				return stopCore()
 			}
 		}
 	}

@@ -12,8 +12,25 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 )
+
+func clearQuarantineAttr(path string) {
+	if path == "" {
+		return
+	}
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
+	}
+	attr, err := syscall.BytePtrFromString("com.apple.quarantine")
+	if err != nil {
+		return
+	}
+	_, _, _ = syscall.Syscall(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), 0)
+}
 
 // DarwinBackend talks to the signed SystemConfiguration helper over standard input.
 type DarwinBackend struct{ Helper string }
@@ -39,6 +56,7 @@ func (b DarwinBackend) run(mode string, input []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	clearQuarantineAttr(helper)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, helper, mode)
