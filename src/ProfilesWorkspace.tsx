@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from "react";
 import {Desktop,Profiles,type Profile,type ProfileState} from "./mygo";
 import {saveEditorProfile} from "./profileEditorSave";
+import {commitProfileChange,subscriptionFailureMessage} from "./profileOperations";
 import {readDroppedProfile} from "./profileFileImport";
 import type * as Design from "../design-system/components/index";
 
@@ -22,10 +23,10 @@ export function ProfilesWorkspace({design:DS,state,running,busy:parentBusy,onSta
     view?.addEventListener("dragover",over);view?.addEventListener("drop",drop);
     return ()=>{view?.removeEventListener("dragover",over);view?.removeEventListener("drop",drop)};
   },[parentBusy]);
-  async function save(value:Design.Profile){await operation(async()=>{const next=await saveEditorProfile(value,editing,{fetch:url=>Profiles.fetch(url),save:(profile,expected)=>Profiles.save(profile,expected)});onState(next);setOpen(false);await onChanged()})}
-  async function use(id:string){try{await operation(async()=>{onState(await Profiles.use(id));await onChanged()})}catch(e){setError(String(e))}}
-  async function update(id:string){try{await operation(async()=>{onState(await Profiles.update(id));await onChanged()})}catch(e){setError(String(e));await onChanged()}}
-  async function remove(id:string){if(!window.confirm("删除这份配置？此操作无法撤销。"))return;try{await operation(async()=>{onState(await Profiles.delete(id));if(editing?.id===id)setOpen(false);await onChanged()})}catch(e){setError(String(e));throw e}}
+  async function save(value:Design.Profile){await operation(()=>commitProfileChange(()=>saveEditorProfile(value,editing,{fetch:url=>Profiles.fetch(url),save:(profile,expected)=>Profiles.save(profile,expected)}),next=>{onState(next);setOpen(false)},onChanged,setError,"配置已保存"))}
+  async function use(id:string){try{await operation(()=>commitProfileChange(()=>Profiles.use(id),onState,onChanged,setError,"配置已切换"))}catch(e){setError(String(e))}}
+  async function update(id:string){try{await operation(async()=>{try{await commitProfileChange(()=>Profiles.update(id),onState,onChanged,setError,"订阅已更新")}catch(e){setError(await subscriptionFailureMessage(e,onChanged))}})}catch(e){setError(String(e))}}
+  async function remove(id:string){if(!window.confirm("删除这份配置？此操作无法撤销。"))return;try{await operation(()=>commitProfileChange(()=>Profiles.delete(id),next=>{onState(next);if(editing?.id===id)setOpen(false)},onChanged,setError,"配置已删除"))}catch(e){setError(String(e));throw e}}
   return <section className="panel" id="tour-profile">
     <div className="section-head"><div><div className="eyebrow">PROFILES</div><h2>配置</h2><p>导入订阅或本地 YAML；运行中修改正在使用的配置会重新加载。</p></div><div className="actions"><DS.Button size="sm" icon="globe" disabled={busy||parentBusy||!state} onClick={()=>create()}>从链接导入</DS.Button><DS.Button size="sm" icon="layers" disabled={busy||parentBusy||!state} onClick={()=>void pickNewFile()}>从文件导入</DS.Button></div></div>
     <fieldset className="profile-list" disabled={busy||parentBusy}>{state?.profiles.map(profile=><div className="profile-wrap" key={profile.id}><DS.ProfileCard name={profile.name} source={profile.source==="url"?"url":"file"} url={profile.source==="url"?subscriptionLabel(profile.url):undefined} active={profile.id===state.activeId} updated={!profile.updatedAt.startsWith("0001")?new Date(profile.updatedAt).toLocaleString():undefined} usage={profile.usage&&profile.usage.total>0?{used:profile.usage.upload+profile.usage.download,total:profile.usage.total}:undefined} expires={profile.usage&&profile.usage.expire>0?new Date(profile.usage.expire*1000).toLocaleDateString():undefined} error={profile.lastError||undefined} updating={busy} onUse={()=>void use(profile.id)} onUpdate={profile.source==="url"?()=>void update(profile.id):undefined} onEdit={()=>edit(profile)}/>{profile.usage&&profile.usage.total===0&&<p className="footnote">已用 {((profile.usage.upload+profile.usage.download)/1073741824).toFixed(1)} GB</p>}</div>)}</fieldset>
