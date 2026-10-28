@@ -29,3 +29,18 @@ fieldset.profile-list{border:0;padding:0;min-width:0;margin-inline:0}
 .lf-group__name,.lf-profile__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lf-profile__err{min-width:0;overflow-wrap:anywhere}
 .lf-chip{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Proxy routing: distinguish selected policies from observed outbounds. */
+.proxy-route{padding:20px 24px;border:1px solid var(--line);border-radius:var(--radius-lg,16px);background:var(--surface);display:grid;gap:12px}
+.proxy-route__head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.proxy-route h2{margin:0;font:600 18px/26px var(--font-sans);color:var(--ink);overflow-wrap:anywhere}
+.proxy-route p{margin:0;color:var(--ink-muted);font:400 13px/21px var(--font-sans);overflow-wrap:anywhere}
+.proxy-route__path{color:var(--ink)!important}
+.proxy-route__actual{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:400 12px/20px var(--font-sans);color:var(--ink-muted)}
+.proxy-route__actual ul{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;min-width:0}
+.proxy-route__actual li{display:flex;gap:10px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--radius-sm,6px);overflow-wrap:anywhere;min-width:0}
+.proxy-route__actual b{font-weight:500;color:var(--ink);overflow-wrap:anywhere}
+.lf-node__selected-label{font:500 11px/16px var(--font-sans);white-space:nowrap;flex:none;color:var(--ink)}
+.lf-node.is-selected .lf-node__name{margin-right:auto}
+.lf-group__activity{font:400 11px/18px var(--font-sans);white-space:nowrap;color:var(--ink-muted)}
+@media(max-width:760px){.proxy-route{padding:16px}.proxy-route__head{align-items:flex-start}.lf-group__activity{display:none}}

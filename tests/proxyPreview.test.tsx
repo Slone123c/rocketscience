@@ -17,3 +17,17 @@ test("stopped configuration preview shows protocol metadata with unavailable con
   expect(markup).toContain('aria-label="测速：选择" disabled=""');
   expect(markup).not.toContain('aria-checked="true"');
 });
+
+test("running groups show explicit selected labels while the summary names observed usage separately",()=>{
+  const window:any={React,matchMedia:()=>({matches:true})};
+  runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
+  const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running mode="global" groups={[{name:"GLOBAL",type:"Selector",now:"Tokyo",all:["Tokyo"],nodes:[]}]} snapshot={{connections:[{chains:["London","GLOBAL"]} as any],uploadTotal:0,downloadTotal:0}} delays={{}} testing={Object.create(null)} onTest={()=>{}} onSelect={()=>{}} onConnections={()=>{}}/>);
+  expect(markup).toContain("全局出站：Tokyo");
+  expect(markup).toContain("GLOBAL → Tokyo");
+  expect(markup).toContain("活动连接实际出站");
+  expect(markup).toContain("London");
+  expect(markup).toContain("当前选择：");
+  expect(markup).toContain("已选");
+  expect(markup).toContain("1 条连接");
+  expect(markup).toContain("查看连接");
+});

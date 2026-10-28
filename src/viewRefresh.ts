@@ -19,7 +19,7 @@ export async function loadViewData(route:ViewRoute,source:ViewSource):Promise<Vi
   if(!status.running&&route.page==="代理")tasks.push(source.previewGroups().then(v=>{data.groups=v}));
   if(status.running) {
     if(route.page==="代理")tasks.push(source.groups().then(v=>{data.groups=v}));
-    if(route.page==="总览"||route.page==="连接")tasks.push(source.connections().then(v=>{data.connections=v}));
+    if(route.page==="总览"||route.page==="连接"||route.page==="代理")tasks.push(source.connections().then(v=>{data.connections=v}));
     if(route.page==="规则")tasks.push(source.rules().then(v=>{data.rules=v}));
     if(route.page==="日志")tasks.push(source.streams().then(v=>{data.streams=v}));
     if(route.page==="总览"||route.page==="设置"&&route.topic==="core")tasks.push(source.monitoring().then(v=>{data.monitoring=v}));

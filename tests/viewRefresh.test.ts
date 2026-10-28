@@ -16,7 +16,7 @@ describe("view data scope",()=>{
     expect(mock.calls.sort()).toEqual(["connections","monitoring","status"]);
   });
   test("each operation page reads only the data its controls need",async()=>{
-    for(const [page,expected] of [["代理",["groups","status"]],["规则",["overrides","rules","status"]],["连接",["connections","overrides","status"]],["日志",["status","streams"]],["配置",["profiles","status"]]] as const){
+    for(const [page,expected] of [["代理",["connections","groups","status"]],["规则",["overrides","rules","status"]],["连接",["connections","overrides","status"]],["日志",["status","streams"]],["配置",["profiles","status"]]] as const){
       const mock=source();await loadViewData({page,topic:"proxy"},mock.readers);expect(mock.calls.sort()).toEqual([...expected].sort());
     }
     const advanced=source();await loadViewData({page:"设置",topic:"core"},advanced.readers);expect(advanced.calls.sort()).toEqual(["monitoring","status"]);
