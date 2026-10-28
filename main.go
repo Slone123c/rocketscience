@@ -40,10 +40,10 @@ func main() {
 	})
 	mygo.App.OnBeforeQuit(desktop.beforeQuit)
 	mygo.App.OnWindowAllClosed(func() {})
-	mygo.App.OnActivate(func(visible bool) {
-		if !visible {
-			desktop.OpenDashboard()
-		}
+	mygo.App.OnActivate(func(_ bool) {
+		// A tray popover can be visible while the dashboard is hidden.
+		// Reopening the app must restore the dashboard in either case.
+		desktop.OpenDashboard()
 	})
 	mygo.App.OnQuit(func() { close(stopUpdates); desktop.destroy(); service.Shutdown() })
 	if err := mygo.App.Run(); err != nil {

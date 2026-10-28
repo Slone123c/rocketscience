@@ -83,8 +83,16 @@ func (d *Desktop) RequestWiFiAccess() error {
 }
 func (d *Desktop) OpenDashboard() {
 	d.mu.Lock()
+	if d.quitting {
+		d.mu.Unlock()
+		return
+	}
 	w := d.main
+	panel := d.panel
 	d.mu.Unlock()
+	if panel != nil {
+		panel.Close()
+	}
 	if w != nil {
 		w.Show()
 		w.Restore()
@@ -144,25 +152,30 @@ func (d *Desktop) ready() {
 	d.trayIcon = icon
 	d.mu.Unlock()
 	d.startTrayDisplay()
-	tray.OnClick(func() {
+	tray.OnClick(d.togglePanel)
+}
+
+func (d *Desktop) togglePanel() {
+	d.mu.Lock()
+	panel, tray, quitting := d.panel, d.tray, d.quitting
+	d.mu.Unlock()
+	if quitting || tray == nil {
+		return
+	}
+	if panel != nil {
+		panel.Close()
+		return
+	}
+	panel = mygo.NewFlyout(mygo.FlyoutOptions{Tray: tray, Placement: mygo.PlacementBottom, Width: 320, Height: 600, MinWidth: 320, MaxWidth: 320, MinHeight: 160, MaxHeight: 700, FitContent: true, Focusable: true, Shadow: true, Popover: true, URL: "/?panel=tray"})
+	d.mu.Lock()
+	d.panel = panel
+	d.mu.Unlock()
+	panel.OnClosed(func() {
 		d.mu.Lock()
-		panel := d.panel
-		d.mu.Unlock()
-		if panel != nil {
-			panel.Close()
-			return
+		if d.panel == panel {
+			d.panel = nil
 		}
-		panel = mygo.NewFlyout(mygo.FlyoutOptions{Tray: tray, Placement: mygo.PlacementBottom, Width: 320, Height: 600, MinWidth: 320, MaxWidth: 320, MinHeight: 160, MaxHeight: 700, FitContent: true, Focusable: true, Shadow: true, Popover: true, URL: "/?panel=tray"})
-		d.mu.Lock()
-		d.panel = panel
 		d.mu.Unlock()
-		panel.OnClosed(func() {
-			d.mu.Lock()
-			if d.panel == panel {
-				d.panel = nil
-			}
-			d.mu.Unlock()
-		})
 	})
 }
 func (d *Desktop) beforeQuit(e *mygo.QuitEvent) {
@@ -197,11 +210,17 @@ func (d *Desktop) beforeQuit(e *mygo.QuitEvent) {
 func (d *Desktop) destroy() {
 	d.mu.Lock()
 	tray := d.tray
+	panel := d.panel
 	stop := d.trayStop
 	d.trayStop = nil
+	d.tray = nil
+	d.panel = nil
 	d.mu.Unlock()
 	if stop != nil {
 		close(stop)
+	}
+	if panel != nil {
+		panel.Close()
 	}
 	if tray != nil {
 		tray.Destroy()
