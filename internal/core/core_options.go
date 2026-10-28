@@ -84,8 +84,8 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 	if err != nil {
 		return nil, err
 	}
-	var cfg map[string]any
-	if err = yaml.Unmarshal(data, &cfg); err != nil {
+	cfg, err := unmarshalConfigMap(data)
+	if err != nil {
 		return nil, err
 	}
 	if options.LogLevel != nil {

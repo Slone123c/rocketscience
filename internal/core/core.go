@@ -160,8 +160,8 @@ func runtimeConfigWithLAN(content string, mixedPort, controllerPort int, secret,
 }
 
 func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, secret, mode string, lan LANSettings, tun bool) ([]byte, error) {
-	var cfg map[string]any
-	if err := yaml.Unmarshal([]byte(content), &cfg); err != nil {
+	cfg, err := unmarshalConfigMap([]byte(content))
+	if err != nil {
 		return nil, fmt.Errorf("配置格式错误：%w", err)
 	}
 	if cfg == nil {
