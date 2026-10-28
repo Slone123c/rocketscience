@@ -107,7 +107,7 @@ func launchUnprivileged(core, dir string) (*tunLauncher, error) {
 }
 func (l *tunLauncher) heartbeat() {
 	defer close(l.exited)
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {

@@ -11,8 +11,10 @@ import (
 var reservedRuntimeFiles = map[string]bool{
 	"config.yaml":  true,
 	"cache.db":     true,
+	"core.pid":     true,
 	"heartbeat":    true,
 	"tun-core.log": true,
+	"geoip.db":     true,
 	"geoip.metadb": true,
 	"geoip.dat":    true,
 	"geosite.dat":  true,

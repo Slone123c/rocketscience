@@ -160,3 +160,44 @@ func TestCrashRestoresTakeover(t *testing.T) {
 	}
 	t.Fatal("network recovery did not finish after core exit")
 }
+
+func TestConcurrentSystemProxyReloadAndWiFiCheck(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
+	}
+	p := &fakeProxy{}
+	s := New()
+	s.proxy = p
+	defer s.Shutdown()
+	if err := s.SetTun(true); err != nil {
+		t.Fatal(err)
+	}
+	s.tunLaunch = fakeTunLaunch
+	s.tunReady = func(map[string]bool) bool { return true }
+	if err := s.Start(direct, freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 6)
+	for i := 0; i < 3; i++ {
+		enable := i%2 == 0
+		go func(en bool) {
+			done <- s.SetSystemProxy(en)
+		}(enable)
+		go func() {
+			_, err := s.reloadIfRunning(direct)
+			done <- err
+		}()
+	}
+	for i := 0; i < 6; i++ {
+		if err := <-done; err != nil {
+			t.Fatalf("concurrent SetSystemProxy / reloadIfRunning error: %v", err)
+		}
+	}
+	if err := s.SetSystemProxy(false); err != nil {
+		t.Fatal(err)
+	}
+	st := s.Status()
+	if st.SystemProxy || p.pending {
+		t.Fatalf("expected system proxy to be off and restored after disabling, got status=%+v pending=%v", st, p.pending)
+	}
+}

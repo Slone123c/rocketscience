@@ -25,6 +25,8 @@ import (
 type Service struct {
 	// savedSelections remembers Selector choices across stop/start; the core's temp work dir drops cache.db.
 	savedSelections   map[string]string
+	startCancelMu     sync.Mutex
+	startCancel       context.CancelFunc
 	opMu              sync.Mutex
 	mu                sync.Mutex
 	cmd               *exec.Cmd
@@ -286,6 +288,16 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	if s.cmd != nil {
 		return errors.New("内核已经启动")
 	}
+	startCtx, cancelStartCtx := context.WithCancel(context.Background())
+	s.startCancelMu.Lock()
+	s.startCancel = cancelStartCtx
+	s.startCancelMu.Unlock()
+	defer func() {
+		s.startCancelMu.Lock()
+		s.startCancel = nil
+		s.startCancelMu.Unlock()
+		cancelStartCtx()
+	}()
 	if s.done != nil {
 		select {
 		case <-s.done:
@@ -424,11 +436,14 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		os.RemoveAll(dir)
 		return err
 	}
-	validationContext, cancelValidation := context.WithTimeout(context.Background(), 2*time.Minute)
+	validationContext, cancelValidation := context.WithTimeout(startCtx, 2*time.Minute)
 	err = validateRuntimeWithContext(validationContext, bin, dir, configPath)
 	cancelValidation()
 	if err != nil {
 		os.RemoveAll(dir)
+		if startCtx.Err() != nil {
+			return errors.New("内核启动已取消")
+		}
 		return err
 	}
 	var geoCfg struct {
@@ -573,6 +588,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
+		if startCtx.Err() != nil {
+			return errors.Join(errors.New("内核启动已取消"), finishFailedStart())
+		}
 		select {
 		case <-exited:
 			s.cmd = nil
@@ -589,6 +607,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			}
 		}
 		var v any
+		var proxiesReady struct {
+			Proxies map[string]any `json:"proxies"`
+		}
 		tunReady := !isTun
 		ready := s.tunReady
 		if ready == nil {
@@ -602,7 +623,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			}
 			tunReady = s.get("/configs", &state) == nil && state.Tun.Enable
 		}
-		if s.get("/version", &v) == nil && tunReady {
+		if s.get("/version", &v) == nil && s.get("/proxies", &proxiesReady) == nil && tunReady {
 			s.restoreSavedSelections()
 			for _, selected := range selections {
 				if err := s.restoreSelections(selected); err != nil {
@@ -641,11 +662,20 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			}
 			return nil
 		}
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-startCtx.Done():
+			return errors.Join(errors.New("内核启动已取消"), finishFailedStart())
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 	return errors.Join(errors.New("内核未在规定时间内就绪，请检查授权、端口及配置"), finishFailedStart())
 }
 func (s *Service) Stop() error {
+	s.startCancelMu.Lock()
+	if s.startCancel != nil {
+		s.startCancel()
+	}
+	s.startCancelMu.Unlock()
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
 	s.mu.Lock()

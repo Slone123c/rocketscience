@@ -132,6 +132,8 @@ func run(args []string) error {
 	go func() { done <- cmd.Wait() }()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
+	var lastModTime time.Time
+	staleTicks := 0
 	for {
 		select {
 		case err = <-done:
@@ -141,7 +143,16 @@ func run(args []string) error {
 			returnGeoOwnership(dir, uid)
 			state, readErr := os.ReadFile(heartbeat)
 			info, statErr := os.Lstat(heartbeat)
-			if readErr != nil || statErr != nil || !info.Mode().IsRegular() || time.Since(info.ModTime()) > 8*time.Second || strings.TrimSpace(string(state)) == "stop" {
+			stopRequested := readErr != nil || statErr != nil || !info.Mode().IsRegular() || strings.TrimSpace(string(state)) == "stop"
+			if !stopRequested {
+				if time.Since(info.ModTime()) > 8*time.Second && info.ModTime().Equal(lastModTime) {
+					staleTicks++
+				} else {
+					staleTicks = 0
+				}
+				lastModTime = info.ModTime()
+			}
+			if stopRequested || staleTicks >= 4 {
 				_ = cmd.Process.Signal(os.Interrupt)
 				select {
 				case <-done:

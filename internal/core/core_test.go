@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 const direct = "mode: rule\nlog-level: silent\nproxies: []\nproxy-groups: []\nrules:\n  - MATCH,DIRECT\n"
@@ -125,5 +126,45 @@ func TestEarlyCoreExitSurfacesLogTailAndCleanLookPath(t *testing.T) {
 	}
 	if s.Status().Error != "" && strings.Contains(s.Status().Error, "exit status 1") && !strings.Contains(s.Status().Error, "bind address already in use") {
 		t.Fatalf("status error did not include log tail: %+v", s.Status())
+	}
+}
+
+func TestStopCancelsInFlightStartImmediately(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
+	}
+	s := newTestService(t)
+	defer s.Shutdown()
+	launched := make(chan struct{})
+	s.tunReady = func(map[string]bool) bool { return false }
+	s.tunLaunch = func(core, dir string) (*tunLauncher, error) {
+		l, err := fakeTunLaunch(core, dir)
+		if err == nil {
+			close(launched)
+		}
+		return l, err
+	}
+	if err := s.SetTun(true); err != nil {
+		t.Fatal(err)
+	}
+	startDone := make(chan error, 1)
+	go func() {
+		startDone <- s.Start(direct, freePort(t))
+	}()
+	select {
+	case <-launched:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tunLaunch did not start")
+	}
+	time.Sleep(100 * time.Millisecond)
+	stopStart := time.Now()
+	if err := s.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+	if elapsed := time.Since(stopStart); elapsed > 2*time.Second {
+		t.Fatalf("Stop blocked on in-flight Start for %v (expected < 2s)", elapsed)
+	}
+	if err := <-startDone; err == nil || !strings.Contains(err.Error(), "已取消") {
+		t.Fatalf("expected cancelled start error, got: %v", err)
 	}
 }
