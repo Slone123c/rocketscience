@@ -84,6 +84,12 @@ export interface GeoOptions {
   updateInterval: number | null;
 }
 
+export interface ImportedProfileFile {
+  path: string;
+  name: string;
+  content: string;
+}
+
 export interface InboundOptions {
   httpPort: number;
   socksPort: number;
@@ -162,6 +168,7 @@ export interface Profile {
   url: string;
   interval: number;
   content: string;
+  path: string;
   updatedAt: string;
   lastError: string;
   lastAttempt: string;
@@ -404,6 +411,9 @@ export const Desktop = {
   },
   openDashboard(): Promise<void> {
     return call("Desktop.OpenDashboard");
+  },
+  pickProfileFile(): Promise<ImportedProfileFile | null> {
+    return call("Desktop.PickProfileFile");
   },
   quit(): Promise<void> {
     return call("Desktop.Quit");
