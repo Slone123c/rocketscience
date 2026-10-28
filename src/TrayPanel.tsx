@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileSummary, type Proxy, type Status, type Monitoring } from "./mygo";
 import {proxyNodes,type DelayMeasurement} from "./proxyNodes";
 import {createRefreshQueue} from "./viewRefresh";
+import {createTrayTasks} from "./trayTasks";
 import type * as Design from "../design-system/components/index";
 
 export function TrayPanel({ design: DS }: { design: typeof Design }) {
@@ -15,28 +16,53 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   const [testing, setTesting] = useState<string | null>(null);
   const [delays, setDelays] = useState<Record<string,DelayMeasurement>>({});
   const [error, setError] = useState("");
-  const delaySession=useRef("");
+  const tasks=useRef(createTrayTasks());
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;tasks.current.cancelTest()}},[]);
   async function read() {
     const desktop = await Desktop.state();
+    if(!mounted.current)return;
     setReady(desktop.startupReady);
     if (!desktop.startupReady) return;
     const [next, saved] = await Promise.all([Service.status(), Profiles.summary()]);
-    if(delaySession.current!==next.startedAt){delaySession.current=next.startedAt;setDelays({})}
-    setStatus(next); setProfiles(saved); setWifi(await WiFi.state());
+    if(!mounted.current)return;
+    if(tasks.current.setSession(next.running ? JSON.stringify([next.startedAt,saved.activeId]) : "")){setDelays({});setTesting(null)}
+    setStatus(next); setProfiles(saved);
+    const nextWiFi=await WiFi.state();
+    if(!mounted.current)return;
+    setWifi(nextWiFi);
     if (next.running) {
       const [g, s] = await Promise.all([Service.groups(), Service.monitoring()]);
+      if(!mounted.current)return;
       setGroups(g); setStreams(s);
     } else { setGroups([]); setStreams(null); }
   }
   const refreshQueue=useRef<ReturnType<typeof createRefreshQueue>|null>(null);
   if(!refreshQueue.current)refreshQueue.current=createRefreshQueue(read);
   async function refresh(){await refreshQueue.current!.request()}
-  useEffect(()=>{let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;async function tick(){if(!document.hidden)try{await refresh()}catch(e){setError(String(e))}if(!stopped)timer=setTimeout(()=>void tick(),3000)}const visible=()=>{if(!document.hidden)void refresh().catch(e=>setError(String(e)))};void tick();document.addEventListener("visibilitychange",visible);return ()=>{stopped=true;if(timer)clearTimeout(timer);document.removeEventListener("visibilitychange",visible)}},[]);
+  useEffect(()=>{let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;async function tick(){if(!document.hidden)try{await refresh()}catch(e){if(!stopped)setError(String(e))}if(!stopped)timer=setTimeout(()=>void tick(),3000)}const visible=()=>{if(!document.hidden)void refresh().catch(e=>{if(!stopped)setError(String(e))})};void tick();document.addEventListener("visibilitychange",visible);return ()=>{stopped=true;if(timer)clearTimeout(timer);document.removeEventListener("visibilitychange",visible)}},[]);
   async function perform(fn: () => Promise<unknown>) {
-    if (busy || !ready) return;
-    setBusy(true); setError("");
-    try { await fn(); await WiFi.check(); } catch (e) { setError(String(e)); }
-    finally { try { await refresh(); } catch (e) { setError(String(e)); } setBusy(false); }
+    if (!ready || !mounted.current) return;
+    const finish=tasks.current.beginAction();
+    if(!finish)return;
+    setBusy(true); setTesting(null); setError("");
+    try { await fn(); await WiFi.check(); } catch (e) { if(mounted.current)setError(String(e)); }
+    finally { try { await refresh(); } catch (e) { if(mounted.current)setError(String(e)); } finish(); if(mounted.current)setBusy(false); }
+  }
+  async function testGroup(group:string) {
+    if(!ready || !status?.running || !mounted.current)return;
+    const request=tasks.current.beginTest();
+    if(!request)return;
+    setTesting(group);setError("");
+    try {
+      const speed=await Profiles.speedSettings();
+      if(!request.current())return;
+      const result=await Service.testGroup(group,speed.url,speed.timeoutMs);
+      // Refresh the core/profile identity before accepting a delayed IPC result.
+      await refresh();
+      if(request.current()&&mounted.current)setDelays(old=>({...old,[group]:{values:result,completedAt:Date.now()}}));
+    } catch(e) { if(request.current()&&mounted.current)setError(String(e)); }
+    finally { if(request.finish()&&mounted.current)setTesting(null); }
   }
   async function setProxy(enabled: boolean) {
     await perform(async () => {
@@ -65,7 +91,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     onSsidBypassChange={!ready || busy ? undefined : enabled => void perform(async()=>{const settings=await WiFi.settings();await WiFi.setSettings({...settings,enabled})})}
     onModeChange={value => void perform(() => Service.setMode(value))}
     onSelect={(group, node) => void perform(() => Service.select(group, node))}
-    onTest={group => { setTesting(group); void Profiles.speedSettings().then(speed => Service.testGroup(group, speed.url, speed.timeoutMs)).then(result => setDelays(old => ({ ...old, [group]: {values:result,completedAt:Date.now()} }))).catch(e => setError(String(e))).finally(() => setTesting(null)); }}
+    onTest={group => void testGroup(group)}
     onCopyCommand={async()=>{try{const effectivePort=status?.running&&status.mixedPort?status.mixedPort:(await Profiles.summary()).mixedPort;await Desktop.copyTerminalProxy(effectivePort)}catch(e){setError(String(e));throw e}}}
     onOpenDashboard={() => void Desktop.openDashboard().catch(e => setError(String(e)))}
     onQuit={() => void Desktop.quit().catch(e => setError(String(e)))}
