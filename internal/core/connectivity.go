@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,7 +30,7 @@ type NodeRecommendation struct {
 }
 
 // CheckConnectivity requests a test URL through the mixed port without changing routes.
-func (s *Service) CheckConnectivity(target string) (Connectivity, error) {
+func (s *Service) CheckConnectivity(target string) (result Connectivity, resultErr error) {
 	u, err := url.Parse(target)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 		return Connectivity{}, errors.New("检查地址必须为 HTTP 或 HTTPS")
@@ -44,12 +46,52 @@ func (s *Service) CheckConnectivity(target string) (Connectivity, error) {
 		return Connectivity{Message: "无法连接内核", NodeStatus: "skip"}, nil
 	}
 	port := s.mixedPort
+	cmd, startedAt, content, modeRevision := s.cmd, s.startedAt, s.currentContent, s.modeRevision
+	options, _ := json.Marshal(s.coreOptions)
 	s.mu.Unlock()
-	result := Connectivity{Core: true, NodeStatus: "skip", NodeDetail: "没有可检查的手动选择策略组", Recommendations: []NodeRecommendation{}}
+	var selections map[string]string
+	defer func() {
+		unchanged := func() bool {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			currentOptions, _ := json.Marshal(s.coreOptions)
+			return s.cmd == cmd && s.startedAt.Equal(startedAt) && s.currentContent == content && s.modeRevision == modeRevision && bytes.Equal(options, currentOptions)
+		}
+		valid := unchanged()
+		if valid && selections != nil {
+			latest, err := s.Groups()
+			if err != nil {
+				valid = false
+			} else {
+				count := 0
+				for _, group := range latest {
+					if group.Type != "Selector" || group.Now == "" {
+						continue
+					}
+					count++
+					if previous, ok := selections[group.Name]; !ok || previous != group.Now {
+						valid = false
+					}
+				}
+				valid = valid && count == len(selections)
+			}
+		}
+		if !valid || !unchanged() {
+			result = Connectivity{}
+			resultErr = errors.New("检查期间内核、配置或出站选择已改变，请重新检查")
+		}
+	}()
+	result = Connectivity{Core: true, NodeStatus: "skip", NodeDetail: "没有可检查的手动选择策略组", Recommendations: []NodeRecommendation{}}
 	groups, groupErr := s.Groups()
 	if groupErr != nil {
 		result.NodeStatus, result.NodeDetail = "unknown", "无法读取策略组"
 	} else {
+		selections = make(map[string]string)
+		for _, group := range groups {
+			if group.Type == "Selector" && group.Now != "" {
+				selections[group.Name] = group.Now
+			}
+		}
 		checked, failed, unknown := 0, 0, 0
 		type outcome struct {
 			delays map[string]int
