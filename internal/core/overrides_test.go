@@ -69,6 +69,63 @@ func TestMergePreservesAnchorsAndLeavesMissingPolicyOut(t *testing.T) {
 	}
 }
 
+func TestOverridesRetainManualNodeSelection(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO")
+	}
+	s := newTestService(t)
+	defer s.Shutdown()
+	p := NewProfilesWithService(t.TempDir(), s)
+	content := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: choose\n    type: select\n    proxies: [DIRECT, REJECT]\nrules: ['MATCH,DIRECT']\n"
+	if _, err := p.Save(Profile{Name: "test", Source: "file", Content: content}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.SetPort(freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.StartActive(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Select("choose", "REJECT"); err != nil {
+		t.Fatal(err)
+	}
+	before := s.Status()
+	o, err := p.Overrides()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o.Groups = append(o.Groups, OverrideGroup{ID: "lan", Name: "局域网直连", Enabled: true, Rules: []OverrideRule{
+		{Type: "IP-CIDR", Payload: "192.168.0.0/16", Policy: "DIRECT"},
+		{Type: "IP-CIDR", Payload: "10.0.0.0/8", Policy: "DIRECT"},
+		{Type: "IP-CIDR", Payload: "172.16.0.0/12", Policy: "DIRECT"},
+		{Type: "DOMAIN-SUFFIX", Payload: "local", Policy: "DIRECT"},
+	}})
+	o, err = p.SetOverrides(o.Groups, o.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	groups, err := s.Groups()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, group := range groups {
+		if group.Name == "choose" && group.Now != "REJECT" {
+			t.Fatal("rule edit reset selected node")
+		}
+	}
+	rules, err := s.Rules()
+	if err != nil || len(rules) != 5 || len(o.Origins) != 4 || rules[0].Payload != "192.168.0.0/16" || rules[4].Type != "Match" {
+		t.Fatalf("template not applied in order: %+v %v", rules, err)
+	}
+	if s.Status().StartedAt != before.StartedAt {
+		t.Fatal("rule edit restarted core")
+	}
+	stored, err := p.State()
+	if err != nil || stored.Profiles[0].Content != content {
+		t.Fatal("template modified original profile")
+	}
+}
+
 func TestOverridesApplyToUnsavedDraft(t *testing.T) {
 	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
 		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")

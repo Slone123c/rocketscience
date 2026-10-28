@@ -223,39 +223,25 @@ func (p *Profiles) SetOverrides(groups []OverrideGroup, expected uint64) (Overri
 	}
 	raw := activeContent(d, p.draft)
 	state := OverrideState{Groups: groups, Revision: expected + 1, Policies: []string{}, Skipped: []SkippedOverride{}, Origins: []string{}}
-	var merged, old string
+	var merged string
 	if raw != "" {
 		merged, state.Policies, state.Skipped, state.Origins, err = mergeOverrides(raw, groups)
-		if err != nil {
-			return OverrideState{}, err
-		}
-		old, _, _, _, err = mergeOverrides(raw, d.Overrides)
 		if err != nil {
 			return OverrideState{}, err
 		}
 		if err = validateProfile(merged); err != nil {
 			return OverrideState{}, err
 		}
-		if p.service != nil {
-			running, reloadErr := p.service.reloadIfRunning(merged)
-			if reloadErr != nil {
-				if running {
-					if _, rollbackErr := p.service.reloadIfRunning(old); rollbackErr != nil {
-						return OverrideState{}, fmt.Errorf("应用失败：%v；恢复失败：%w", reloadErr, rollbackErr)
-					}
-				}
-				return OverrideState{}, reloadErr
-			}
-		}
 	}
 	d.Overrides = groups
 	d.OverrideRevision++
-	if err = p.write(d); err != nil {
-		if raw != "" && p.service != nil {
-			if _, rollbackErr := p.service.reloadIfRunning(old); rollbackErr != nil {
-				return OverrideState{}, fmt.Errorf("保存失败：%v；恢复失败：%w", err, rollbackErr)
-			}
-		}
+	persist := func() error { return p.write(d) }
+	if raw != "" && p.service != nil {
+		err = p.service.commitConfiguration(merged, persist)
+	} else {
+		err = persist()
+	}
+	if err != nil {
 		return OverrideState{}, err
 	}
 	return state, nil
