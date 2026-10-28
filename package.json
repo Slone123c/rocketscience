@@ -8,8 +8,9 @@
     "verify:bundle": "bun scripts/verify-bundle.ts",
     "generate": "mygo generate",
     "dev:web": "vite",
-    "build:web": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "build:web": "bun run verify:components && tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "verify:components": "bun test tests/menuBarPopover.test.ts tests/tourInteraction.test.ts tests/trajectory.test.tsx tests/connectivityPresentation.test.tsx tests/profileEditorInteraction.test.ts tests/settingsNavigation.test.ts"
   },
   "dependencies": {
     "mygo-runtime": "latest",
