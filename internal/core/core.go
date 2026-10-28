@@ -109,7 +109,14 @@ func (s *Service) Status() Status {
 		st.Controller = s.controllerAuthority()
 	}
 	if s.proxy != nil {
-		st.RecoveryPending, _ = s.proxy.Pending()
+		pending, err := s.proxy.Pending()
+		st.RecoveryPending = pending
+		if err != nil {
+			if st.Warning != "" {
+				st.Warning += "；"
+			}
+			st.Warning += "无法读取系统代理恢复记录：" + err.Error()
+		}
 	}
 	if s.cmd == nil {
 		return st

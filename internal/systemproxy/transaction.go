@@ -174,6 +174,9 @@ func (m *Manager) read() (journal, error) {
 	if j.Version != 1 || len(j.Changes) == 0 {
 		return j, errors.New("恢复记录无效")
 	}
+	if err := validateJournalChanges(j.Changes); err != nil {
+		return j, err
+	}
 	return j, nil
 }
 func (m *Manager) write(j journal) error {
