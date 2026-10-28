@@ -68,6 +68,15 @@ func (p *Profiles) SetProxyBypass(value ProxyBypassSettings) (ProxyBypassSetting
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.service != nil {
+		p.service.opMu.Lock()
+		defer p.service.opMu.Unlock()
+		p.service.mu.Lock()
+		defer p.service.mu.Unlock()
+		if p.service.cmd != nil {
+			return ProxyBypassSettings{}, errors.New("请先停止内核，再修改代理例外")
+		}
+	}
 	d, err := p.load()
 	if err != nil {
 		return ProxyBypassSettings{}, err

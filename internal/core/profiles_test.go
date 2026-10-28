@@ -89,3 +89,34 @@ func TestFetchSubscription(t *testing.T) {
 		t.Fatalf("expected redirect scheme error, got: %v", err)
 	}
 }
+
+func TestSetPortValidationAndRejectWhileRunning(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
+	}
+	s := newTestService(t)
+	defer s.Shutdown()
+	p := NewProfilesWithService(t.TempDir(), s)
+	for _, invalid := range []int{-1, 0, 65536} {
+		if err := p.SetPort(invalid); err == nil {
+			t.Fatalf("accepted invalid port %d", invalid)
+		}
+	}
+	initialPort := freePort(t)
+	if err := p.SetPort(initialPort); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Save(Profile{Name: "PortTest", Source: "file", Content: direct}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.StartActive(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.SetPort(freePort(t)); err == nil || !strings.Contains(err.Error(), "请先停止内核") {
+		t.Fatalf("expected SetPort to be rejected while core is running, got: %v", err)
+	}
+	st, err := p.State()
+	if err != nil || st.MixedPort != initialPort || s.Status().MixedPort != initialPort {
+		t.Fatalf("saved port and running port diverged: saved=%d running=%d err=%v", st.MixedPort, s.Status().MixedPort, err)
+	}
+}

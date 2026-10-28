@@ -181,6 +181,9 @@ func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, s
 	if cfg == nil {
 		return nil, errors.New("配置不能为空")
 	}
+	if err := validateProviderPaths(cfg); err != nil {
+		return nil, err
+	}
 	cfg["mixed-port"] = mixedPort
 	cfg["allow-lan"] = false
 	cfg["bind-address"] = "127.0.0.1"
@@ -213,7 +216,7 @@ func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, s
 	for _, key := range []string{"port", "socks-port", "redir-port", "tproxy-port"} {
 		cfg[key] = 0
 	}
-	for _, key := range []string{"external-controller-unix", "external-controller-pipe", "external-controller-tls"} {
+	for _, key := range []string{"external-controller-unix", "external-controller-pipe", "external-controller-tls", "external-ui", "external-ui-name", "external-ui-url"} {
 		delete(cfg, key)
 	}
 	cfg["external-controller"] = "127.0.0.1:" + strconv.Itoa(controllerPort)

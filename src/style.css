@@ -25,3 +25,7 @@
 fieldset.profile-list{border:0;padding:0;min-width:0;margin-inline:0}
 
 .settings-topic>section+section,main>.settings-topic:not([hidden])~.settings-topic:not([hidden]){margin-top:24px}
+.row{gap:12px}.row b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lf-group__name,.lf-profile__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lf-profile__err{min-width:0;overflow-wrap:anywhere}
+.lf-chip{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

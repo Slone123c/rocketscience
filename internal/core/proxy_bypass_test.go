@@ -58,6 +58,9 @@ func TestProxyBypassFlowsIntoCoreTakeover(t *testing.T) {
 	if proxy.bypass == nil || !reflect.DeepEqual(*proxy.bypass, []string{"*.local"}) {
 		t.Fatalf("missing bypass: %v", proxy.bypass)
 	}
+	if _, err := p.SetProxyBypass(ProxyBypassSettings{Custom: false}); err == nil {
+		t.Fatal("expected SetProxyBypass to be rejected while core is running")
+	}
 	if err := s.Stop(); err != nil {
 		t.Fatal(err)
 	}

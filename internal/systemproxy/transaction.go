@@ -48,6 +48,36 @@ func New(backend Backend, path string) *Manager { return &Manager{backend: backe
 
 var keys = []string{"HTTPEnable", "HTTPProxy", "HTTPPort", "HTTPSEnable", "HTTPSProxy", "HTTPSPort", "SOCKSEnable", "SOCKSProxy", "SOCKSPort", "ProxyAutoConfigEnable", "ProxyAutoDiscoveryEnable", "ExceptionsList", "__ProtocolEnabled"}
 var keyGroups = [][]string{{"HTTPEnable", "HTTPProxy", "HTTPPort"}, {"HTTPSEnable", "HTTPSProxy", "HTTPSPort"}, {"SOCKSEnable", "SOCKSProxy", "SOCKSPort"}, {"ProxyAutoConfigEnable"}, {"ProxyAutoDiscoveryEnable"}}
+var defaultExceptions = []string{"127.0.0.1", "localhost", "*.local", "169.254/16"}
+
+func effectiveExceptions(entries []string) []string {
+	out := make([]string, 0, len(defaultExceptions)+len(entries))
+	seen := make(map[string]bool, len(defaultExceptions)+len(entries))
+	for _, item := range defaultExceptions {
+		seen[item] = true
+		out = append(out, item)
+	}
+	for _, raw := range entries {
+		key := raw
+		for i := 0; i < len(key); i++ {
+			if key[i] >= 'A' && key[i] <= 'Z' {
+				b := []byte(key)
+				for j := i; j < len(b); j++ {
+					if b[j] >= 'A' && b[j] <= 'Z' {
+						b[j] += 'a' - 'A'
+					}
+				}
+				key = string(b)
+				break
+			}
+		}
+		if key != "" && !seen[key] {
+			seen[key] = true
+			out = append(out, raw)
+		}
+	}
+	return out
+}
 
 func takeover(port int) Settings {
 	return Settings{"HTTPEnable": json.RawMessage("1"), "HTTPProxy": json.RawMessage(`"127.0.0.1"`), "HTTPPort": json.RawMessage(strconv.Itoa(port)), "HTTPSEnable": json.RawMessage("1"), "HTTPSProxy": json.RawMessage(`"127.0.0.1"`), "HTTPSPort": json.RawMessage(strconv.Itoa(port)), "SOCKSEnable": json.RawMessage("1"), "SOCKSProxy": json.RawMessage(`"127.0.0.1"`), "SOCKSPort": json.RawMessage(strconv.Itoa(port)), "ProxyAutoConfigEnable": json.RawMessage("0"), "ProxyAutoDiscoveryEnable": json.RawMessage("0"), "__ProtocolEnabled": json.RawMessage("true")}
@@ -99,7 +129,7 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 		desired := takeover(port)
 		groups := append([][]string(nil), keyGroups...)
 		if bypass != nil {
-			value, err := json.Marshal(*bypass)
+			value, err := json.Marshal(effectiveExceptions(*bypass))
 			if err != nil {
 				return err
 			}

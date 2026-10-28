@@ -27,7 +27,7 @@ export function SpeedSettings() {
     if (e.key === "Escape") { canceled.current = true; if (field === "url") setUrl(saved?.url || ""); else setTimeoutValue(String(saved?.timeoutMs || "")); setError(""); e.currentTarget.blur(); }
   }
   return <section className="panel settings"><div className="section-head"><div><div className="eyebrow">SPEED TEST</div><h2>测速</h2><p>主窗口和菜单栏共用；仅影响手动测速。</p></div>{applied && <span className="badge">已应用</span>}</div>
-    <div className="setting"><div><h3>测速地址</h3><p>输入完整的 HTTP 或 HTTPS 地址。</p></div><input aria-label="测速地址" type="url" value={url} disabled={!saved || saving} onChange={e=>setUrl(e.target.value)} onBlur={()=>void commit("url")} onKeyDown={e=>key(e,"url")}/></div>
+    <div className="setting"><div><h3>测速地址</h3><p>输入完整的 HTTP 或 HTTPS 地址。</p></div><input aria-label="测速地址" type="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} value={url} disabled={!saved || saving} onChange={e=>setUrl(e.target.value)} onBlur={()=>void commit("url")} onKeyDown={e=>key(e,"url")}/></div>
     <div className="setting"><div><h3>测速超时</h3><p>100 到 30000 毫秒。</p></div><input aria-label="测速超时（毫秒）" inputMode="numeric" value={timeout} disabled={!saved || saving} onChange={e=>setTimeoutValue(e.target.value)} onBlur={()=>void commit("timeoutMs")} onKeyDown={e=>key(e,"timeoutMs")}/></div>
     {error && <p className="profile-error" role="alert">{error}</p>}
   </section>;

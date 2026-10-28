@@ -158,3 +158,27 @@ func TestSkipsServiceWithoutProxyProtocol(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEmptyCustomBypassRetainsLoopbackAndLocalExceptions(t *testing.T) {
+	b := &fakeBackend{services: []Service{
+		{ID: "wifi", Settings: Settings{"__ProtocolEnabled": json.RawMessage("false"), "ExceptionsList": json.RawMessage(`["corp.internal"]`)}},
+	}}
+	m := New(b, filepath.Join(t.TempDir(), "journal"))
+	empty := []string{}
+	if err := m.ApplyWithBypass(7890, &empty); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	if err := json.Unmarshal(b.services[0].Settings["ExceptionsList"], &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []string{"127.0.0.1", "localhost", "*.local", "169.254/16"}) {
+		t.Fatalf("expected default loopback/local exceptions to be retained, got: %v", got)
+	}
+	if _, err := m.Restore(); err != nil {
+		t.Fatal(err)
+	}
+	if string(b.services[0].Settings["ExceptionsList"]) != `["corp.internal"]` {
+		t.Fatalf("original ExceptionsList not restored: %s", b.services[0].Settings["ExceptionsList"])
+	}
+}

@@ -28,6 +28,7 @@ type Profile struct {
 	URL         string             `json:"url"`
 	Interval    int                `json:"interval"`
 	Content     string             `json:"content"`
+	Path        string             `json:"path"`
 	UpdatedAt   time.Time          `json:"updatedAt"`
 	LastError   string             `json:"lastError"`
 	LastAttempt time.Time          `json:"lastAttempt"`
@@ -158,6 +159,11 @@ func (p *Profiles) State() (ProfileState, error) {
 func validateProfile(content string) error {
 	if len(content) == 0 || len(content) > 10*1024*1024 {
 		return errors.New("配置为空或超过 10 MB")
+	}
+	if cfg, err := unmarshalConfigMap([]byte(content)); err == nil && cfg != nil {
+		if err := validateProviderPaths(cfg); err != nil {
+			return err
+		}
 	}
 	bin := corePath()
 	if bin == "" {
@@ -313,6 +319,15 @@ func (p *Profiles) SetPort(port int) error {
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.service != nil {
+		p.service.opMu.Lock()
+		defer p.service.opMu.Unlock()
+		p.service.mu.Lock()
+		defer p.service.mu.Unlock()
+		if p.service.cmd != nil {
+			return errors.New("请先停止内核，再修改混合代理端口")
+		}
+	}
 	d, err := p.load()
 	if err != nil {
 		return err
