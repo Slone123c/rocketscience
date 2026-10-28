@@ -210,6 +210,9 @@ func (s *Service) receiveStream(ctx context.Context, generation uint64, kind str
 			if websocket.JSON.Receive(ws, &entry) != nil {
 				return
 			}
+			if len(entry.Payload) > 4096 {
+				entry.Payload = entry.Payload[:4096] + "…"
+			}
 			entry.Time = time.Now().Format(time.RFC3339Nano)
 			s.streamMu.Lock()
 			if s.streamGeneration == generation && ctx.Err() == nil {

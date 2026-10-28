@@ -92,12 +92,18 @@ func (p *Profiles) SetLANSettings(value LANSettings) (LANSettings, error) {
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.service != nil {
+		p.service.opMu.Lock()
+		defer p.service.opMu.Unlock()
+		p.service.mu.Lock()
+		defer p.service.mu.Unlock()
+		if p.service.cmd != nil {
+			return LANSettings{}, errors.New("请先停止内核，再修改局域网共享")
+		}
+	}
 	d, err := p.load()
 	if err != nil {
 		return LANSettings{}, err
-	}
-	if p.service != nil && p.service.Status().Running {
-		return LANSettings{}, errors.New("请先停止内核，再修改局域网共享")
 	}
 	d.LAN = &value
 	if err = p.write(d); err != nil {

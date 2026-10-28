@@ -116,6 +116,20 @@ func (p *Profiles) load() (profileData, error) {
 	if d.MixedPort < 1 || d.MixedPort > 65535 {
 		d.MixedPort = 7890
 	}
+	if len(d.Profiles) == 0 {
+		d.ActiveID = ""
+	} else if d.ActiveID != "" {
+		activeFound := false
+		for _, v := range d.Profiles {
+			if v.ID == d.ActiveID {
+				activeFound = true
+				break
+			}
+		}
+		if !activeFound {
+			d.ActiveID = d.Profiles[0].ID
+		}
+	}
 	return d, nil
 }
 func (p *Profiles) write(d profileData) error {

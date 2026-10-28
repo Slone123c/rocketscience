@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -100,6 +101,24 @@ func (s *Service) request(method, path string, body any) error {
 	}
 	return nil
 }
+func (s *Service) closeGroupConnectionsLocked(group string) {
+	var snap ConnectionSnapshot
+	if err := s.get("/connections", &snap); err != nil {
+		return
+	}
+	for _, conn := range snap.Connections {
+		if conn.ID == "" {
+			continue
+		}
+		for _, chain := range conn.Chains {
+			if chain == group {
+				_ = s.request("DELETE", "/connections/"+url.PathEscape(conn.ID), nil)
+				break
+			}
+		}
+	}
+}
+
 func (s *Service) Select(group, node string) error {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
@@ -111,7 +130,15 @@ func (s *Service) Select(group, node string) error {
 	if group == "" || node == "" {
 		return errors.New("请选择策略组与节点")
 	}
-	return s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node})
+	var before Proxy
+	hadBefore := s.get("/proxies/"+url.PathEscape(group), &before) == nil
+	if err := s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node}); err != nil {
+		return err
+	}
+	if !hadBefore || before.Now != node {
+		s.closeGroupConnectionsLocked(group)
+	}
+	return nil
 }
 
 // SelectRecommendation refuses a stale recommendation if the user has changed the group.
@@ -132,7 +159,13 @@ func (s *Service) SelectRecommendation(group, current, node string) error {
 	}
 	for _, candidate := range v.All {
 		if candidate == node {
-			return s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node})
+			if err := s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node}); err != nil {
+				return err
+			}
+			if current != node {
+				s.closeGroupConnectionsLocked(group)
+			}
+			return nil
 		}
 	}
 	return errors.New("推荐节点已不存在，请重新检查")
@@ -148,9 +181,16 @@ func (s *Service) SetMode(mode string) error {
 	if mode != "rule" && mode != "global" && mode != "direct" {
 		return errors.New("无效的出站模式")
 	}
+	var before struct {
+		Mode string `json:"mode"`
+	}
+	hadBefore := s.get("/configs", &before) == nil
 	if err := s.request("PATCH", "/configs", map[string]string{"mode": mode}); err != nil {
 		return err
 	}
 	s.modeRevision++
+	if !hadBefore || !strings.EqualFold(before.Mode, mode) {
+		_ = s.request("DELETE", "/connections", nil)
+	}
 	return nil
 }

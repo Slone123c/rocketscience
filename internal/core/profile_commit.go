@@ -98,6 +98,7 @@ func (s *Service) commitConfiguration(content string, persist func() error) erro
 		return rollback(fmt.Errorf("保存配置失败：%w", err))
 	}
 	s.currentContent = content
+	s.savedSelections = retained
 	return nil
 }
 

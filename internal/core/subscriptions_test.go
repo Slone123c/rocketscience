@@ -194,3 +194,87 @@ func TestParseUsageDecimalScientificAndCaseInsensitive(t *testing.T) {
 		t.Fatal("expected nil for all-invalid usage")
 	}
 }
+
+func TestConcurrentManualAndScheduledUpdateDownloadsOnce(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
+	}
+	inFlight := make(chan struct{}, 2)
+	release := make(chan struct{})
+	var downloads int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		downloads++
+		inFlight <- struct{}{}
+		<-release
+		_, _ = w.Write([]byte(direct))
+	}))
+	defer server.Close()
+	p := NewProfiles(t.TempDir())
+	state, err := p.Save(Profile{Name: "sub", Source: "url", URL: server.URL, Content: direct, Interval: 6, LastAttempt: time.Now().Add(-7 * time.Hour)}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := state.ActiveID
+	manualDone := make(chan error, 1)
+	go func() {
+		_, err := p.Update(id)
+		manualDone <- err
+	}()
+	<-inFlight
+	schedDone := make(chan error, 1)
+	go func() {
+		_, err := p.updateSubscription(id, true)
+		schedDone <- err
+	}()
+	time.Sleep(30 * time.Millisecond)
+	close(release)
+	if err := <-manualDone; err != nil {
+		t.Fatalf("manual update failed: %v", err)
+	}
+	if err := <-schedDone; err != nil {
+		t.Fatalf("scheduled update failed: %v", err)
+	}
+	if downloads != 1 {
+		t.Fatalf("expected exactly 1 download when manual and scheduled update overlap, got %d", downloads)
+	}
+}
+
+func TestDeleteAndUseMaintainActiveProfileIntegrity(t *testing.T) {
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
+	}
+	s := newTestService(t)
+	defer s.Shutdown()
+	p := NewProfilesWithService(t.TempDir(), s)
+	if err := p.SetPort(freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	st1, err := p.Save(Profile{Name: "P1", Source: "file", Content: direct}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id1 := st1.ActiveID
+	rejectCfg := strings.Replace(direct, "MATCH,DIRECT", "MATCH,REJECT", 1)
+	st2, err := p.Save(Profile{Name: "P2", Source: "file", Content: rejectCfg}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id2 := st2.Profiles[1].ID
+	if err := p.StartActive(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Delete(id1); err == nil {
+		t.Fatal("deleted active profile while running")
+	}
+	if _, err := p.Use(id2); err != nil {
+		t.Fatal(err)
+	}
+	rules, err := s.Rules()
+	if err != nil || len(rules) != 1 || rules[0].Proxy != "REJECT" {
+		t.Fatalf("Use(P2) did not switch running core rules: %+v %v", rules, err)
+	}
+	afterDelete, err := p.Delete(id1)
+	if err != nil || len(afterDelete.Profiles) != 1 || afterDelete.ActiveID != id2 {
+		t.Fatalf("Delete(P1) after switching to P2 corrupted state: %+v %v", afterDelete, err)
+	}
+}

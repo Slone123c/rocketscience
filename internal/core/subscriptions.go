@@ -38,6 +38,10 @@ func (p *Profiles) startActiveLocked(d profileData) error {
 
 // Update fetches a subscription and changes its saved and running configuration together.
 func (p *Profiles) Update(id string) (ProfileState, error) {
+	return p.updateSubscription(id, false)
+}
+
+func (p *Profiles) updateSubscription(id string, onlyIfDue bool) (ProfileState, error) {
 	p.updateMu.Lock()
 	defer p.updateMu.Unlock()
 	p.mu.Lock()
@@ -54,6 +58,11 @@ func (p *Profiles) Update(id string) (ProfileState, error) {
 			found = true
 			break
 		}
+	}
+	if found && onlyIfDue && !subscriptionDue(captured, time.Now()) {
+		state := ProfileState{d.Profiles, d.ActiveID, d.MixedPort, d.SystemProxy}
+		p.mu.Unlock()
+		return state, nil
 	}
 	p.mu.Unlock()
 	if !found {
@@ -137,7 +146,7 @@ func RunUpdates(p *Profiles, stop <-chan struct{}) {
 				default:
 				}
 				if subscriptionDue(v, time.Now()) {
-					_, _ = p.Update(v.ID)
+					_, _ = p.updateSubscription(v.ID, true)
 				}
 			}
 		}

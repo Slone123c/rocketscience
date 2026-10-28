@@ -73,6 +73,9 @@ func (s *Service) wifiSetMode(expected wifiModeState, mode string) (wifiModeStat
 	if err := s.request("PATCH", "/configs", map[string]string{"mode": mode}); err != nil {
 		return wifiModeState{}, err
 	}
+	if !strings.EqualFold(cfg.Mode, mode) {
+		_ = s.request("DELETE", "/connections", nil)
+	}
 	return wifiModeState{running: true, mode: mode, revision: s.modeRevision, runID: s.startedAt}, nil
 }
 func (p *Profiles) WiFiSettings() (WiFiSettings, error) {

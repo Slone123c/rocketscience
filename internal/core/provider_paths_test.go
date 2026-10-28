@@ -123,3 +123,71 @@ rules:
 		t.Fatalf("expected external-ui fields to be stripped from runtime config:\n%s", out)
 	}
 }
+
+func TestValidateRejectsEmptyNodeNameAndDialerProxyCycle(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		wantErr string
+	}{
+		{
+			name: "empty proxy name",
+			content: `
+proxies:
+  - name: "   "
+    type: socks5
+    server: 127.0.0.1
+    port: 1080
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "名称不能为空",
+		},
+		{
+			name: "empty proxy-group name",
+			content: `
+proxy-groups:
+  - name: ""
+    type: select
+    proxies: [DIRECT]
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "名称不能为空",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := runtimeConfig(tc.content, 7890, 9090, "secret", "rule"); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("runtimeConfig(%s): got err=%v, want %q", tc.name, err, tc.wantErr)
+			}
+			if os.Getenv("ROCKETSCIENCE_MIHOMO") != "" {
+				if err := validateProfile(tc.content); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("validateProfile(%s): got err=%v, want %q", tc.name, err, tc.wantErr)
+				}
+			}
+		})
+	}
+
+	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
+		t.Skip("set ROCKETSCIENCE_MIHOMO to test dialer-proxy cycle validation with real mihomo")
+	}
+	cycle := `
+proxies:
+  - name: nodeA
+    type: socks5
+    server: 127.0.0.1
+    port: 1080
+    dialer-proxy: nodeB
+  - name: nodeB
+    type: socks5
+    server: 127.0.0.1
+    port: 1081
+    dialer-proxy: nodeA
+rules:
+  - MATCH,nodeA
+`
+	if err := validateProfile(cycle); err == nil || !strings.Contains(err.Error(), "circular dialer-proxy") {
+		t.Fatalf("expected circular dialer-proxy error from validateProfile, got: %v", err)
+	}
+}
+

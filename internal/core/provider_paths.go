@@ -21,6 +21,9 @@ var reservedRuntimeFiles = map[string]bool{
 }
 
 func validateProviderPaths(cfg map[string]any) error {
+	if err := validateNamedEntries(cfg); err != nil {
+		return err
+	}
 	seen := map[string]string{}
 	for _, section := range []string{"proxy-providers", "rule-providers"} {
 		rawSection, ok := cfg[section]
@@ -29,6 +32,45 @@ func validateProviderPaths(cfg map[string]any) error {
 		}
 		if err := checkProviderSection(section, rawSection, seen); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func validateNamedEntries(cfg map[string]any) error {
+	for _, section := range []string{"proxies", "proxy-groups"} {
+		items, ok := cfg[section].([]any)
+		if !ok {
+			continue
+		}
+		for _, item := range items {
+			switch v := item.(type) {
+			case *yaml.Node:
+				if v.Kind == yaml.AliasNode && v.Alias != nil {
+					v = v.Alias
+				}
+				if v.Kind != yaml.MappingNode {
+					continue
+				}
+				nameFound := false
+				for i := 0; i+1 < len(v.Content); i += 2 {
+					if v.Content[i].Value == "name" {
+						nameFound = true
+						if strings.TrimSpace(v.Content[i+1].Value) == "" {
+							return fmt.Errorf("配置中的 %s 节点或策略组名称不能为空", section)
+						}
+					}
+				}
+				if !nameFound {
+					return fmt.Errorf("配置中的 %s 节点或策略组名称不能为空", section)
+				}
+			case map[string]any:
+				rawName, exists := v["name"]
+				nameStr, ok := rawName.(string)
+				if !exists || !ok || strings.TrimSpace(nameStr) == "" {
+					return fmt.Errorf("配置中的 %s 节点或策略组名称不能为空", section)
+				}
+			}
 		}
 	}
 	return nil
@@ -102,3 +144,4 @@ func checkProviderPath(provider, raw string, seen map[string]string) error {
 	seen[key] = provider
 	return nil
 }
+
