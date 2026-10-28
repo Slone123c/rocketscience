@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileSummary, type Proxy, type Status, type Monitoring } from "./mygo";
+import {proxyNodes,type DelayMeasurement} from "./proxyNodes";
 import {createRefreshQueue} from "./viewRefresh";
 import type * as Design from "../design-system/components/index";
 
@@ -12,13 +13,15 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   const [streams, setStreams] = useState<Monitoring | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
-  const [delays, setDelays] = useState<Record<string, Record<string, number>>>({});
+  const [delays, setDelays] = useState<Record<string,DelayMeasurement>>({});
   const [error, setError] = useState("");
+  const delaySession=useRef("");
   async function read() {
     const desktop = await Desktop.state();
     setReady(desktop.startupReady);
     if (!desktop.startupReady) return;
     const [next, saved] = await Promise.all([Service.status(), Profiles.summary()]);
+    if(delaySession.current!==next.startedAt){delaySession.current=next.startedAt;setDelays({})}
     setStatus(next); setProfiles(saved); setWifi(await WiFi.state());
     if (next.running) {
       const [g, s] = await Promise.all([Service.groups(), Service.monitoring()]);
@@ -45,7 +48,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   }
   const proxyGroups: NonNullable<Design.MenuBarPopoverProps["groups"]> = groups.map(g => ({
     name: g.name, type: g.type as Design.ProxyGroupProps["type"], now: g.now,
-    nodes: (g.all || []).map(name => ({ name, delay: delays[g.name]?.[name] }))
+    nodes: proxyNodes(g,delays[g.name])
   }));
   const mode = status?.mode?.toLowerCase();
   return <div className="tray-page"><DS.MenuBarPopover
@@ -62,7 +65,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     onSsidBypassChange={!ready || busy ? undefined : enabled => void perform(async()=>{const settings=await WiFi.settings();await WiFi.setSettings({...settings,enabled})})}
     onModeChange={value => void perform(() => Service.setMode(value))}
     onSelect={(group, node) => void perform(() => Service.select(group, node))}
-    onTest={group => { setTesting(group); void Profiles.speedSettings().then(speed => Service.testGroup(group, speed.url, speed.timeoutMs)).then(result => setDelays(old => ({ ...old, [group]: result }))).catch(e => setError(String(e))).finally(() => setTesting(null)); }}
+    onTest={group => { setTesting(group); void Profiles.speedSettings().then(speed => Service.testGroup(group, speed.url, speed.timeoutMs)).then(result => setDelays(old => ({ ...old, [group]: {values:result,completedAt:Date.now()} }))).catch(e => setError(String(e))).finally(() => setTesting(null)); }}
     onCopyCommand={() => void Desktop.copyTerminalProxy(profiles?.mixedPort || 7890).catch(e => setError(String(e)))}
     onOpenDashboard={() => void Desktop.openDashboard().catch(e => setError(String(e)))}
     onQuit={() => void Desktop.quit().catch(e => setError(String(e)))}

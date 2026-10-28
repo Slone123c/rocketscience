@@ -34,6 +34,20 @@ func TestGroupDelay(t *testing.T) {
 		if g.Name == "选择" && g.Now != "DIRECT" {
 			t.Fatal("speed test changed route")
 		}
+		if g.Name == "选择" {
+			found := false
+			for _, node := range g.Nodes {
+				if node.Name == "DIRECT" {
+					found = true
+					if node.Delay == nil || node.DelayAt == "" || node.Type != "Direct" {
+						t.Fatalf("real history not mapped: %+v", node)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("node metadata missing after real speed test")
+			}
+		}
 	}
 	if _, err = s.TestGroup("选择", "file:///tmp/test", 1000); err == nil {
 		t.Fatal("invalid test URL accepted")

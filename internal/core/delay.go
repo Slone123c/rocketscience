@@ -27,6 +27,7 @@ func (s *Service) TestGroup(group, target string, timeoutMS int) (map[string]int
 		return nil, errors.New("内核未启动")
 	}
 	authority, secret := s.controllerAuthority(), s.secret
+	startedAt, content := s.startedAt, s.currentContent
 	s.mu.Unlock()
 	params := url.Values{"url": {target}, "timeout": {fmt.Sprint(timeoutMS)}}
 	endpoint := fmt.Sprintf("http://%s/group/%s/delay?%s", authority, url.PathEscape(group), params.Encode())
@@ -47,6 +48,12 @@ func (s *Service) TestGroup(group, target string, timeoutMS int) (map[string]int
 	result := map[string]int{}
 	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("测速结果无效：%w", err)
+	}
+	s.mu.Lock()
+	unchanged := s.cmd != nil && s.startedAt.Equal(startedAt) && s.currentContent == content
+	s.mu.Unlock()
+	if !unchanged {
+		return nil, errors.New("内核或配置已改变，请重新测速")
 	}
 	return result, nil
 }

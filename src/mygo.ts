@@ -186,12 +186,21 @@ export interface Proxy {
   type: string;
   now: string;
   all: string[];
+  nodes: ProxyNode[];
 }
 
 /** ProxyBypassSettings preserves the system's current exceptions unless Custom is enabled. */
 export interface ProxyBypassSettings {
   custom: boolean;
   entries: string[];
+}
+
+export interface ProxyNode {
+  name: string;
+  type: string;
+  udp: boolean | null;
+  delay: number | null;
+  delayAt: string;
 }
 
 export interface Rule {

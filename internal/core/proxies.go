@@ -12,10 +12,28 @@ import (
 )
 
 type Proxy struct {
-	Name string   `json:"name"`
-	Type string   `json:"type"`
-	Now  string   `json:"now"`
-	All  []string `json:"all"`
+	Name  string      `json:"name"`
+	Type  string      `json:"type"`
+	Now   string      `json:"now"`
+	All   []string    `json:"all"`
+	Nodes []ProxyNode `json:"nodes"`
+}
+
+type ProxyNode struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	UDP     *bool  `json:"udp"`
+	Delay   *int   `json:"delay"`
+	DelayAt string `json:"delayAt"`
+}
+
+type proxyDetail struct {
+	Proxy
+	UDP     *bool `json:"udp"`
+	History []struct {
+		Time  time.Time `json:"time"`
+		Delay int       `json:"delay"`
+	} `json:"history"`
 }
 
 func (s *Service) Groups() ([]Proxy, error) {
@@ -25,15 +43,35 @@ func (s *Service) Groups() ([]Proxy, error) {
 		return []Proxy{}, nil
 	}
 	var result struct {
-		Proxies map[string]Proxy `json:"proxies"`
+		Proxies map[string]proxyDetail `json:"proxies"`
 	}
 	if err := s.get("/proxies", &result); err != nil {
 		return nil, err
 	}
 	groups := []Proxy{}
-	for _, v := range result.Proxies {
+	for name, detail := range result.Proxies {
+		v := detail.Proxy
+		if v.Name == "" {
+			v.Name = name
+		}
 		switch v.Type {
 		case "Selector", "URLTest", "Fallback", "LoadBalance":
+			v.Nodes = make([]ProxyNode, 0, len(v.All))
+			for _, member := range v.All {
+				data := result.Proxies[member]
+				node := ProxyNode{Name: member, Type: data.Type, UDP: data.UDP}
+				if len(data.History) > 0 {
+					last := data.History[len(data.History)-1]
+					if last.Delay >= 0 {
+						delay := last.Delay
+						node.Delay = &delay
+					}
+					if !last.Time.IsZero() {
+						node.DelayAt = last.Time.Format(time.RFC3339Nano)
+					}
+				}
+				v.Nodes = append(v.Nodes, node)
+			}
 			groups = append(groups, v)
 		}
 	}

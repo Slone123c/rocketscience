@@ -9,6 +9,7 @@ import {NetworkCheck} from "./NetworkCheck";
 import {TrajectoryPanel} from "./TrajectoryPanel";
 import {ConnectionList} from "./ConnectionList";
 import {ProxyList} from "./ProxyList";
+import type {DelayMeasurement} from "./proxyNodes";
 import {createRefreshQueue,loadViewData} from "./viewRefresh";
 import {addLANPreset} from "./ruleTemplates";
 import {RuleWalkthrough} from "./RuleWalkthrough";
@@ -23,7 +24,7 @@ function subscriptionLabel(raw:string){try{const u=new URL(raw);return u.origin+
 function App() {
  const [status,setStatus]=useState<Status | null>(null), [yaml,setYaml]=useState(sample), [port,setPort]=useState("7890"), [error,setError]=useState(""), [busy,setBusy]=useState(false), [page,setPage]=useState("总览"), [initialized,setInitialized]=useState(false);
  const [profileState,setProfileState]=useState<ProfileState | null>(null), [selected,setSelected]=useState(""), [name,setName]=useState("我的配置"), [source,setSource]=useState("file"), [url,setUrl]=useState(""), [saving,setSaving]=useState(false), [interval,setIntervalHours]=useState(0), [editingVersion,setEditingVersion]=useState(""), [fetchedAt,setFetchedAt]=useState(""), [fetchedUsage,setFetchedUsage]=useState<SubscriptionUsage | null>(null);
- const [groups,setGroups]=useState<Proxy[]>([]), [connections,setConnections]=useState<ConnectionSnapshot | null>(null), [rules,setRules]=useState<Rule[]>([]), [streams,setStreams]=useState<Streams | null>(null), [logFilter,setLogFilter]=useState(""), [delays,setDelays]=useState<Record<string,Record<string,number>>>({}), [testingGroup,setTestingGroup]=useState(""), [checkOpen,setCheckOpen]=useState(false), [overrideState,setOverrideState]=useState<OverrideState | null>(null), [rulesBusy,setRulesBusy]=useState(false), [newGroupName,setNewGroupName]=useState(""), [guideVisible,setGuideVisible]=useState(()=>localStorage.getItem("rs-rule-guide")!=="hidden"), [menu,setMenu]=useState<{connection:Design.Connection;x:number;y:number}|null>(null), [ruleConnection,setRuleConnection]=useState<Design.Connection | null>(null), [lastGroup,setLastGroup]=useState(()=>localStorage.getItem("rs-last-rule-group") || "");
+ const [groups,setGroups]=useState<Proxy[]>([]), [connections,setConnections]=useState<ConnectionSnapshot | null>(null), [rules,setRules]=useState<Rule[]>([]), [streams,setStreams]=useState<Streams | null>(null), [logFilter,setLogFilter]=useState(""), [delays,setDelays]=useState<Record<string,DelayMeasurement>>({}), [testingGroup,setTestingGroup]=useState(""), [checkOpen,setCheckOpen]=useState(false), [overrideState,setOverrideState]=useState<OverrideState | null>(null), [rulesBusy,setRulesBusy]=useState(false), [newGroupName,setNewGroupName]=useState(""), [guideVisible,setGuideVisible]=useState(()=>localStorage.getItem("rs-rule-guide")!=="hidden"), [menu,setMenu]=useState<{connection:Design.Connection;x:number;y:number}|null>(null), [ruleConnection,setRuleConnection]=useState<Design.Connection | null>(null), [lastGroup,setLastGroup]=useState(()=>localStorage.getItem("rs-last-rule-group") || "");
  const [ruleTourOpen,setRuleTourOpen]=useState(false),[ruleNotice,setRuleNotice]=useState<{message:string;id:string}|null>(null);
  useEffect(()=>{if(page!=="规则"||!ruleNotice)return;const group=Array.from(document.querySelectorAll<HTMLElement>("[data-rule-group]")).find(el=>el.dataset.ruleGroup===ruleNotice.id);group?.querySelector<HTMLButtonElement>('.lf-ovr__toggle[aria-expanded="false"]')?.click();group?.scrollIntoView({block:"nearest"})},[page,ruleNotice]);
  const [topic,setTopic]=useState<SettingsTopic>(()=>settingsTopic(localStorage.getItem("rs-settings-topic")));
@@ -34,12 +35,14 @@ function App() {
  useEffect(()=>{if(page!=="规则"||tourOpen)setRuleTourOpen(false)},[page,tourOpen]);
  useEffect(()=>{const id=setInterval(()=>{if(document.hidden)return;void Desktop.state().then(async s=>{if(s.quitError){setError(s.quitError);await Desktop.clearQuitError()}else if(s.trayError)setError(s.trayError)}).catch(()=>{})},1500);return ()=>clearInterval(id)},[]);
  const latestRoute=useRef({page,topic});if(latestRoute.current.page!==page||latestRoute.current.topic!==topic)latestRoute.current={page,topic};
+ const delaySession=useRef("");
  const refreshQueue=useRef<ReturnType<typeof createRefreshQueue>|null>(null);
  if(!refreshQueue.current)refreshQueue.current=createRefreshQueue(async()=>{
    const route=latestRoute.current;
    try{
      const data=await loadViewData(route,{status:()=>Service.status(),profiles:()=>Profiles.state(),overrides:()=>Profiles.overrides(),groups:()=>Service.groups(),connections:()=>Service.connections(),rules:()=>Service.rules(),streams:()=>Service.streams(),monitoring:()=>Service.monitoring()});
      if(route!==latestRoute.current)return;
+     if(delaySession.current!==data.status.startedAt){delaySession.current=data.status.startedAt;setDelays({})}
      setStatus(data.status);
      if(data.profiles)setProfileState(data.profiles);
      if(data.overrides)setOverrideState(data.overrides);
@@ -69,7 +72,7 @@ function App() {
  async function updateProfile(id:string){if(saving||busy)return;setSaving(true);setError("");try{const before=profileState?.profiles.find(p=>p.id===id);const next=await Profiles.update(id);setProfileState(next);const updated=next.profiles.find(p=>p.id===id);if(updated && selected===id && before?.content===yaml)openProfile(updated);await refresh()}catch(e){setError(String(e));await refresh()}finally{setSaving(false)}}
  async function useProfile(id:string){if(saving||busy)return;setSaving(true);setError("");try{const next=await Profiles.use(id);setProfileState(next);const p=next.profiles.find(p=>p.id===id);if(p)openProfile(p);await refresh()}catch(e){setError(String(e))}finally{setSaving(false)}}
  async function deleteProfile(id:string){if(saving||busy)return;if(!window.confirm("删除这份配置？此操作无法撤销。"))return;setSaving(true);setError("");try{const next=await Profiles.delete(id);setProfileState(next);if(selected===id)newProfile()}catch(e){setError(String(e))}finally{setSaving(false)}}
- async function testGroup(group:string){setTestingGroup(group);setError("");try{const speed=await Profiles.speedSettings();const result=await Service.testGroup(group,speed.url,speed.timeoutMs);setDelays(previous=>({...previous,[group]:result}))}catch(e){setError(String(e))}finally{setTestingGroup("")}}
+ async function testGroup(group:string){setTestingGroup(group);setError("");try{const speed=await Profiles.speedSettings();const result=await Service.testGroup(group,speed.url,speed.timeoutMs);setDelays(previous=>({...previous,[group]:{values:result,completedAt:Date.now()}}));await refresh()}catch(e){setError(String(e))}finally{setTestingGroup("")}}
  async function applyOverrides(groups:OverrideGroup[]){if(!overrideState || rulesBusy)return false;setRulesBusy(true);setError("");try{const next=await Profiles.setOverrides(groups,overrideState.revision);setOverrideState(next);await refresh();return next}catch(e){setError(String(e));await refresh();return false}finally{setRulesBusy(false)}}
  function updateGroup(id:string,patch:Partial<OverrideGroup>){if(!overrideState)return;void applyOverrides(overrideState.groups.map(g=>g.id===id?{...g,...patch}:g))}
  function moveGroup(index:number,delta:number){if(!overrideState)return;const groups=[...overrideState.groups],other=index+delta;if(other<0||other>=groups.length)return;[groups[index],groups[other]]=[groups[other],groups[index]];void applyOverrides(groups)}
