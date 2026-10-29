@@ -104,6 +104,9 @@ func TestTunTakeoverLifecycle(t *testing.T) {
 	if err := s.SetTun(false); err != nil {
 		t.Fatal(err)
 	}
+	if s.coreOptions.DNS == nil || s.coreOptions.DNS.Enabled == nil || !*s.coreOptions.DNS.Enabled {
+		t.Fatal("TUN shutdown lost the linked DNS preference")
+	}
 	if st := s.Status(); st.Running || st.Tun {
 		t.Fatalf("last takeover still active: %+v", st)
 	}

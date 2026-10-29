@@ -362,6 +362,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			return err
 		}
 	}
+	if s.useTun {
+		options = enabledTunDNS(options)
+	}
 	if err := validateCoreOptions(options); err != nil {
 		return err
 	}

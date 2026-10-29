@@ -42,7 +42,7 @@ export function SettingsPages({design:DS,topic,status,memory,busy,initialized,po
       <WiFiSettings design={DS}/>
     </div>
     <div className="settings-topic" hidden={topic!=="general"}><StartupSettings design={DS}/><SpeedSettings/></div>
-    <div className="settings-topic" hidden={topic!=="dns"}><DNSSettings running={running}/></div>
+    <div className="settings-topic" hidden={topic!=="dns"}><DNSSettings running={running} tun={!!status?.tun}/></div>
     <div className="settings-topic" hidden={topic!=="net"}><InboundSettings running={running}/><TunSettings running={running}/></div>
     <div className="settings-topic" hidden={topic!=="general"&&topic!=="net"}><CoreSettings running={running} section={topic==="general"?"general":"connections"}/></div>
     <div className="settings-topic" hidden={topic!=="core"}>

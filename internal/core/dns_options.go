@@ -116,6 +116,9 @@ func (p *Profiles) DNSSettings() (DNSOptions, error) {
 		return DNSOptions{}, err
 	}
 	options := coreOptionsValue(d.CoreOptions)
+	if d.Tun {
+		options = enabledTunDNS(options)
+	}
 	if options.DNS == nil {
 		return DNSOptions{}, nil
 	}
@@ -130,6 +133,13 @@ func (p *Profiles) SetDNSSettings(value DNSOptions) (DNSOptions, error) {
 	d, err := p.load()
 	if err != nil {
 		return DNSOptions{}, err
+	}
+	if d.Tun {
+		if value.Enabled != nil && !*value.Enabled {
+			return DNSOptions{}, errors.New("虚拟网卡依赖内核 DNS，请先关闭 TUN 再关闭 DNS")
+		}
+		enabled := true
+		value.Enabled = &enabled
 	}
 	options := coreOptionsValue(d.CoreOptions)
 	options.DNS = &value

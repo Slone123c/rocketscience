@@ -96,14 +96,22 @@ func (p *Profiles) ChangeTun(enabled bool) error {
 	}
 	p.service.mu.Lock()
 	previous := p.service.useTun
+	previousOptions := p.service.coreOptions
 	p.service.mu.Unlock()
 	if err = p.service.SetTun(enabled); err != nil {
 		return err
 	}
 	d.Tun = enabled
+	if enabled {
+		options := enabledTunDNS(coreOptionsValue(d.CoreOptions))
+		d.CoreOptions = &options
+	}
 	if err = p.write(d); err != nil {
 		if rollback := p.service.SetTun(previous); rollback != nil {
 			return errors.Join(fmt.Errorf("保存 TUN 设置失败：%w", err), fmt.Errorf("恢复先前状态失败：%w", rollback))
+		}
+		if _, rollback := p.service.applyCoreOptions(previousOptions); rollback != nil {
+			return errors.Join(fmt.Errorf("保存 TUN 设置失败：%w", err), fmt.Errorf("恢复先前 DNS 状态失败：%w", rollback))
 		}
 		return fmt.Errorf("保存 TUN 设置失败：%w", err)
 	}

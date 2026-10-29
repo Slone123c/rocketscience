@@ -136,6 +136,14 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 	if tun && options.Tun != nil {
 		mergeTunOptions(cfg["tun"].(map[string]any), *options.Tun)
 	}
+	if tun {
+		if err := ensureTunDNS(cfg); err != nil {
+			return nil, err
+		}
+	}
+	if dns, ok := cfg["dns"].(map[string]any); ok && dns["enable"] == true {
+		fillDNSDefaults(dns)
+	}
 	if options.Inbound != nil {
 		if err := validateInboundOptions(*options.Inbound, mixedPort); err != nil {
 			return nil, err
