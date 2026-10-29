@@ -4,8 +4,24 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
+
+func watchdogHasCorePID(dir string) bool {
+	raw, err := os.ReadFile(filepath.Join(dir, "core.pid"))
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	return err == nil && pid > 1
+}
+
+func watchdogCoreReady(dir string) bool {
+	raw, err := os.ReadFile(filepath.Join(dir, "core.ready"))
+	return err == nil && strings.TrimSpace(string(raw)) == "ready"
+}
 
 func activeTunInterfaces() map[string]bool {
 	result := map[string]bool{}

@@ -13,6 +13,7 @@ export interface ViewData {
 export async function loadViewData(route:ViewRoute,source:ViewSource):Promise<ViewData> {
   const status=await source.status();
   const data:ViewData={status};
+  if(status.starting)return data;
   const tasks:Promise<void>[]=[];
   if(route.page==="配置")tasks.push(source.profiles().then(v=>{data.profiles=v}));
   if(route.page==="规则"||route.page==="连接")tasks.push(source.overrides().then(v=>{data.overrides=v}));

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -14,7 +15,7 @@ func fixture(t *testing.T) (string, string) {
 	if err := os.Chmod(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"config.yaml", "heartbeat", "tun-core.log", "core.pid"} {
+	for _, name := range []string{"config.yaml", "heartbeat", "tun-core.log", "core.pid", "core.ready"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("running"), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -24,6 +25,20 @@ func fixture(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	return dir, core
+}
+
+func TestCoreReadyCommandQuotesPrivatePath(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "space ' and $(echo unused)")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("/bin/sh", "-c", coreReadyCommand(dir)).Run(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "core.ready"))
+	if err != nil || string(data) != "ready" {
+		t.Fatalf("missing ready marker: %v", err)
+	}
 }
 func TestSupervisorStopsWithOwner(t *testing.T) {
 	if os.Getuid() == 0 {
@@ -75,5 +90,25 @@ func TestSupervisorExitsOnStaleHeartbeat(t *testing.T) {
 		}
 	case <-time.After(6 * time.Second):
 		t.Fatal("stale heartbeat left child running")
+	}
+}
+
+func TestCancelledAuthorizationNeverLaunchesCore(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("requires non-root owner")
+	}
+	dir, core := fixture(t)
+	if err := os.WriteFile(filepath.Join(dir, "heartbeat"), []byte("stop\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{core, dir, strconv.Itoa(os.Getuid())}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "core.pid"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "running" {
+		t.Fatal("cancelled authorization launched a core")
 	}
 }

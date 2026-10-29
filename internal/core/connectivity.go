@@ -31,6 +31,9 @@ type NodeRecommendation struct {
 
 // CheckConnectivity requests a test URL through the mixed port without changing routes.
 func (s *Service) CheckConnectivity(target string) (result Connectivity, resultErr error) {
+	if pending := s.startupStatus.Load(); pending != nil {
+		return Connectivity{}, fmt.Errorf("内核正在启动（%s），请等待就绪后再检查网络", pending.StartupStage)
+	}
 	u, err := url.Parse(target)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 		return Connectivity{}, errors.New("检查地址必须为 HTTP 或 HTTPS")

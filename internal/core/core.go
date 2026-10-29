@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -27,6 +28,7 @@ type Service struct {
 	savedSelections   map[string]string
 	startCancelMu     sync.Mutex
 	startCancel       context.CancelFunc
+	startupStatus     atomic.Pointer[Status]
 	opMu              sync.Mutex
 	mu                sync.Mutex
 	cmd               *exec.Cmd
@@ -68,6 +70,8 @@ type Service struct {
 	proxyWarning      string
 }
 type Status struct {
+	Starting        bool      `json:"starting"`
+	StartupStage    string    `json:"startupStage"`
 	Running         bool      `json:"running"`
 	Version         string    `json:"version"`
 	MixedPort       int       `json:"mixedPort"`
@@ -108,7 +112,17 @@ func corePath() string {
 	return ""
 }
 func (s *Service) Status() Status {
-	s.mu.Lock()
+	if pending := s.startupStatus.Load(); pending != nil {
+		return *pending
+	}
+	// A start can begin between the atomic read and acquiring mu. Recheck the
+	// progress snapshot while contended instead of waiting behind a download.
+	for !s.mu.TryLock() {
+		if pending := s.startupStatus.Load(); pending != nil {
+			return *pending
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	defer s.mu.Unlock()
 	st := Status{Running: s.cmd != nil, Error: s.lastError, CorePath: corePath(), SystemProxy: s.useSystemProxy, Tun: s.useTun, Warning: s.proxyWarning, GeoWarning: s.geoWarning}
 	st.StartedAt = s.startedAt
@@ -301,6 +315,8 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	if s.cmd != nil {
 		return errors.New("内核已经启动")
 	}
+	s.publishStartup("准备配置", mixedPort)
+	defer s.startupStatus.Store(nil)
 	startCtx, cancelStartCtx := context.WithCancel(context.Background())
 	s.startCancelMu.Lock()
 	s.startCancel = cancelStartCtx
@@ -450,6 +466,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		return err
 	}
 	validationContext, cancelValidation := context.WithTimeout(startCtx, 2*time.Minute)
+	s.publishStartup("校验配置与外部资源", mixedPort)
 	err = validateRuntimeWithContext(validationContext, bin, dir, configPath)
 	cancelValidation()
 	if err != nil {
@@ -476,6 +493,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	isTun := s.useTun
 	beforeTun := activeTunInterfaces()
 	if isTun {
+		s.publishStartup("等待虚拟网卡授权", mixedPort)
 		launch := s.tunLaunch
 		if launch == nil {
 			launch = launchTun
@@ -488,6 +506,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		}
 		cmd = privileged.cmd
 	} else {
+		s.publishStartup("启动 mihomo", mixedPort)
 		privileged, err = launchUnprivileged(bin, dir)
 		if err != nil {
 			_ = s.geo.removeSession(dir)
@@ -595,7 +614,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			return errors.New("内核停止尚未完成，请重试停止并恢复网络")
 		}
 	}
-	timeout := 8 * time.Second
+	timeout := 30 * time.Second
 	if isTun {
 		timeout = 2 * time.Minute
 	}
@@ -615,6 +634,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		default:
 		}
 		if isTun {
+			if watchdogHasCorePID(dir) {
+				s.publishStartup("等待虚拟网卡与控制接口就绪", mixedPort)
+			}
 			if failure := tunLogFailure(filepath.Join(dir, "tun-core.log")); failure != "" {
 				return errors.Join(errors.New("TUN 启动失败："+failure), finishFailedStart())
 			}
@@ -629,6 +651,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			ready = hasNewTunInterface
 		}
 		if isTun && ready(beforeTun) {
+			s.publishStartup("等待虚拟网卡与控制接口就绪", mixedPort)
 			var state struct {
 				Tun struct {
 					Enable bool `json:"enable"`
@@ -636,7 +659,11 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			}
 			tunReady = s.get("/configs", &state) == nil && state.Tun.Enable
 		}
-		if s.get("/version", &v) == nil && s.get("/proxies", &proxiesReady) == nil && tunReady {
+		initialized := privileged == nil || !privileged.readyMarker || watchdogCoreReady(dir)
+		if !isTun {
+			s.publishStartup("等待内核初始化完成", mixedPort)
+		}
+		if initialized && s.get("/version", &v) == nil && s.get("/proxies", &proxiesReady) == nil && tunReady {
 			s.restoreSavedSelections()
 			for _, selected := range selections {
 				if err := s.restoreSelections(selected); err != nil {
@@ -645,6 +672,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			}
 			s.startStreamsAt(s.controllerAuthority(), s.secret, done)
 			if s.useSystemProxy {
+				s.publishStartup("应用系统代理设置", mixedPort)
 				if s.proxy == nil {
 					return errors.Join(errors.New("系统代理在当前平台不可用"), finishFailedStart())
 				}

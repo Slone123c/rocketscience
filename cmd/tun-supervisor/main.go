@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"rocketscience/internal/corehook"
 	"strconv"
 	"strings"
 	"syscall"
@@ -32,6 +33,10 @@ func clearQuarantineAttr(path string) {
 }
 
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+
+func coreReadyCommand(dir string) string {
+	return corehook.Command(dir)
+}
 
 // Only the fixed GEO files created by the privileged child are returned to the
 // app owner; the descriptor and O_NOFOLLOW prevent following substituted links.
@@ -102,7 +107,7 @@ func run(args []string) error {
 	heartbeat := filepath.Join(dir, "heartbeat")
 	logPath := filepath.Join(dir, "tun-core.log")
 	pidPath := filepath.Join(dir, "core.pid")
-	for _, path := range []string{config, heartbeat, logPath, pidPath} {
+	for _, path := range []string{config, heartbeat, logPath, pidPath, filepath.Join(dir, "core.ready")} {
 		info, err := os.Lstat(path)
 		if err != nil || !info.Mode().IsRegular() {
 			return fmt.Errorf("invalid runtime file: %s", filepath.Base(path))
@@ -112,6 +117,22 @@ func run(args []string) error {
 			return errors.New("unsafe runtime file owner or mode")
 		}
 	}
+	// Authorization can finish after the app has already cancelled or exited.
+	// Honor that state before a privileged child can create routes.
+	state, err := os.ReadFile(heartbeat)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(state)) == "stop" {
+		return nil
+	}
+	heartbeatInfo, err := os.Stat(heartbeat)
+	if err != nil {
+		return err
+	}
+	if time.Since(heartbeatInfo.ModTime()) > 5*time.Second {
+		return nil
+	}
 	fd, err := syscall.Open(logPath, syscall.O_WRONLY|syscall.O_APPEND|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
@@ -119,7 +140,7 @@ func run(args []string) error {
 	output := os.NewFile(uintptr(fd), "tun-log")
 	defer output.Close()
 	clearQuarantineAttr(core)
-	cmd := exec.Command(core, "-d", dir, "-f", config)
+	cmd := exec.Command(core, "-d", dir, "-f", config, "-post-up", coreReadyCommand(dir))
 	cmd.Stdout = output
 	cmd.Stderr = output
 	if os.Geteuid() != uid {

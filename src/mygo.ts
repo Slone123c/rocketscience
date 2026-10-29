@@ -229,6 +229,8 @@ export interface SpeedSettings {
 }
 
 export interface Status {
+  starting: boolean;
+  startupStage: string;
   running: boolean;
   version: string;
   mixedPort: number;

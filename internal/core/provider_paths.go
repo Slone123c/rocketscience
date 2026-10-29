@@ -12,6 +12,7 @@ var reservedRuntimeFiles = map[string]bool{
 	"config.yaml":  true,
 	"cache.db":     true,
 	"core.pid":     true,
+	"core.ready":   true,
 	"heartbeat":    true,
 	"tun-core.log": true,
 	"geoip.db":     true,
@@ -146,4 +147,3 @@ func checkProviderPath(provider, raw string, seen map[string]string) error {
 	seen[key] = provider
 	return nil
 }
-

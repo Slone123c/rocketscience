@@ -60,3 +60,8 @@ describe("refresh queue",()=>{
     expect(shouldStopInputKeyPropagation({key:"a",isComposing:true,target:{tagName:"INPUT"}})).toBe(true);
   });
 });
+
+ test("starting core reads progress without blocking on locked profiles or runtime APIs",async()=>{
+ const mock=source(false);mock.readers.status=async()=>{mock.calls.push("status");return {starting:true,running:false} as Status};
+ for(const page of ["代理","配置","规则","连接","总览"]){mock.calls.length=0;const data=await loadViewData({page,topic:"core"},mock.readers);expect(data.status.starting).toBe(true);expect(mock.calls).toEqual(["status"])}
+ });

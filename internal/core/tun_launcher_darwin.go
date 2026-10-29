@@ -36,11 +36,13 @@ func clearQuarantineAttr(paths ...string) {
 // tunLauncher owns the unprivileged osascript process and a private watchdog file.
 // The privileged supervisor terminates mihomo when this file goes stale.
 type tunLauncher struct {
-	cmd    *exec.Cmd
-	dir    string
-	done   chan struct{}
-	exited chan struct{}
-	once   sync.Once
+	cmd         *exec.Cmd
+	dir         string
+	done        chan struct{}
+	exited      chan struct{}
+	once        sync.Once
+	authorizing bool
+	readyMarker bool
 }
 
 func shellArgument(value string) (string, error) {
@@ -83,14 +85,18 @@ func launchTun(core, dir string) (*tunLauncher, error) {
 			return nil, err
 		}
 	}
-	for _, name := range []string{"heartbeat", "tun-core.log", "core.pid"} {
-		if err = os.WriteFile(filepath.Join(dir, name), []byte("running\n"), 0600); err != nil {
+	for _, name := range []string{"heartbeat", "tun-core.log", "core.pid", "core.ready"} {
+		data := []byte("running\n")
+		if name == "core.ready" {
+			data = nil
+		}
+		if err = os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
 			return nil, err
 		}
 	}
 	script := "do shell script " + strconv.Quote(strings.Join(quoted, " ")) + " with administrator privileges"
 	cmd := exec.Command("/usr/bin/osascript", "-e", script)
-	launcher := &tunLauncher{cmd: cmd, dir: dir, done: make(chan struct{}), exited: make(chan struct{})}
+	launcher := &tunLauncher{cmd: cmd, dir: dir, done: make(chan struct{}), exited: make(chan struct{}), authorizing: true, readyMarker: true}
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("无法请求 TUN 授权：%w", err)
 	}
@@ -113,13 +119,17 @@ func launchUnprivileged(core, dir string) (*tunLauncher, error) {
 		return nil, err
 	}
 	clearQuarantineAttr(supervisor, core)
-	for _, name := range []string{"heartbeat", "tun-core.log", "core.pid"} {
-		if err = os.WriteFile(filepath.Join(dir, name), []byte("running\n"), 0600); err != nil {
+	for _, name := range []string{"heartbeat", "tun-core.log", "core.pid", "core.ready"} {
+		data := []byte("running\n")
+		if name == "core.ready" {
+			data = nil
+		}
+		if err = os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
 			return nil, err
 		}
 	}
 	cmd := exec.Command(supervisor, core, dir, strconv.Itoa(os.Getuid()))
-	launcher := &tunLauncher{cmd: cmd, dir: dir, done: make(chan struct{}), exited: make(chan struct{})}
+	launcher := &tunLauncher{cmd: cmd, dir: dir, done: make(chan struct{}), exited: make(chan struct{}), readyMarker: true}
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("无法启动内核看门狗：%w", err)
 	}
@@ -146,6 +156,11 @@ func (l *tunLauncher) stop() error {
 	<-l.exited
 	if err := os.WriteFile(filepath.Join(l.dir, "heartbeat"), []byte("stop\n"), 0600); err != nil {
 		return fmt.Errorf("无法通知 TUN 停止：%w", err)
+	}
+	if l.authorizing && !watchdogHasCorePID(l.dir) && l.cmd != nil && l.cmd.Process != nil {
+		// Cancel the unprivileged authorization wrapper. If elevation races this
+		// check, the supervisor sees the stop marker before launching mihomo.
+		_ = l.cmd.Process.Kill()
 	}
 	return nil
 }

@@ -8,7 +8,10 @@ import (
 	"os/exec"
 )
 
-type tunLauncher struct{ cmd *exec.Cmd }
+type tunLauncher struct {
+	cmd         *exec.Cmd
+	readyMarker bool
+}
 
 func launchTun(string, string) (*tunLauncher, error) {
 	return nil, errors.New("TUN 目前仅支持 macOS")

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"rocketscience/internal/corehook"
 	"strconv"
 	"strings"
 	"syscall"
@@ -37,6 +38,7 @@ func cleanupOrdinaryOrphan(dir, core string) error {
 		return err
 	}
 	expected := resolved + " -d " + dir + " -f " + filepath.Join(dir, "config.yaml")
+	expectedWithHook := expected + " -post-up " + corehook.Command(dir)
 	matches := func() (bool, error) {
 		out, err := exec.Command("/bin/ps", "-ww", "-p", strconv.Itoa(pid), "-o", "command=").Output()
 		if err != nil {
@@ -45,7 +47,8 @@ func cleanupOrdinaryOrphan(dir, core string) error {
 			}
 			return false, err
 		}
-		return strings.TrimSpace(string(out)) == expected, nil
+		command := strings.TrimSpace(string(out))
+		return command == expected || command == expectedWithHook, nil
 	}
 	owned, err := matches()
 	if err != nil {

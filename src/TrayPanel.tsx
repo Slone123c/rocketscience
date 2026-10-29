@@ -23,8 +23,10 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     const desktop = await Desktop.state();
     if(!mounted.current)return;
     setReady(desktop.startupReady);
-    if (!desktop.startupReady) return;
-    const [next, saved] = await Promise.all([Service.status(), Profiles.summary()]);
+    if (!desktop.startupReady) {const pending=await Service.status();if(mounted.current)setStatus(pending);return;}
+    const next = await Service.status();
+    if(next.starting){setStatus(next);setGroups([]);setStreams(null);return;}
+    const saved = await Profiles.summary();
     if(!mounted.current)return;
     if(tasks.current.setSession(next.running ? JSON.stringify([next.startedAt,saved.activeId]) : "")){setDelays({});setTesting(null)}
     setStatus(next); setProfiles(saved);
@@ -42,7 +44,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   async function refresh(){await refreshQueue.current!.request()}
   useEffect(()=>{let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;async function tick(){if(!document.hidden)try{await refresh()}catch(e){if(!stopped)setError(String(e))}if(!stopped)timer=setTimeout(()=>void tick(),3000)}const visible=()=>{if(!document.hidden)void refresh().catch(e=>{if(!stopped)setError(String(e))})};void tick();document.addEventListener("visibilitychange",visible);return ()=>{stopped=true;if(timer)clearTimeout(timer);document.removeEventListener("visibilitychange",visible)}},[]);
   async function perform(fn: () => Promise<unknown>) {
-    if (!ready || !mounted.current) return;
+    if (!ready || status?.starting || !mounted.current) return;
     const finish=tasks.current.beginAction();
     if(!finish)return;
     setBusy(true); setTesting(null); setError("");
@@ -77,22 +79,23 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     nodes: proxyNodes(g,delays[g.name])
   }));
   const mode = status?.mode?.toLowerCase();
+  const transitioning=busy||!!status?.starting;
   return <div className="tray-page"><DS.MenuBarPopover
-    state={busy || !ready ? "igniting" : status?.running ? "orbit" : "idle"}
+    state={transitioning || !ready ? "igniting" : status?.running ? "orbit" : "idle"}
     since={status?.startedAt ? Date.parse(status.startedAt) : undefined}
-    subtitle={status?.warning || undefined}
+    subtitle={status?.starting?status.startupStage:status?.warning || undefined}
     speed={{ up: streams?.telemetry.connected ? streams.telemetry.up : null, down: streams?.telemetry.connected ? streams.telemetry.down : null, history: streams?.telemetry.connected ? streams.history : {up:[],down:[]} }}
     mode={mode === "global" || mode === "direct" ? mode : "rule"}
     groups={proxyGroups} testing={testing} systemProxy={!!status?.systemProxy} tun={!!status?.tun}
     onToggle={() => void perform(async () => { if (status?.running) await Service.stop(); else if (profiles?.activeId) await Profiles.startActive(); else throw new Error("请先在控制台保存并选择配置。"); })}
-    onSystemProxyChange={busy || !ready || !status ? undefined : value => void setProxy(value)}
-    onTunChange={busy || !ready || !status ? undefined : value => void perform(() => Profiles.changeTun(value))}
+    onSystemProxyChange={transitioning || !ready || !status ? undefined : value => void setProxy(value)}
+    onTunChange={transitioning || !ready || !status ? undefined : value => void perform(() => Profiles.changeTun(value))}
     ssid={wifi?.ssid || undefined} ssidBypass={wifi?.enabled || false}
-    onSsidBypassChange={!ready || busy ? undefined : enabled => void perform(async()=>{const settings=await WiFi.settings();await WiFi.setSettings({...settings,enabled})})}
+    onSsidBypassChange={!ready || transitioning ? undefined : enabled => void perform(async()=>{const settings=await WiFi.settings();await WiFi.setSettings({...settings,enabled})})}
     onModeChange={value => void perform(() => Service.setMode(value))}
     onSelect={(group, node) => void perform(() => Service.select(group, node))}
     onTest={group => void testGroup(group)}
-    onCopyCommand={async()=>{try{const effectivePort=status?.running&&status.mixedPort?status.mixedPort:(await Profiles.summary()).mixedPort;await Desktop.copyTerminalProxy(effectivePort)}catch(e){setError(String(e));throw e}}}
+    onCopyCommand={async()=>{try{const effectivePort=(status?.running||status?.starting)&&status.mixedPort?status.mixedPort:(await Profiles.summary()).mixedPort;await Desktop.copyTerminalProxy(effectivePort)}catch(e){setError(String(e));throw e}}}
     onOpenDashboard={() => void Desktop.openDashboard().catch(e => setError(String(e)))}
     onQuit={() => void Desktop.quit().catch(e => setError(String(e)))}
   />{error && <div className="tray-error" role="alert">{error}<button onClick={() => setError("")} aria-label="关闭">×</button></div>}</div>;
