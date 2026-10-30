@@ -30,6 +30,19 @@ func TestTunDNSEnablesResolverAndPreservesUpstreams(t *testing.T) {
 	if dns["nameserver-policy"].(map[string]any)["example.com"] != "9.9.9.9" {
 		t.Fatal("nameserver policy lost")
 	}
+	sniffer, ok := cfg["sniffer"].(map[string]any)
+	if !ok || sniffer["enable"] != true || sniffer["sniff"] == nil {
+		t.Fatalf("expected TUN to enable sniffer with default sniff protocols, got: %+v", cfg["sniffer"])
+	}
+	data, err = runtimeConfigWithOptions(content, 17890, 19090, "test", "", LANSettings{}, true, CoreOptions{Sniffer: &off})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfgOff map[string]any
+	_ = yaml.Unmarshal(data, &cfgOff)
+	if cfgOff["sniffer"].(map[string]any)["enable"] != false {
+		t.Fatalf("explicit Sniffer=false was not respected: %+v", cfgOff["sniffer"])
+	}
 	data, err = runtimeConfigWithOptions(content, 17890, 19090, "test", "", LANSettings{}, false, CoreOptions{})
 	if err != nil {
 		t.Fatal(err)

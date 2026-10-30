@@ -75,7 +75,11 @@ type Profiles struct {
 
 func NewProfiles(dir string) *Profiles { return &Profiles{dir: dir} }
 func NewProfilesWithService(dir string, service *Service) *Profiles {
-	return &Profiles{dir: dir, service: service}
+	p := &Profiles{dir: dir, service: service}
+	if service != nil {
+		service.startActive = p.StartActive
+	}
+	return p
 }
 func (p *Profiles) directory() (string, error) {
 	if p.dir != "" {

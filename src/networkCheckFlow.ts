@@ -1,8 +1,28 @@
-import type {Connectivity,NodeRecommendation} from "./mygo";
+import type {Connectivity,NodeRecommendation,Status} from "./mygo";
 
 export type CheckPhase="idle"|"checking"|"launching"|"selecting"|"recovering";
 export interface CheckState {result:Connectivity|null;phase:CheckPhase;message:string;recovered:boolean;recoveryFailed:boolean}
 export const initialCheckState=():CheckState=>({result:null,phase:"idle",message:"",recovered:false,recoveryFailed:false});
+
+export function activeProxyFeatures(status?:Pick<Status,"running"|"systemProxy"|"tun"|"recoveryPending">|null):string[] {
+  if(!status)return [];
+  const features:string[]=[];
+  if(status.running){
+    if(status.systemProxy)features.push("系统代理");
+    if(status.tun)features.push("TUN 增强模式");
+    if(!features.length)features.push("代理内核");
+  }else if(status.recoveryPending){
+    features.push("残留系统代理");
+  }
+  return features;
+}
+
+export function confirmProxyCloseMessage(status?:Pick<Status,"running"|"systemProxy"|"tun"|"recoveryPending">|null):string|null {
+  const features=activeProxyFeatures(status);
+  if(!features.length)return null;
+  return `网络检查会先关闭当前开启的${features.join("、")}，从无代理状态到开启代理状态进行检查，是否继续？`;
+}
+
 interface Source {
   check:()=>Promise<Connectivity>;
   launch:()=>Promise<void>;
@@ -10,6 +30,7 @@ interface Source {
   refresh:()=>Promise<void>;
   confirm:(recommendation:NodeRecommendation)=>boolean|Promise<boolean>;
   select:(recommendation:NodeRecommendation)=>Promise<void>;
+  confirmCheck?:()=>boolean;
 }
 interface Task {kind:CheckPhase;promise:Promise<void>;mutationDone:Promise<void>;endMutation:()=>void}
 
@@ -42,7 +63,12 @@ export function createNetworkCheckFlow(source:Source,changed:(state:CheckState)=
     snapshot:()=>state,
     activate(){active=true},
     dispose(){active=false;current=null},
-    run(){if(!active)return Promise.resolve();if(current)return current.promise;return start("checking",check,true)},
+    run(){
+      if(!active)return Promise.resolve();
+      if(current)return current.promise;
+      if(source.confirmCheck&&!source.confirmCheck())return Promise.resolve();
+      return start("checking",check,true);
+    },
     launch(){
       if(!active)return Promise.resolve();if(current)return current.promise;
       return start("launching",async task=>{

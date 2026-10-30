@@ -115,6 +115,9 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 			section = map[string]any{}
 		}
 		section["enable"] = *options.Sniffer
+		if *options.Sniffer {
+			fillSnifferDefaults(section)
+		}
 		cfg["sniffer"] = section
 	}
 	if options.DNS != nil {
@@ -138,6 +141,9 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 	}
 	if tun {
 		if err := ensureTunDNS(cfg); err != nil {
+			return nil, err
+		}
+		if err := ensureTunSniffer(cfg, options.Sniffer); err != nil {
 			return nil, err
 		}
 	}

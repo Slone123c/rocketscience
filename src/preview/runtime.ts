@@ -522,14 +522,22 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   },
   "Service.CloseAllConnections": () => { requireRunning(); state.connections = []; },
   "Service.CheckConnectivity": (): Connectivity => {
-    if (!state.running) return { core: false, request: false, message: "内核未启动", nodeStatus: "skip", nodeDetail: "", recommendations: [] };
+    state.running = true;
     return {
+      local: true,
+      localStatus: "ok",
+      localDetail: "无代理状态下本机网络正常",
       core: true,
+      takeoverStatus: "ok",
+      takeoverDetail: "开启代理后网络正常，未导致断网",
+      autoExited: false,
       request: true,
-      message: "可以访问测速地址",
+      message: "测试请求通过",
       nodeStatus: "ok",
-      nodeDetail: "香港 01 · 86 ms",
-      recommendations: [{ group: "节点选择", current: "香港 01", node: "日本 01", delay: 124 }],
+      nodeDetail: "节点「美国 02」连接成功（86 ms）",
+      verifiedNode: "美国 02",
+      switched: false,
+      recommendations: [],
     };
   },
   "Service.KernelInfo": () => kernelInfo(),

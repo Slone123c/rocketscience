@@ -68,6 +68,7 @@ type Service struct {
 	geoSession        geoSession
 	runtimeDir        string
 	stopping          bool
+	startActive       func() error
 	validateRuntime   func(context.Context, string, string) error
 	tunLaunch         func(string, string) (*tunLauncher, error)
 	tunReady          func(map[string]bool) bool

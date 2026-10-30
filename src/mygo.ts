@@ -37,11 +37,19 @@ export interface ConnectionSnapshot {
 }
 
 export interface Connectivity {
+  local: boolean;
+  localStatus: string;
+  localDetail: string;
   core: boolean;
+  takeoverStatus: string;
+  takeoverDetail: string;
+  autoExited: boolean;
   request: boolean;
   message: string;
   nodeStatus: string;
   nodeDetail: string;
+  verifiedNode?: string;
+  switched?: boolean;
   recommendations: NodeRecommendation[];
 }
 
@@ -138,7 +146,7 @@ export interface Monitoring {
   history: TrafficHistory;
 }
 
-/** NodeRecommendation is an observation, not a route change. */
+/** NodeRecommendation is an observation or applied node switch. */
 export interface NodeRecommendation {
   group: string;
   current: string;
@@ -316,7 +324,12 @@ export interface WiFiStatus {
 
 /** Service owns the mihomo process and coordinates network takeover. */
 export const Service = {
-  /** CheckConnectivity requests a test URL through the mixed port without changing routes. */
+  /**
+   * CheckConnectivity checks in order from the no-proxy state to the proxy-enabled state:
+   * 1. Whether the local machine has internet without proxy.
+   * 2. Whether enabling proxy causes a disconnect (if so, automatically exits proxy).
+   * 3. Whether proxy connects via at least one working node (auto-switching if the current node fails).
+   */
   checkConnectivity(target: string): Promise<Connectivity> {
     return call("Service.CheckConnectivity", target);
   },

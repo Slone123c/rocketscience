@@ -1,5 +1,5 @@
 import {expect,test} from "bun:test";
-import {createNetworkCheckFlow,type CheckState} from "../src/networkCheckFlow";
+import {activeProxyFeatures,confirmProxyCloseMessage,createNetworkCheckFlow,type CheckState} from "../src/networkCheckFlow";
 import type {Connectivity} from "../src/mygo";
 
 function deferred<T>() {let resolve!:(value:T)=>void,reject!:(error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}}
@@ -109,4 +109,22 @@ test("disposal suppresses late UI updates and later mounting can request a fresh
 test("an already requested restoration finishes when its UI is disposed",async()=>{
   const {flow,events,states}=harness();const pending=flow.recover();flow.dispose();const count=states.length;await pending;
   expect(events).toEqual(["recover","refresh"]);expect(states).toHaveLength(count);
+});
+
+test("prompts to close active proxy features only when proxy is running or pending recovery",async()=>{
+  expect(activeProxyFeatures(null)).toEqual([]);
+  expect(activeProxyFeatures({running:false,systemProxy:true,tun:true,recoveryPending:false})).toEqual([]);
+  expect(confirmProxyCloseMessage({running:false,systemProxy:true,tun:false,recoveryPending:false})).toBeNull();
+  expect(confirmProxyCloseMessage({running:true,systemProxy:true,tun:true,recoveryPending:false})).toContain("系统代理、TUN 增强模式");
+  expect(confirmProxyCloseMessage({running:false,systemProxy:false,tun:false,recoveryPending:true})).toContain("残留系统代理");
+
+  let allow=false;
+  const {flow,events}=harness({confirmCheck:()=>{events.push("confirmCheck");return allow}});
+  await flow.run();
+  expect(events).toEqual(["confirmCheck"]);
+  expect(flow.snapshot().result).toBeNull();
+  allow=true;
+  await flow.run();
+  expect(events).toEqual(["confirmCheck","confirmCheck","check"]);
+  expect(flow.snapshot().result?.request).toBe(true);
 });
