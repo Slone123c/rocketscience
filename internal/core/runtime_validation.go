@@ -23,6 +23,7 @@ import (
 	"github.com/metacubex/mihomo/hub/route"
 	"github.com/metacubex/mihomo/listener"
 	LC "github.com/metacubex/mihomo/listener/config"
+	mihomoLog "github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/ntp/ntp"
 	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
@@ -82,7 +83,10 @@ func parseConfigInDir(dir, path string, content []byte) error {
 	return err
 }
 
-func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, withController bool, controllerAddr string, skipTunListener bool) error {
+// applyMihomoEngineConfig starts or reloads the engine. attachTun supplies the
+// descriptor of a device created outside the app (see tunDevice); without it,
+// or with skipTunListener, the TUN listener is left out.
+func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, withController bool, controllerAddr string, skipTunListener bool, attachTun func(LC.Tun) (int, error)) error {
 	mihomoEngineMu.Lock()
 	defer mihomoEngineMu.Unlock()
 	if dir != "" {
@@ -98,8 +102,25 @@ func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, wi
 		return err
 	}
 	wantTun := cfg.General.Tun.Enable
-	if skipTunListener {
+	if skipTunListener || attachTun == nil {
 		cfg.General.Tun.Enable = false
+	} else if wantTun {
+		fd, err := attachTun(cfg.General.Tun)
+		if err != nil {
+			return err
+		}
+		// rs-tun-helper already added the routes and configured the control
+		// socket, including recvmsgx. sing-tun must not repeat that
+		// setsockopt: macOS rejects it and the listener is dropped.
+		cfg.General.Tun.FileDescriptor = fd
+		cfg.General.Tun.AutoRoute = false
+	}
+	// ApplyConfig only logs a failed TUN listener, so listen for that line.
+	var tunLog <-chan mihomoLog.Event
+	if wantTun && !skipTunListener && attachTun != nil {
+		sub := mihomoLog.Subscribe()
+		defer mihomoLog.UnSubscribe(sub)
+		tunLog = sub
 	}
 	route.SetEmbedMode(true)
 	if withController {
@@ -118,10 +139,31 @@ func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, wi
 	} else {
 		executor.ApplyConfig(cfg, force)
 	}
-	if wantTun && !skipTunListener && !listener.GetTunConf().Enable {
-		return errors.New("TUN 启动失败：虚拟网卡未能就绪，请检查管理员权限")
+	if wantTun && !skipTunListener && attachTun != nil && !listener.GetTunConf().Enable {
+		// ApplyConfig logs the listener error and continues, so the only
+		// signal left here is Enable=false. The log names the real cause.
+		return fmt.Errorf("TUN 启动失败：虚拟网卡未能就绪（%s）", lastTunError(tunLog))
 	}
 	return nil
+}
+
+// lastTunError returns the listener failure mihomo logged while applying.
+func lastTunError(events <-chan mihomoLog.Event) string {
+	// Log events reach subscribers asynchronously.
+	timeout := time.After(300 * time.Millisecond)
+	for {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				return "原因未记录，请查看日志"
+			}
+			if ev.LogLevel == mihomoLog.ERROR && strings.Contains(ev.Payload, "Start TUN listening error") {
+				return strings.TrimSpace(strings.TrimPrefix(ev.Payload, "Start TUN listening error:"))
+			}
+		case <-timeout:
+			return "原因未记录，请查看日志"
+		}
+	}
 }
 
 func stopMihomoEngine(controllerAddr string) {
@@ -138,6 +180,9 @@ func stopMihomoEngine(controllerAddr string) {
 	listener.ReCreateVmess("", tunnel.Tunnel)
 	listener.ReCreateTuic(LC.TuicServer{}, tunnel.Tunnel)
 	listener.PatchTunnel(nil, tunnel.Tunnel)
+	// Also forgets the last TUN config: otherwise the next start with the same
+	// config counts as unchanged and never opens a listener.
+	listener.ReCreateTun(LC.Tun{}, tunnel.Tunnel)
 	listener.Cleanup()
 	dns.ReCreateServer("", nil, nil)
 	ntp.ReCreateNTPService("", 0, "", nil, false)
@@ -233,6 +278,7 @@ func inProcessConnectionsSnapshot() ConnectionSnapshot {
 				DestinationPort: dstPort,
 				Network:         info.Metadata.NetWork.String(),
 				Process:         info.Metadata.Process,
+				ProcessPath:     info.Metadata.ProcessPath,
 			}
 		}
 		chains := make([]string, len(info.Chain))

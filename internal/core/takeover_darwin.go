@@ -13,5 +13,5 @@ func newProxyController() proxyController {
 	if err != nil {
 		return nil
 	}
-	return systemproxy.New(systemproxy.DarwinBackend{}, filepath.Join(dir, "RocketScience", "proxy-recovery.json"))
+	return systemproxy.New(&systemproxy.DarwinBackend{}, filepath.Join(dir, "RocketScience", "proxy-recovery.json"))
 }

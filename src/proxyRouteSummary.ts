@@ -11,7 +11,7 @@ export interface ProxyRouteSummary {
 export function proxyRouteSummary(running:boolean,mode:string,groups:Proxy[],connections:Connection[]|null,main:string[]=[]):ProxyRouteSummary {
   const result:ProxyRouteSummary={title:"当前未使用任何节点",detail:"内核未启动，下方仅为配置预览。",path:[],pathLabel:"选择路径",actual:[],unknown:0,observed:connections!==null,groupUsage:Object.create(null)};
   if(!running) {
-    if(main.length>1){result.detail="内核未启动。下方是下次启动将使用的节点，可以直接修改。";result.path=main.map(name=>name==="DIRECT"?"直连":name==="REJECT"?"拒绝连接":name);result.pathLabel="下次启动"}
+    if(main.length>1){result.title="内核未启动";result.detail="下方是启动后使用的节点，可以直接修改，也可以先测速。";result.path=main.map(name=>name==="DIRECT"?"直连":name==="REJECT"?"拒绝连接":name);result.pathLabel="当前节点"}
     return result;
   }
   const byName=new Map(groups.map(group=>[group.name,group]));

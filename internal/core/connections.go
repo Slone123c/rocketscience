@@ -8,6 +8,7 @@ type ConnectionMetadata struct {
 	DestinationPort string `json:"destinationPort"`
 	Network         string `json:"network"`
 	Process         string `json:"process"`
+	ProcessPath     string `json:"processPath"`
 }
 type Connection struct {
 	ID          string             `json:"id"`

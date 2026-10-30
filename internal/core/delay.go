@@ -8,15 +8,8 @@ import (
 
 // TestGroup measures nodes without changing the users selected route.
 func (s *Service) TestGroup(group, target string, timeoutMS int) (map[string]int, error) {
-	if group == "" {
-		return nil, errors.New("请选择策略组")
-	}
-	u, err := url.Parse(target)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return nil, errors.New("测速地址必须为 HTTP 或 HTTPS")
-	}
-	if timeoutMS < 100 || timeoutMS > 30000 {
-		return nil, errors.New("测速超时必须为 100 到 30000 毫秒")
+	if err := validateDelayTest(group, target, timeoutMS); err != nil {
+		return nil, err
 	}
 	s.mu.Lock()
 	if s.cmd == nil {
@@ -36,4 +29,18 @@ func (s *Service) TestGroup(group, target string, timeoutMS int) (map[string]int
 		return nil, errors.New("内核或配置已改变，请重新测速")
 	}
 	return result, nil
+}
+
+func validateDelayTest(group, target string, timeoutMS int) error {
+	if group == "" {
+		return errors.New("请选择策略组")
+	}
+	u, err := url.Parse(target)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return errors.New("测速地址必须为 HTTP 或 HTTPS")
+	}
+	if timeoutMS < 100 || timeoutMS > 30000 {
+		return errors.New("测速超时必须为 100 到 30000 毫秒")
+	}
+	return nil
 }

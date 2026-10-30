@@ -131,6 +131,7 @@ interface PreviewState {
   dns: DNSOptions;
   core: CoreOptions;
   tunOptions: TunOptions;
+  tunService: boolean;
   geo: GeoOptions;
   inbound: InboundOptions;
   controller: ControllerOptions;
@@ -185,6 +186,7 @@ const state: PreviewState = {
   dns: emptyDns(),
   core: emptyCore(),
   tunOptions: emptyTun(),
+  tunService: true,
   geo: { dataMode: null, autoUpdate: null, updateInterval: null },
   inbound: { httpPort: 0, socksPort: 0, authentication: null },
   controller: { address: "127.0.0.1", port: 0, secret: "" },
@@ -197,7 +199,7 @@ const state: PreviewState = {
 };
 
 function conn(id: string, host: string, port: string, network: string, process: string, chains: string[], rule: string, rulePayload: string, upload: number, download: number): Connection {
-  return { id, metadata: { host, destinationIP: "203.0.113.10", destinationPort: port, network, process }, upload, download, start: "2026-10-28T09:01:00Z", chains, rule, rulePayload };
+  return { id, metadata: { host, destinationIP: "203.0.113.10", destinationPort: port, network, process, processPath: process === "mDNSResponder" ? "/usr/sbin/mDNSResponder" : `/Applications/${process}.app/Contents/MacOS/${process}` }, upload, download, start: "2026-10-28T09:01:00Z", chains, rule, rulePayload };
 }
 
 function emptyDns(): DNSOptions {
@@ -325,6 +327,11 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Desktop.TrayDisplay": () => state.tray,
   "Desktop.SetTrayDisplay": (args) => { state.tray = String(args[0] || "both"); },
   "Desktop.OpenDashboard": () => undefined,
+  "Desktop.Apps": (args) => Object.fromEntries((args[0] as string[]).filter(path => path.includes(".app/")).map(path => {
+    const name = path.split("/").find(part => part.endsWith(".app"))!.slice(0, -4);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="13" fill="#2f6fde"/><text x="32" y="42" font-size="28" text-anchor="middle" fill="#fff" font-family="sans-serif">${name[0]}</text></svg>`;
+    return [path, { name, icon: "data:image/svg+xml;base64," + btoa(svg) }];
+  })),
   "Desktop.Quit": () => undefined,
   "Desktop.RequestWiFiAccess": () => { state.wifiState = { ...state.wifiState, known: true, detail: "" }; },
   "Desktop.PickProfileFile": (): ImportedProfileFile => ({ path: "示例配置.yaml", name: "示例配置.yaml", content: sampleYaml }),
@@ -434,6 +441,8 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Profiles.SetWiFiSettings": (args) => { state.wifi = clone(args[0] as WiFiSettings); return clone(state.wifi); },
 
   "Service.Status": () => status(),
+  "Service.TunServiceInstalled": () => state.tunService,
+  "Service.UninstallTunService": () => { if (state.running && state.tun) fail("TUN 正在使用，请先关闭 TUN 再卸载服务"); state.tunService = false; },
   "Service.Monitoring": () => traffic(),
   "Service.LiveTelemetry": () => traffic().telemetry,
   "Service.Streams": () => { requireRunning(); return streams(); },
@@ -497,6 +506,14 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
     if (!group) fail("策略组不存在");
     const values: Record<string, number> = {};
     group.all.forEach((name, index) => { values[name] = 70 + index * 48; });
+    return values;
+  },
+  "Profiles.TestPreview": (args) => {
+    if (state.running) fail("内核运行中，请直接测速");
+    const group = state.groups.find(item => item.name === String(args[0]));
+    if (!group) fail("策略组不存在");
+    const values: Record<string, number> = {};
+    group.all.forEach((name, index) => { values[name] = state.groups.some(item => item.name === name) ? -1 : 90 + index * 52; });
     return values;
   },
   "Service.CloseConnection": (args) => {

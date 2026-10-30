@@ -4,6 +4,12 @@ import { call } from "mygo-runtime";
 
 // ---- Types ----
 
+/** App names the app a connection's process belongs to; Icon is a PNG data URI. */
+export interface App {
+  name: string;
+  icon: string;
+}
+
 export interface Connection {
   id: string;
   metadata: ConnectionMetadata;
@@ -21,6 +27,7 @@ export interface ConnectionMetadata {
   destinationPort: string;
   network: string;
   process: string;
+  processPath: string;
 }
 
 export interface ConnectionSnapshot {
@@ -394,6 +401,20 @@ export const Service = {
   testGroup(group: string, target: string, timeoutMS: number): Promise<Record<string, number>> {
     return call("Service.TestGroup", group, target, timeoutMS);
   },
+  /**
+   * TunServiceInstalled reports whether the TUN service is installed, so turning
+   * TUN on needs no password.
+   */
+  tunServiceInstalled(): Promise<boolean> {
+    return call("Service.TunServiceInstalled");
+  },
+  /**
+   * UninstallTunService removes the TUN service after an administrator prompt.
+   * The next TUN start installs it again.
+   */
+  uninstallTunService(): Promise<void> {
+    return call("Service.UninstallTunService");
+  },
   /** UpdateGeo waits for the core's update to finish and saves its completed files. */
   updateGeo(): Promise<void> {
     return call("Service.UpdateGeo");
@@ -402,6 +423,13 @@ export const Service = {
 
 /** Desktop owns the macOS menu bar item and the windows. */
 export const Desktop = {
+  /**
+   * Apps looks up the app around each executable path. Command-line tools are
+   * left out, so the connections page draws a terminal tile for them.
+   */
+  apps(paths: string[]): Promise<Record<string, App>> {
+    return call("Desktop.Apps", paths);
+  },
   clearQuitError(): Promise<void> {
     return call("Desktop.ClearQuitError");
   },
@@ -571,6 +599,16 @@ export const Profiles = {
   /** Summary omits YAML and subscription credentials from periodic tray snapshots. */
   summary(): Promise<ProfileSummary> {
     return call("Profiles.Summary");
+  },
+  /**
+   * TestPreview measures a group's nodes while the core is stopped. Each node in
+   * the saved profile is dialed directly from the app, so the result is what the
+   * node would answer after start. Nested groups, DIRECT, REJECT and provider
+   * nodes (loaded only after start) have no server here and report -1, which the
+   * page shows as untested rather than as a timeout.
+   */
+  testPreview(group: string, target: string, timeoutMS: number): Promise<Record<string, number>> {
+    return call("Profiles.TestPreview", group, target, timeoutMS);
   },
   trayDisplay(): Promise<string> {
     return call("Profiles.TrayDisplay");

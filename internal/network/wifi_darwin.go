@@ -17,6 +17,7 @@ var loadErr error
 var snapshotFn func() unsafe.Pointer
 var freeFn func(unsafe.Pointer)
 var authorizeFn func()
+var appIconFn func(string) unsafe.Pointer
 
 func load() error {
 	once.Do(func() {
@@ -38,6 +39,7 @@ func load() error {
 			purego.RegisterLibFunc(&snapshotFn, library, "rs_wifi_snapshot")
 			purego.RegisterLibFunc(&freeFn, library, "rs_wifi_free")
 			purego.RegisterLibFunc(&authorizeFn, library, "rs_wifi_request_access")
+			purego.RegisterLibFunc(&appIconFn, library, "rs_app_icon")
 			return
 		}
 		loadErr = errors.New("找不到 Wi-Fi 辅助模块，请重新构建应用")
@@ -54,18 +56,25 @@ func Read() (Snapshot, error) {
 	if pointer == nil {
 		return Snapshot{}, errors.New("无法读取网络状态")
 	}
+	var value Snapshot
+	if err := decode(pointer, 65536, &value); err != nil {
+		return Snapshot{}, errors.New("网络状态响应过大")
+	}
+	return value, nil
+}
+
+// decode reads a JSON C string the native module allocated, then frees it.
+func decode(pointer unsafe.Pointer, limit int, value any) error {
 	defer freeFn(pointer)
 	data := []byte{}
-	for i := 0; i < 65536; i++ {
+	for i := 0; i < limit; i++ {
 		b := *(*byte)(unsafe.Add(pointer, i))
 		if b == 0 {
-			var value Snapshot
-			err := json.Unmarshal(data, &value)
-			return value, err
+			return json.Unmarshal(data, value)
 		}
 		data = append(data, b)
 	}
-	return Snapshot{}, errors.New("网络状态响应过大")
+	return errors.New("native response too large")
 }
 func RequestAccess() error {
 	if err := load(); err != nil {

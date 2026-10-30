@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "sh scripts/build-helper.sh && mygo dev",
+    "dev": "sh scripts/build-helper.sh && GOFLAGS=-tags=with_gvisor mygo dev",
     "build": "bun scripts/build-macos.ts",
+    "install:app": "bun scripts/install-macos.ts",
     "verify:bundle": "bun scripts/verify-bundle.ts",
     "generate": "mygo generate",
     "dev:web": "vite",

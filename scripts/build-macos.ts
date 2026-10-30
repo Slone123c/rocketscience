@@ -9,8 +9,11 @@ const requested=args.find(arg=>arg.startsWith("--arch="))?.slice(7);
 const native=process.arch==="arm64"?"arm64":"amd64";
 const target=requested||native;
 let stage:string|undefined;
+// TUN's default mixed stack and the gvisor stack need gVisor, which mihomo
+// only compiles in with this tag (its own releases set it too).
+const goFlags=[process.env.GOFLAGS,"-tags=with_gvisor"].filter(Boolean).join(" ");
 function run(command:string,arguments_:string[],cwd:string){
-  const result=spawnSync(command,arguments_,{cwd,stdio:"inherit",env:{...process.env,ROCKETSCIENCE_ARCH:target}});
+  const result=spawnSync(command,arguments_,{cwd,stdio:"inherit",env:{...process.env,ROCKETSCIENCE_ARCH:target,GOFLAGS:goFlags}});
   if(result.error)throw result.error;
   if(result.status!==0)throw new Error(`${command} 未完成构建（退出码 ${result.status}）`);
 }

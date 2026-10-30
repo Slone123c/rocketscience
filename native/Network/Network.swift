@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import CoreWLAN
 import CoreLocation
 import SystemConfiguration
@@ -49,3 +50,32 @@ public func wifiSnapshot() -> UnsafeMutablePointer<CChar>? {
 
 @_cdecl("rs_wifi_free")
 public func freeWiFiSnapshot(_ pointer: UnsafeMutablePointer<CChar>?) { free(pointer) }
+
+// The outermost .app around an executable, so helpers (Chrome's "Helper (Renderer).app") show their parent app.
+private func enclosingApp(_ path: String) -> String? {
+    var url = URL(fileURLWithPath: path)
+    var found: String?
+    while url.path != "/" {
+        if url.pathExtension == "app" { found = url.path }
+        url.deleteLastPathComponent()
+    }
+    return found
+}
+
+// Returns {"name","icon"} as JSON: the app's display name and a 64 px PNG data URI. Command-line tools return null.
+@_cdecl("rs_app_icon")
+public func appIcon(_ path: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+    guard let path, let app = enclosingApp(String(cString: path)) else { return nil }
+    let image = NSWorkspace.shared.icon(forFile: app)
+    let side = 64
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    image.draw(in: NSRect(x: 0, y: 0, width: side, height: side), from: .zero, operation: .copy, fraction: 1)
+    NSGraphicsContext.restoreGraphicsState()
+    guard let png = rep.representation(using: .png, properties: [:]) else { return nil }
+    let name = (FileManager.default.displayName(atPath: app) as NSString).deletingPathExtension
+    let value: [String: Any] = ["name": name, "icon": "data:image/png;base64," + png.base64EncodedString()]
+    guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return nil }
+    return strdup(json)
+}

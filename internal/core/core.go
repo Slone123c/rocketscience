@@ -19,6 +19,7 @@ import (
 	"github.com/metacubex/mihomo/listener"
 	"gopkg.in/yaml.v3"
 	"rocketscience/internal/systemproxy"
+	"rocketscience/internal/tunhelper"
 )
 
 // Service owns the mihomo process and coordinates network takeover.
@@ -70,6 +71,8 @@ type Service struct {
 	validateRuntime   func(context.Context, string, string) error
 	tunLaunch         func(string, string) (*tunLauncher, error)
 	tunReady          func(map[string]bool) bool
+	tunDevice         *tunDevice
+	openTun           func(context.Context, tunhelper.Request) (*tunDevice, error)
 	ownsProxy         bool
 	proxyWarning      string
 }
@@ -218,7 +221,7 @@ func (s *Service) applyRuntimeConfigLocked(data []byte) error {
 		configPath = filepath.Join(s.runtimeDir, "config.yaml")
 	}
 	skipTunListener := s.useTun && (s.tunLaunch != nil || s.tunReady != nil)
-	return applyMihomoEngineConfig(s.runtimeDir, configPath, data, true, false, "", skipTunListener)
+	return applyMihomoEngineConfig(s.runtimeDir, configPath, data, true, false, "", skipTunListener, s.attachTunLocked(context.Background()))
 }
 
 // reloadIfRunning applies a validated profile without changing control credentials or takeover settings.
@@ -506,14 +509,19 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	}
 	s.publishStartup("启动 mihomo", mixedPort)
 	skipTunListener := isTun && (s.tunLaunch != nil || s.tunReady != nil)
-	if err = applyMihomoEngineConfig(dir, configPath, data, true, true, s.controllerAddress, skipTunListener); err != nil {
+	if isTun && !skipTunListener {
+		s.publishStartup("等待虚拟网卡授权", mixedPort)
+	}
+	if err = applyMihomoEngineConfig(dir, configPath, data, true, true, s.controllerAddress, skipTunListener, s.attachTunLocked(startCtx)); err != nil {
 		stopMihomoEngine(s.controllerAddress)
+		s.closeTunDeviceLocked()
 		_ = s.geo.removeSession(dir)
 		os.RemoveAll(dir)
 		return err
 	}
 	if startCtx.Err() != nil {
 		stopMihomoEngine(s.controllerAddress)
+		s.closeTunDeviceLocked()
 		_ = s.geo.removeSession(dir)
 		os.RemoveAll(dir)
 		return errors.New("内核启动已取消")
@@ -534,6 +542,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	s.lastError = ""
 	finishFailedStart := func() error {
 		stopMihomoEngine(s.controllerAddress)
+		s.closeTunDeviceLocked()
 		s.cmd = nil
 		s.tunProcess = nil
 		_ = s.geo.removeSession(dir)
@@ -604,6 +613,7 @@ func (s *Service) handleUnexpectedExit(cause error) {
 	stopMihomoEngine(controllerAddr)
 
 	s.mu.Lock()
+	s.closeTunDeviceLocked()
 	if dirty {
 		s.geoWarning = "GEO 更新未完成，先前数据库已保留；临时文件位于 " + dir
 	} else if cacheErr := s.geo.save(dir); cacheErr != nil {
@@ -663,6 +673,7 @@ func (s *Service) stopLocked() error {
 	stopMihomoEngine(controllerAddr)
 
 	s.mu.Lock()
+	s.closeTunDeviceLocked()
 	s.cmd = nil
 	s.tunProcess = nil
 	s.stopping = false

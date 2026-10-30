@@ -65,23 +65,24 @@ export function exitName(name:string):string {
 }
 
 /**
- * Where a group sends traffic, split so the final node can carry its flag:
- * `via` names how it gets there ("跟随主出口 → 自动选择 →"), `leaf` the node.
+ * Where a group sends traffic: `label` says what the readout means ("当前节点",
+ * "跟随主出口"), `via` names the groups passed on the way ("自动选择 →"), and
+ * `leaf` the final node, so it can carry its flag. A stopped main exit still reads
+ * 当前节点: the node in use now is the one the next start uses.
  */
-export function routeLabel(route:GroupRoute,main:GroupRoute|null,running:boolean):{via:string;leaf:string} {
+export function routeLabel(route:GroupRoute,main:GroupRoute|null,running:boolean):{label:string;via:string;leaf:string} {
   const {group,leaf,follows,path}=route;
   const shared=group.type==="LoadBalance"||group.type==="Relay";
-  if(shared)return {via:"",leaf:"按策略分配"};
+  if(shared)return {label:"出站",via:"",leaf:"按策略分配"};
   const auto=group.type==="URLTest"||group.type==="Fallback";
-  if(!group.now)return {via:"",leaf:auto?"启动后自动选择":"启动后显示去向"};
+  if(!group.now)return {label:auto?"自动选中":"当前节点",via:"",leaf:auto?"启动后自动选择":"启动后显示去向"};
   const isMain=route===main;
-  if(terminal(leaf))return {via:isMain&&!running?"下次启动：":"",leaf:exitName(leaf)};
+  const label=isMain?(running&&auto?"自动选中":"当前节点"):follows?"跟随主出口":auto?"自动选中":"单独指定";
+  if(terminal(leaf))return {label,via:"",leaf:exitName(leaf)};
   // The path stops at an automatic group that has not tested yet (stopped preview).
   const pending=!leaf&&path.length>0?path[path.length-1]:"";
-  const via=(pending?path:path.slice(0,-1)).filter(name=>isMain||name!==main?.group.name).map(exitName);
-  const prefix=isMain?(running?(auto?"自动选中：":"当前选择："):"下次启动："):follows?"跟随主出口":auto?"自动":"单独指定";
-  const steps=isMain?via:[prefix,...via];
-  return {via:isMain?prefix+steps.map(name=>name+" →").join(" "):steps.join(" → ")+" →",leaf:leaf?exitName(leaf):pending?"启动后自动选择":"待定"};
+  const via=(pending?path:path.slice(0,-1)).filter(name=>name!==main?.group.name).map(exitName);
+  return {label,via:via.map(name=>name+" →").join(" "),leaf:leaf?exitName(leaf):pending?"启动后自动选择":"待定"};
 }
 
 /** Why the group matters: rule count, MATCH fallback, or the groups that contain it. */

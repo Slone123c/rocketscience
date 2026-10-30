@@ -60,7 +60,9 @@ try {
   requireCondition(icon.length>8&&icon.toString("ascii",0,4)==="icns"&&icon.readUInt32BE(4)===icon.length,"应用图标资源无效");
   const main=join(contents,"MacOS",plist.CFBundleExecutable);
   const nativeArch=target==="arm64"?"arm64":"x86_64";
-  const binaries=[main,...["rs-system-proxy","libRocketNetwork.dylib"].map(name=>join(resources,"bin",name))];
+  // TUN's default mixed stack fails at runtime without gVisor (see build-macos.ts).
+  requireCondition(/-tags=\S*with_gvisor/.test(run("go",["version","-m",main])),"主程序未包含 gVisor，TUN 默认网络栈将无法启动");
+  const binaries=[main,...["rs-system-proxy","rs-tun-helper","libRocketNetwork.dylib"].map(name=>join(resources,"bin",name))];
   for(const file of binaries) {
     requireCondition(existsSync(file)&&statSync(file).isFile(),`应用缺少文件：${file}`);
     requireCondition((statSync(file).mode&0o111)!==0,`文件不可执行：${file}`);
@@ -75,7 +77,7 @@ try {
   }
   const library=join(resources,"bin","libRocketNetwork.dylib");
   const symbols=run("nm",["-gU",library]);
-  for(const symbol of ["rs_wifi_snapshot","rs_wifi_free","rs_wifi_request_access"])
+  for(const symbol of ["rs_wifi_snapshot","rs_wifi_free","rs_wifi_request_access","rs_app_icon"])
     requireCondition(new RegExp(`\\b_${symbol}\\b`).test(symbols),`网络模块缺少接口：${symbol}`);
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
   const license=join(resources,"licenses","mihomo-GPL-3.0.txt");

@@ -7,9 +7,13 @@ require (
 	github.com/egoist/mygo v0.7.1
 	github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
 	github.com/metacubex/mihomo v1.19.33
+	github.com/metacubex/sing-tun v0.4.28
 	golang.org/x/net v0.59.0
+	golang.org/x/sys v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/metacubex/sing-tun => ./third_party/sing-tun
 
 require (
 	github.com/RyuaNerin/go-krypto v1.3.0 // indirect
@@ -86,7 +90,6 @@ require (
 	github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a // indirect
 	github.com/metacubex/sing-shadowsocks v0.2.13 // indirect
 	github.com/metacubex/sing-shadowsocks2 v0.2.8 // indirect
-	github.com/metacubex/sing-tun v0.4.28 // indirect
 	github.com/metacubex/sing-vmess v0.2.5 // indirect
 	github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 // indirect
 	github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 // indirect
@@ -137,7 +140,6 @@ require (
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.10.0 // indirect

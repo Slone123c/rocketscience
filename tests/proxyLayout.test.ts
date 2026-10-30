@@ -25,14 +25,14 @@ test("rule mode picks the most-used group that reaches a node and hides GLOBAL",
 
 test("branch summaries say whether a group follows the main exit or was set on its own",()=>{
   const {main,branches}=proxyLayout(groups,"rule");
-  const text=(route:Parameters<typeof routeLabel>[0])=>{const {via,leaf}=routeLabel(route,main,true);return via?`${via} ${leaf}`:leaf};
+  const text=(route:Parameters<typeof routeLabel>[0])=>{const {label,via,leaf}=routeLabel(route,main,true);return [label,via,leaf].filter(Boolean).join(" ")};
   const summary=Object.fromEntries(branches.map(route=>[route.group.name,text(route)]));
-  expect(text(main!)).toBe("当前选择：自动选择 → 日本 01");
-  expect(summary["国外媒体"]).toBe("跟随主出口 → 自动选择 → 日本 01");
-  expect(summary["电报消息"]).toBe("单独指定 → 香港 01");
-  expect(summary["国内服务"]).toBe("直连");
-  expect(summary["广告拦截"]).toBe("拒绝");
-  expect(summary["自动选择"]).toBe("自动 → 日本 01");
+  expect(text(main!)).toBe("当前节点 自动选择 → 日本 01");
+  expect(summary["国外媒体"]).toBe("跟随主出口 自动选择 → 日本 01");
+  expect(summary["电报消息"]).toBe("单独指定 香港 01");
+  expect(summary["国内服务"]).toBe("单独指定 直连");
+  expect(summary["广告拦截"]).toBe("单独指定 拒绝");
+  expect(summary["自动选择"]).toBe("自动选中 日本 01");
   const meta=Object.fromEntries(branches.map(route=>[route.group.name,branchMeta(route)]));
   expect(meta["漏网之鱼"]).toBe("1 条规则 · 兜底");
   expect(meta["自动选择"]).toBe("被 节点选择 引用");
@@ -45,16 +45,16 @@ test("global mode exits through GLOBAL",()=>{
   expect(branches.some(route=>route.group.name==="GLOBAL")).toBe(false);
 });
 
-test("the stopped preview picks the main exit by rule counts and order, and shows what the next start uses",()=>{
+test("the stopped preview picks the main exit by rule counts and order, and names it 当前节点",()=>{
   const preview=groups.filter(g=>g.name!=="GLOBAL").map(g=>({...g,now:""}));
   const {main,branches}=proxyLayout(preview,"rule");
   expect(main?.group.name).toBe("节点选择");expect(main?.leaf).toBe("");
-  expect(routeLabel(branches[0],main,false)).toEqual({via:"",leaf:"启动后自动选择"});
+  expect(routeLabel(branches[0],main,false)).toEqual({label:"自动选中",via:"",leaf:"启动后自动选择"});
   // Selectors show their next-start choice; a path into an untested automatic group stays open.
   const next=proxyLayout(groups.filter(g=>g.name!=="GLOBAL").map(g=>g.type==="URLTest"?{...g,now:""}:g),"rule");
-  expect(routeLabel(next.main!,next.main,false)).toEqual({via:"下次启动：自动选择 →",leaf:"启动后自动选择"});
+  expect(routeLabel(next.main!,next.main,false)).toEqual({label:"当前节点",via:"自动选择 →",leaf:"启动后自动选择"});
   const telegram=next.branches.find(route=>route.group.name==="电报消息")!;
-  expect(routeLabel(telegram,next.main,false)).toEqual({via:"单独指定 →",leaf:"香港 01"});
+  expect(routeLabel(telegram,next.main,false)).toEqual({label:"单独指定",via:"",leaf:"香港 01"});
   const unranked=proxyLayout(preview.map(g=>({...g,rules:0})),"rule");
   expect(unranked.main?.group.name).toBe("节点选择");
 });

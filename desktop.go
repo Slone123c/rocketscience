@@ -37,6 +37,8 @@ type Desktop struct {
 	trayStop       chan struct{}
 	trayWake       chan struct{}
 	trayIcon       []byte
+	appsMu         sync.Mutex
+	apps           map[string]*App
 }
 type DesktopState struct {
 	QuitError    string `json:"quitError"`

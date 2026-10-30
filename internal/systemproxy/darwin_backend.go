@@ -3,15 +3,18 @@
 package systemproxy
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -32,8 +35,16 @@ func clearQuarantineAttr(path string) {
 	_, _, _ = syscall.Syscall(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(attr)), 0)
 }
 
-// DarwinBackend talks to the signed SystemConfiguration helper over standard input.
-type DarwinBackend struct{ Helper string }
+// DarwinBackend talks to the signed SystemConfiguration helper. Writes share
+// one helper process so the password granted on start also covers restore.
+type DarwinBackend struct {
+	Helper string
+
+	mu      sync.Mutex
+	session *exec.Cmd
+	stdin   io.WriteCloser
+	replies *bufio.Scanner
+}
 
 func (b DarwinBackend) helper() (string, error) {
 	if b.Helper != "" {
@@ -92,20 +103,67 @@ func (b DarwinBackend) Snapshot() ([]Service, error) {
 	}
 	return filtered, nil
 }
-func (b DarwinBackend) CompareAndSwap(changes []Change) ([]string, error) {
+func (b *DarwinBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	in, err := json.Marshal(changes)
 	if err != nil {
 		return nil, err
 	}
-	out, err := b.run("cas", in)
-	if err != nil {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if err := b.ensureSession(); err != nil {
 		return nil, err
+	}
+	if _, err := io.WriteString(b.stdin, string(in)+"\n"); err != nil {
+		b.closeSession()
+		return nil, fmt.Errorf("系统代理操作失败：%w", err)
+	}
+	if !b.replies.Scan() {
+		b.closeSession()
+		return nil, errors.New("系统代理操作失败：辅助程序已退出")
 	}
 	var result struct {
 		Conflicts []string `json:"conflicts"`
 	}
-	if err = json.Unmarshal(out, &result); err != nil {
+	if err = json.Unmarshal(b.replies.Bytes(), &result); err != nil {
 		return nil, fmt.Errorf("系统代理返回数据无效：%w", err)
 	}
 	return result.Conflicts, nil
+}
+
+// ensureSession starts the helper on the first write and keeps the
+// authorization it obtained. Called with mu held.
+func (b *DarwinBackend) ensureSession() error {
+	if b.session != nil && b.session.ProcessState == nil {
+		return nil
+	}
+	helper, err := b.helper()
+	if err != nil {
+		return err
+	}
+	clearQuarantineAttr(helper)
+	cmd := exec.Command(helper, "cas")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("系统代理操作失败：%w", err)
+	}
+	b.session, b.stdin, b.replies = cmd, stdin, bufio.NewScanner(stdout)
+	return nil
+}
+
+func (b *DarwinBackend) closeSession() {
+	if b.stdin != nil {
+		_ = b.stdin.Close()
+	}
+	if b.session != nil && b.session.Process != nil {
+		_ = b.session.Wait()
+	}
+	b.session, b.stdin, b.replies = nil, nil, nil
 }
