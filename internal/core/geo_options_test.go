@@ -1,13 +1,10 @@
 package core
 
 import (
-	"net"
-	"net/http"
-	"net/http/httptest"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -95,22 +92,18 @@ func TestGeoManualUpdateAndFailure(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(runtime) })
 	cache := geoCache{dir: t.TempDir()}
-	status := http.StatusNoContent
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/configs/geo" || r.Method != "POST" || r.Header.Get("Authorization") != "Bearer token" {
-			w.WriteHeader(400)
-			return
-		}
-		_ = os.WriteFile(filepath.Join(runtime, "geoip.metadb"), []byte("new"), 0600)
-		w.WriteHeader(status)
-		if status >= 400 {
-			_, _ = w.Write([]byte(`{"message":"database download blocked"}`))
-		}
-	}))
-	defer server.Close()
-	_, raw, _ := net.SplitHostPort(server.Listener.Addr().String())
-	port, _ := strconv.Atoi(raw)
-	s := &Service{cmd: &exec.Cmd{}, port: port, secret: "token", runtimeDir: runtime}
+	failUpdate := false
+	s := &Service{
+		cmd:        &exec.Cmd{},
+		runtimeDir: runtime,
+		updateGeo: func() error {
+			_ = os.WriteFile(filepath.Join(runtime, "geoip.metadb"), []byte("new"), 0600)
+			if failUpdate {
+				return errors.New("database download blocked")
+			}
+			return nil
+		},
+	}
 	s.geo.dir = cache.dir
 	s.geoSession = geoSession{Version: 1, Runtime: runtime, PID: os.Getpid()}
 	if err := s.geo.writeSession(s.geoSession); err != nil {
@@ -123,7 +116,7 @@ func TestGeoManualUpdateAndFailure(t *testing.T) {
 	if err != nil || string(b) != "new" {
 		t.Fatalf("updated cache: %s %v", b, err)
 	}
-	status = 500
+	failUpdate = true
 	if err = s.UpdateGeo(); err == nil || !s.geoDirtyFailed {
 		t.Fatal("failed update not recorded")
 	}
@@ -136,9 +129,7 @@ func TestGeoManualUpdateAndFailure(t *testing.T) {
 	}
 }
 func TestGeoFilesSurviveCoreStopAndRestart(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	s.geo.dir = t.TempDir()
 	defer s.Shutdown()
@@ -168,9 +159,7 @@ func TestGeoFilesSurviveCoreStopAndRestart(t *testing.T) {
 	if err != nil || string(b) != "test data" {
 		t.Fatalf("restart: %s %v", b, err)
 	}
-	if err := s.cmd.Process.Kill(); err != nil {
-		t.Fatal(err)
-	}
+	s.handleUnexpectedExit(errors.New("simulated crash"))
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) && s.Status().Running {
 		time.Sleep(25 * time.Millisecond)

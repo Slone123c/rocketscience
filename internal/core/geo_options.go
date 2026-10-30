@@ -1,11 +1,8 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -62,8 +59,11 @@ func (s *Service) UpdateGeo() error {
 		s.mu.Unlock()
 		return errors.New("请先启动内核")
 	}
-	authority, secret, dir, session := s.controllerAuthority(), s.secret, s.runtimeDir, s.geoSession
+	dir, session, updateFn := s.runtimeDir, s.geoSession, s.updateGeo
 	s.mu.Unlock()
+	if updateFn == nil {
+		updateFn = updateInProcessGeoDatabases
+	}
 	session.Dirty = true
 	if err := s.geo.writeSession(session); err != nil {
 		return fmt.Errorf("无法记录 GEO 更新，未开始下载：%w", err)
@@ -72,33 +72,12 @@ func (s *Service) UpdateGeo() error {
 	s.geoSession = session
 	s.geoDirtyFailed = true
 	s.mu.Unlock()
-	req, err := http.NewRequest(http.MethodPost, "http://"+authority+"/configs/geo", nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+secret)
-	response, err := (&http.Client{Timeout: 3 * time.Minute}).Do(req)
-	if err != nil {
+	if err := updateFn(); err != nil {
 		s.mu.Lock()
 		s.geoDirtyFailed = true
 		s.mu.Unlock()
-		return fmt.Errorf("GEO 更新未完成：%w", err)
+		return fmt.Errorf("GEO 更新失败：%w", err)
 	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		var problem struct {
-			Message string `json:"message"`
-		}
-		_ = json.NewDecoder(io.LimitReader(response.Body, 64*1024)).Decode(&problem)
-		response.Body.Close()
-		s.mu.Lock()
-		s.geoDirtyFailed = true
-		s.mu.Unlock()
-		if problem.Message != "" {
-			return fmt.Errorf("GEO 更新失败：%s（%s）", problem.Message, response.Status)
-		}
-		return fmt.Errorf("GEO 更新失败：内核返回 %s", response.Status)
-	}
-	response.Body.Close()
 	// A TUN supervisor may need one heartbeat to return file ownership.
 	var saveErr error
 	for attempt := 0; attempt < 4; attempt++ {

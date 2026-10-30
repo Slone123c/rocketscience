@@ -1,11 +1,10 @@
 package core
 
 import (
-	"net/http"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/metacubex/mihomo/hub/executor"
 	"gopkg.in/yaml.v3"
 )
 
@@ -47,9 +46,7 @@ func TestCoreOptionsPersistenceAndValidation(t *testing.T) {
 	}
 }
 func TestCoreOptionsRunningApplyAndReload(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := newTestService(t)
 	defer s.Shutdown()
 	p := NewProfilesWithService(t.TempDir(), s)
@@ -64,14 +61,9 @@ func TestCoreOptionsRunningApplyAndReload(t *testing.T) {
 		t.Helper()
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		var got struct {
-			LogLevel string `json:"log-level"`
-			IPv6     bool   `json:"ipv6"`
-			TCP      bool   `json:"tcp-concurrent"`
-			Unified  bool   `json:"unified-delay"`
-		}
-		if err := s.get("/configs", &got); err != nil || got.LogLevel != "warning" || got.IPv6 || !got.TCP || !got.Unified {
-			t.Fatalf("effective settings: %+v %v", got, err)
+		gen := executor.GetGeneral()
+		if gen.LogLevel.String() != "warning" || gen.IPv6 || !gen.TCPConcurrent || !gen.UnifiedDelay {
+			t.Fatalf("effective settings: %+v", gen)
 		}
 	}
 	check()
@@ -93,42 +85,35 @@ func TestCoreOptionsRunningApplyAndReload(t *testing.T) {
 }
 
 func TestNoOpSaveDoesNotReloadCore(t *testing.T) {
-	puts := 0
-	s := metadataService(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == "GET" && r.URL.Path == "/configs":
-			_, _ = w.Write([]byte(`{"mode":"rule"}`))
-		case r.Method == "GET" && r.URL.Path == "/proxies":
-			_, _ = w.Write([]byte(`{"proxies":{}}`))
-		case r.Method == "PUT" && r.URL.Path == "/configs":
-			puts++
-			w.WriteHeader(204)
-		}
-	})
-	s.currentContent = "rules:\n  - MATCH,DIRECT\n"
-	s.mixedPort = 7890
-	s.secret = "s"
-	s.coreOptions = CoreOptions{LogLevel: ptr("warning")}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
+	s := newTestService(t)
+	defer s.Shutdown()
+	if err := s.Start(direct, freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := s.applyCoreOptions(CoreOptions{LogLevel: ptr("warning")}); err != nil || !ok {
+		t.Fatalf("applyCoreOptions initial: %v %v", ok, err)
+	}
+	// Make runtimeDir unsearchable so any actual applyRuntimeConfigLocked write would fail,
+	// proving that no-op applyCoreOptions / reloadIfRunning / commitConfiguration skip reloading.
+	s.mu.Lock()
+	realDir := s.runtimeDir
+	s.runtimeDir = t.TempDir() + "/missing/sub"
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		s.runtimeDir = realDir
+		s.mu.Unlock()
+	}()
 
 	if ok, err := s.applyCoreOptions(CoreOptions{LogLevel: ptr("warning")}); err != nil || !ok {
 		t.Fatalf("applyCoreOptions: %v %v", ok, err)
 	}
-	if puts != 0 {
-		t.Fatalf("no-op applyCoreOptions triggered %d PUT /configs?force=true calls", puts)
-	}
-
 	if ok, err := s.reloadIfRunning(s.currentContent); err != nil || !ok {
 		t.Fatalf("reloadIfRunning: %v %v", ok, err)
 	}
-	if puts != 0 {
-		t.Fatalf("no-op reloadIfRunning triggered %d PUT /configs?force=true calls", puts)
-	}
-
 	if err := s.commitConfiguration(s.currentContent, func() error { return nil }); err != nil {
 		t.Fatalf("commitConfiguration: %v", err)
-	}
-	if puts != 0 {
-		t.Fatalf("no-op commitConfiguration triggered %d PUT /configs?force=true calls", puts)
 	}
 }
 

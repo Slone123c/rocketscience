@@ -36,9 +36,7 @@ func newTestService(t *testing.T) *Service {
 	return s
 }
 func TestCoreLifecycle(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	p := freePort(t)
@@ -75,9 +73,7 @@ func TestCoreLifecycle(t *testing.T) {
 	}
 }
 func TestRejectInvalidConfigAndPort(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	if err := s.Start(direct, 0); err == nil {
@@ -101,9 +97,7 @@ func TestRejectInvalidConfigAndPort(t *testing.T) {
 }
 
 func TestEarlyCoreExitSurfacesLogTailAndCleanLookPath(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	s.tunLaunch = func(_ string, dir string) (*tunLauncher, error) {
@@ -131,9 +125,7 @@ func TestEarlyCoreExitSurfacesLogTailAndCleanLookPath(t *testing.T) {
 }
 
 func TestStopCancelsInFlightStartImmediately(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	launched := make(chan struct{})

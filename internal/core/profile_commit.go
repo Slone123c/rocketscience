@@ -18,29 +18,22 @@ func (s *Service) commitConfiguration(content string, persist func() error) erro
 	if s.stopping {
 		return errors.New("内核正在停止，请稍后保存或切换配置")
 	}
-	var current struct {
-		Mode string `json:"mode"`
-	}
-	var groups struct {
-		Proxies map[string]Proxy `json:"proxies"`
-	}
-	if err := s.get("/configs", &current); err != nil {
-		return err
-	}
-	if err := s.get("/proxies", &groups); err != nil {
+	mode := currentInProcessMode()
+	proxies, err := inProcessProxiesMap()
+	if err != nil {
 		return err
 	}
 	selected := map[string]string{}
-	for name, group := range groups.Proxies {
+	for name, group := range proxies {
 		if group.Type == "Selector" && group.Now != "" {
 			selected[name] = group.Now
 		}
 	}
-	next, err := runtimeConfigWithOptions(content, s.mixedPort, s.port, s.secret, current.Mode, s.lan, s.useTun, s.coreOptions)
+	next, err := runtimeConfigWithOptions(content, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, s.coreOptions)
 	if err != nil {
 		return err
 	}
-	previous, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, current.Mode, s.lan, s.useTun, s.coreOptions)
+	previous, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, s.coreOptions)
 	if err != nil {
 		return err
 	}
@@ -55,7 +48,7 @@ func (s *Service) commitConfiguration(content string, persist func() error) erro
 		if err := s.markGeoAuto(payload); err != nil {
 			return err
 		}
-		return s.request("PUT", "/configs?force=true", map[string]string{"payload": string(payload)})
+		return s.applyRuntimeConfigLocked(payload)
 	}
 	rollback := func(cause error) error {
 		if err := apply(previous); err != nil {
@@ -72,15 +65,13 @@ func (s *Service) commitConfiguration(content string, persist func() error) erro
 		return rollback(err)
 	}
 	// Keep choices only when both the group and its selected node still exist.
-	var available struct {
-		Proxies map[string]Proxy `json:"proxies"`
-	}
-	if err := s.get("/proxies", &available); err != nil {
+	available, err := inProcessProxiesMap()
+	if err != nil {
 		return rollback(err)
 	}
 	retained := map[string]string{}
 	for name, node := range selected {
-		group := available.Proxies[name]
+		group := available[name]
 		if group.Type != "Selector" {
 			continue
 		}

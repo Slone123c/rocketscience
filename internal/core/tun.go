@@ -25,13 +25,7 @@ func (s *Service) SetTun(enabled bool) error {
 	previous := s.useTun
 	systemProxy := s.useSystemProxy
 	content, port, bypass, lan, options := s.currentContent, s.mixedPort, cloneBypass(s.proxyBypass), s.lan, s.coreOptions
-	var cfg struct {
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &cfg); err != nil {
-		s.mu.Unlock()
-		return fmt.Errorf("读取内核状态失败：%w", err)
-	}
+	mode := currentInProcessMode()
 	s.mu.Unlock()
 	document, err := unmarshalConfigMap([]byte(content))
 	if err != nil {
@@ -40,8 +34,8 @@ func (s *Service) SetTun(enabled bool) error {
 	if document == nil {
 		return errors.New("配置不能为空")
 	}
-	if cfg.Mode != "" {
-		document["mode"] = cfg.Mode
+	if mode != "" {
+		document["mode"] = mode
 	}
 	updated, err := yaml.Marshal(document)
 	if err != nil {

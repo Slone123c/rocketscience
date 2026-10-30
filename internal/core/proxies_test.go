@@ -4,16 +4,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 )
 
 func TestProxySelectionAndMode(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	config := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: 选择\n    type: select\n    proxies: [DIRECT, REJECT]\n  - name: 广告\n    type: select\n    proxies: [REJECT, DIRECT]\nrules:\n  - DOMAIN,ads.example,广告\n  - DOMAIN,a.example,选择\n  - MATCH,选择\n"
@@ -55,9 +53,7 @@ func TestProxySelectionAndMode(t *testing.T) {
 }
 
 func TestSelectAndSetModeCloseStaleConnections(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	port := freePort(t)

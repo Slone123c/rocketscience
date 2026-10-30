@@ -1,7 +1,6 @@
 package core
 
 import (
-	"os"
 	"reflect"
 	"testing"
 )
@@ -38,9 +37,7 @@ func TestProxyBypassPersistenceAndValidation(t *testing.T) {
 	}
 }
 func TestProxyBypassFlowsIntoCoreTakeover(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	proxy := &fakeProxy{}
 	s := New()
 	s.proxy = proxy

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -79,9 +78,7 @@ func TestLANSettingsAndRuntimeConfig(t *testing.T) {
 }
 
 func TestLANSharingRealCore(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := NewProfiles(t.TempDir())
 	interfaces, err := p.LANInterfaces()
 	if err != nil || len(interfaces) == 0 {

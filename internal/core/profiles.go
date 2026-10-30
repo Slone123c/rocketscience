@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -181,10 +180,6 @@ func validateProfile(content string) error {
 			return err
 		}
 	}
-	bin := corePath()
-	if bin == "" {
-		return errors.New("未找到 mihomo，无法校验配置")
-	}
 	dir, err := os.MkdirTemp("", "rocket-validate-")
 	if err != nil {
 		return err
@@ -194,14 +189,8 @@ func validateProfile(content string) error {
 	if err = os.WriteFile(path, []byte(content), 0600); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, bin, "-t", "-d", dir, "-f", path).CombinedOutput()
-	if ctx.Err() != nil {
-		return errors.New("mihomo 校验超时")
-	}
-	if err != nil {
-		return fmt.Errorf("mihomo：%s", strings.TrimSpace(string(out)))
+	if err := parseConfigInDir(dir, path, []byte(content)); err != nil {
+		return fmt.Errorf("mihomo：%v", err)
 	}
 	return nil
 }

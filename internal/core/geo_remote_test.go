@@ -40,9 +40,10 @@ func TestGeoRemoteDATDownloadAndOfflineReuse(t *testing.T) { verifyGeoRemote(t, 
 
 func verifyGeoRemote(t *testing.T, dataMode bool) {
 	t.Helper()
-	if os.Getenv("ROCKETSCIENCE_VERIFY_REMOTE_GEO") != "1" || os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("opt in with ROCKETSCIENCE_VERIFY_REMOTE_GEO=1 and ROCKETSCIENCE_MIHOMO")
+	if os.Getenv("ROCKETSCIENCE_VERIFY_REMOTE_GEO") != "1" {
+		t.Skip("opt in with ROCKETSCIENCE_VERIFY_REMOTE_GEO=1")
 	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	s.geo.dir = t.TempDir()
 	defer s.Shutdown()

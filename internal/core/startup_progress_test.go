@@ -3,7 +3,7 @@
 package core
 
 import (
-	"os"
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,27 +11,21 @@ import (
 )
 
 func TestStartupValidationReportsProgressAndCanBeCancelled(t *testing.T) {
-	dir := t.TempDir()
-	marker := filepath.Join(dir, "validating")
-	bin := filepath.Join(dir, "slow-core")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nif [ \"$1\" = \"-t\" ]; then printf ready > \"$RS_TEST_START_MARKER\"; exec sleep 30; fi\nexit 1\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("RS_TEST_START_MARKER", marker)
-	t.Setenv("ROCKETSCIENCE_MIHOMO", bin)
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
+	validating := make(chan struct{})
+	s.validateRuntime = func(ctx context.Context, dir, path string) error {
+		close(validating)
+		<-ctx.Done()
+		return ctx.Err()
+	}
 	done := make(chan error, 1)
 	go func() { done <- s.Start(direct, freePort(t)) }()
 	defer s.Shutdown()
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		if _, err := os.Stat(marker); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("validation did not begin")
-		}
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case <-validating:
+	case <-time.After(3 * time.Second):
+		t.Fatal("validation did not begin")
 	}
 	status := make(chan Status, 1)
 	go func() { status <- s.Status() }()

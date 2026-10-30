@@ -4,16 +4,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 )
 
 func TestConnectionsAndRules(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	port := freePort(t)
@@ -58,9 +56,7 @@ func TestConnectionsAndRules(t *testing.T) {
 }
 
 func TestCloseAllConnections(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	if err := s.CloseAllConnections(); err == nil {

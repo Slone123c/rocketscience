@@ -1,7 +1,6 @@
 package core
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -37,9 +36,7 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 	}
 }
 func TestStartupAutomaticConnectAndRecoveryGuard(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
 	proxy := &fakeProxy{}
 	s.proxy = proxy

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -42,9 +41,7 @@ func TestInboundOptionsValidationAndPersistence(t *testing.T) {
 	}
 }
 func TestInboundOptionsRealCoreListenersAndAuthentication(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := newTestService(t)
 	s.geo.dir = t.TempDir()
 	defer s.Shutdown()

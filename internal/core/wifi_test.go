@@ -2,7 +2,7 @@ package core
 
 import (
 	"errors"
-	"os"
+	"path/filepath"
 	"rocketscience/internal/network"
 	"testing"
 	"time"
@@ -128,9 +128,7 @@ func TestWiFiAlreadyDirectAndPreferences(t *testing.T) {
 	}
 }
 func TestWiFiPolicyRealCoreModes(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	s.geo.dir = t.TempDir()
 	defer s.Shutdown()

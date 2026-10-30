@@ -60,7 +60,7 @@ try {
   requireCondition(icon.length>8&&icon.toString("ascii",0,4)==="icns"&&icon.readUInt32BE(4)===icon.length,"应用图标资源无效");
   const main=join(contents,"MacOS",plist.CFBundleExecutable);
   const nativeArch=target==="arm64"?"arm64":"x86_64";
-  const binaries=[main,...["mihomo","rs-system-proxy","rs-tun-supervisor","libRocketNetwork.dylib"].map(name=>join(resources,"bin",name))];
+  const binaries=[main,...["rs-system-proxy","libRocketNetwork.dylib"].map(name=>join(resources,"bin",name))];
   for(const file of binaries) {
     requireCondition(existsSync(file)&&statSync(file).isFile(),`应用缺少文件：${file}`);
     requireCondition((statSync(file).mode&0o111)!==0,`文件不可执行：${file}`);
@@ -80,22 +80,6 @@ try {
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
   const license=join(resources,"licenses","mihomo-GPL-3.0.txt");
   requireCondition(existsSync(license)&&readFileSync(license,"utf8").includes("GNU GENERAL PUBLIC LICENSE"),"缺少 mihomo 许可证");
-  const archivePath=`.cache/mihomo/mihomo-darwin-${target}-v1.19.33.gz`;
-  requireCondition(existsSync(archivePath),"缺少固定版本内核的下载缓存，请先运行对应架构的构建");
-  const archive=readFileSync(archivePath);
-  const expected=target==="arm64"?"060b64b0f2c9a310831db0fe4adb2878de67bfa606c311813c1f13966aa504b6":"551ae54ef8d77a5e21f7a8185a59b441fb13a0fb0514fcdef5ca2816f6f50015";
-  requireCondition(createHash("sha256").update(archive).digest("hex")===expected,"mihomo 原始下载包校验失败");
-  const comparison=mkdtempSync(join(tmpdir(),"rocketscience-core-verify-"));
-  try{
-    const original=join(comparison,"original"),bundled=join(comparison,"bundled");
-    writeFileSync(original,gunzipSync(archive));cpSync(join(resources,"bin","mihomo"),bundled);
-    run("codesign",["--remove-signature",original]);run("codesign",["--remove-signature",bundled]);
-    requireCondition(unsignedCodeHash(original)===unsignedCodeHash(bundled),"应用内 mihomo 与固定下载包的程序内容不一致");
-  }finally{rmSync(comparison,{recursive:true,force:true})}
-  if(target===(process.arch==="arm64"?"arm64":"amd64")){
-    const coreVersion=run(join(resources,"bin","mihomo"),["-v"]);
-    requireCondition(coreVersion.startsWith("Mihomo ")&&coreVersion.includes("v1.19.33"),"应用内 mihomo 版本与固定版本不一致");
-  }
   run("codesign",["--verify","--deep","--strict",app]);
   const dmg=join(app,"..",`rocketscience-${plist.CFBundleShortVersionString}-${target==="arm64"?"arm64":"amd64"}.dmg`);
   requireCondition(existsSync(dmg),"缺少 DMG 安装镜像");

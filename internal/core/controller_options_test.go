@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -40,9 +40,7 @@ func TestControllerOptionsValidationAndPersistence(t *testing.T) {
 	}
 }
 func TestControllerOptionsRealCoreReconnection(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	hosts := []string{"127.0.0.1"}
 	interfaces, err := (&Profiles{}).LANInterfaces()
 	if err == nil && len(interfaces) > 0 {

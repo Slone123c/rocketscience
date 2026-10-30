@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"os"
 	"rocketscience/internal/systemproxy"
 	"testing"
 	"time"
@@ -33,9 +32,7 @@ func (p *fakeProxy) Restore() ([]string, error) {
 }
 func (p *fakeProxy) Pending() (bool, error) { return p.pending, nil }
 func TestTakeoverRestoresBeforeCoreStops(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
 	s := New()
 	s.proxy = p
@@ -83,9 +80,7 @@ func TestStartRequiresTakeover(t *testing.T) {
 }
 
 func TestDisablingLastTakeoverStopsCore(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
 	s := New()
 	s.proxy = p
@@ -112,9 +107,7 @@ func TestDisablingLastTakeoverStopsCore(t *testing.T) {
 	}
 }
 func TestFailureToApplyRollsBack(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{applyErr: errors.Join(systemproxy.ErrRecoveryNeeded, errors.New("permission denied"))}
 	s := New()
 	s.proxy = p
@@ -131,9 +124,7 @@ func TestFailureToApplyRollsBack(t *testing.T) {
 }
 
 func TestCrashRestoresTakeover(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
 	s := New()
 	s.proxy = p
@@ -144,12 +135,7 @@ func TestCrashRestoresTakeover(t *testing.T) {
 	if err := s.Start(direct, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
-	s.mu.Lock()
-	err := s.cmd.Process.Kill()
-	s.mu.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s.handleUnexpectedExit(errors.New("simulated crash"))
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		st := s.Status()
@@ -162,9 +148,7 @@ func TestCrashRestoresTakeover(t *testing.T) {
 }
 
 func TestConcurrentSystemProxyReloadAndWiFiCheck(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
 	s := New()
 	s.proxy = p

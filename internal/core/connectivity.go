@@ -43,11 +43,6 @@ func (s *Service) CheckConnectivity(target string) (result Connectivity, resultE
 		s.mu.Unlock()
 		return Connectivity{Message: "内核未启动", NodeStatus: "skip"}, nil
 	}
-	var v any
-	if err = s.get("/version", &v); err != nil {
-		s.mu.Unlock()
-		return Connectivity{Message: "无法连接内核", NodeStatus: "skip"}, nil
-	}
 	port := s.mixedPort
 	cmd, startedAt, content, modeRevision := s.cmd, s.startedAt, s.currentContent, s.modeRevision
 	options, _ := json.Marshal(s.coreOptions)

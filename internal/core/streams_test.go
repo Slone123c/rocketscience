@@ -1,15 +1,13 @@
 package core
 
 import (
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestTrafficStream(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	if err := s.Start(direct, freePort(t)); err != nil {

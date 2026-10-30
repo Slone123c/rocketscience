@@ -2,16 +2,14 @@ package core
 
 import (
 	"errors"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestProfileCommitLiveSaveAndSwitch(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	p := NewProfilesWithService(t.TempDir(), s)
@@ -89,9 +87,7 @@ func TestProfileCommitLiveSaveAndSwitch(t *testing.T) {
 }
 
 func TestProfileCommitRollbackAndNodeChoices(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	content := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: select\n    type: select\n    proxies: [DIRECT, REJECT]\nrules: ['MATCH,DIRECT']\n"
@@ -149,9 +145,7 @@ func TestProfileCommitRollbackAndNodeChoices(t *testing.T) {
 }
 
 func TestProfileCommitOverridesAndInvalidSave(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	p := NewProfilesWithService(t.TempDir(), s)

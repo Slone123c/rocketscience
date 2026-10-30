@@ -2,38 +2,25 @@ package core
 
 import (
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
-func metadataService(t *testing.T, handler http.HandlerFunc) *Service {
-	t.Helper()
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-	_, raw, err := net.SplitHostPort(server.Listener.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	port, err := strconv.Atoi(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return &Service{cmd: &exec.Cmd{}, port: port}
-}
-
 func TestProxyLatestMetadataAndUnknownNodes(t *testing.T) {
-	s := metadataService(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"proxies":{"choose":{"type":"Selector","now":"fast","all":["fast","failed","untested","missing"]},"fast":{"type":"Shadowsocks","udp":true,"history":[{"time":"2026-01-01T00:00:00Z","delay":100},{"time":"2026-01-01T00:01:00Z","delay":25}]},"failed":{"type":"Trojan","udp":false,"history":[{"time":"2026-01-01T00:01:00Z","delay":0}]},"untested":{"type":"Direct","history":[]}}}`))
-	})
-	groups, err := s.Groups()
-	if err != nil || len(groups) != 1 {
-		t.Fatalf("groups: %+v %v", groups, err)
+	var parsed struct {
+		Proxies map[string]proxyDetail `json:"proxies"`
+	}
+	raw := `{"proxies":{"choose":{"type":"Selector","now":"fast","all":["fast","failed","untested","missing"]},"fast":{"type":"Shadowsocks","udp":true,"history":[{"time":"2026-01-01T00:00:00Z","delay":100},{"time":"2026-01-01T00:01:00Z","delay":25}]},"failed":{"type":"Trojan","udp":false,"history":[{"time":"2026-01-01T00:01:00Z","delay":0}]},"untested":{"type":"Direct","history":[]}}}`
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	groups := buildProxyGroups(parsed.Proxies, nil)
+	if len(groups) != 1 {
+		t.Fatalf("groups: %+v", groups)
 	}
 	g := groups[0]
 	if g.Name != "choose" || len(g.Nodes) != 4 || g.Now != "fast" {
@@ -52,19 +39,28 @@ func TestProxyLatestMetadataAndUnknownNodes(t *testing.T) {
 }
 
 func TestGroupDelayRejectsChangedSessionOrConfiguration(t *testing.T) {
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	for _, change := range []string{"stop", "restart", "configuration"} {
 		t.Run(change, func(t *testing.T) {
 			ready, release := make(chan struct{}), make(chan struct{})
-			s := metadataService(t, func(w http.ResponseWriter, r *http.Request) {
+			targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				close(ready)
 				<-release
-				_, _ = w.Write([]byte(`{"node":12}`))
-			})
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer targetServer.Close()
+			s := newTestService(t)
+			defer s.Shutdown()
+			cfg := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: group\n    type: select\n    proxies: [DIRECT]\nrules:\n  - MATCH,group\n"
+			if err := s.Start(cfg, freePort(t)); err != nil {
+				t.Fatal(err)
+			}
 			result := make(chan error, 1)
-			go func() { _, err := s.TestGroup("group", "https://example.com", 1000); result <- err }()
+			go func() { _, err := s.TestGroup("group", targetServer.URL, 2000); result <- err }()
 			select {
 			case <-ready:
 			case <-time.After(2 * time.Second):
+				close(release)
 				t.Fatal("delay request did not start")
 			}
 			s.mu.Lock()

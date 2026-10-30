@@ -186,17 +186,12 @@ func (s *Service) applyCoreOptions(options CoreOptions) (bool, error) {
 	if s.cmd == nil {
 		return false, nil
 	}
-	var state struct {
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &state); err != nil {
-		return true, err
-	}
-	next, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, state.Mode, s.lan, s.useTun, options)
+	mode := currentInProcessMode()
+	next, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, options)
 	if err != nil {
 		return true, err
 	}
-	previous, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, state.Mode, s.lan, s.useTun, s.coreOptions)
+	previous, err := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, s.coreOptions)
 	if err != nil {
 		return true, err
 	}
@@ -207,8 +202,8 @@ func (s *Service) applyCoreOptions(options CoreOptions) (bool, error) {
 	if err = s.markGeoAuto(next); err != nil {
 		return true, err
 	}
-	if err = s.request("PUT", "/configs?force=true", map[string]string{"payload": string(next)}); err != nil {
-		if rollback := s.request("PUT", "/configs?force=true", map[string]string{"payload": string(previous)}); rollback != nil {
+	if err = s.applyRuntimeConfigLocked(next); err != nil {
+		if rollback := s.applyRuntimeConfigLocked(previous); rollback != nil {
 			return true, errors.Join(fmt.Errorf("应用内核设置失败：%w", err), fmt.Errorf("恢复旧设置失败：%w", rollback))
 		}
 		return true, fmt.Errorf("应用内核设置失败：%w", err)

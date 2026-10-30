@@ -3,11 +3,11 @@ package core
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"sync"
 	"time"
 
-	"golang.org/x/net/websocket"
+	mihomoLog "github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
 type Telemetry struct {
@@ -83,7 +83,7 @@ func (s *Service) startStreams(port int, secret string, done <-chan struct{}) {
 	s.startStreamsAt(fmt.Sprintf("127.0.0.1:%d", port), secret, done)
 }
 
-func (s *Service) startStreamsAt(authority, secret string, done <-chan struct{}) {
+func (s *Service) startStreamsAt(_, _ string, done <-chan struct{}) {
 	ctx, cancel := context.WithCancel(context.Background())
 	finished := make(chan struct{})
 	s.streamMu.Lock()
@@ -98,11 +98,20 @@ func (s *Service) startStreamsAt(authority, secret string, done <-chan struct{})
 	if previousCancel != nil {
 		previousCancel()
 	}
+	up, down := statistic.DefaultManager.Now()
+	s.recordTrafficSample(generation, up, down)
+	s.recordMemorySample(generation, int64(statistic.DefaultManager.Memory()))
+
 	var workers sync.WaitGroup
-	for _, kind := range []string{"traffic", "memory", "logs"} {
-		workers.Add(1)
-		go func(kind string) { defer workers.Done(); s.runStream(ctx, generation, authority, secret, kind) }(kind)
-	}
+	workers.Add(2)
+	go func() {
+		defer workers.Done()
+		s.runMetricsStream(ctx, generation)
+	}()
+	go func() {
+		defer workers.Done()
+		s.runLogStream(ctx, generation)
+	}()
 	go func() {
 		select {
 		case <-done:
@@ -120,110 +129,83 @@ func (s *Service) startStreamsAt(authority, secret string, done <-chan struct{})
 	}()
 }
 
-func (s *Service) runStream(ctx context.Context, generation uint64, authority, secret, kind string) {
-	for ctx.Err() == nil {
-		query := url.Values{"token": {secret}}
-		if kind == "logs" {
-			query.Set("level", "debug")
-		}
-		address := fmt.Sprintf("ws://%s/%s?%s", authority, kind, query.Encode())
-		config, err := websocket.NewConfig(address, "http://127.0.0.1/")
-		if err != nil {
-			return
-		}
-		dialCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-		ws, err := config.DialContext(dialCtx)
-		cancel()
-		if err == nil {
-			s.receiveStream(ctx, generation, kind, ws)
-			_ = ws.Close()
-		}
-		s.streamMu.Lock()
-		if s.streamGeneration == generation {
-			switch kind {
-			case "traffic":
-				s.telemetry.Connected = false
-				s.trafficCount, s.trafficNext = 0, 0
-			case "memory":
-				s.memory.Connected = false
-			}
-		}
-		s.streamMu.Unlock()
-		timer := time.NewTimer(time.Second)
+func (s *Service) runMetricsStream(ctx context.Context, generation uint64) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			return
-		case <-timer.C:
+		case <-ticker.C:
+			up, down := statistic.DefaultManager.Now()
+			s.recordTrafficSample(generation, up, down)
+			s.recordMemorySample(generation, int64(statistic.DefaultManager.Memory()))
 		}
 	}
 }
 
-func (s *Service) receiveStream(ctx context.Context, generation uint64, kind string, ws *websocket.Conn) {
-	ws.MaxPayloadBytes = 1 << 20
-	received := make(chan struct{})
-	defer close(received)
-	go func() {
+func (s *Service) runLogStream(ctx context.Context, generation uint64) {
+	sub := mihomoLog.Subscribe()
+	defer mihomoLog.UnSubscribe(sub)
+	for {
 		select {
 		case <-ctx.Done():
-			_ = ws.Close()
-		case <-received:
+			return
+		case ev, ok := <-sub:
+			if !ok {
+				return
+			}
+			if ev.LogLevel < mihomoLog.DEBUG {
+				continue
+			}
+			s.recordLogEntry(generation, LogEntry{
+				Type:    ev.Type(),
+				Payload: ev.Payload,
+			})
 		}
-	}()
-	for ctx.Err() == nil {
-		if kind != "logs" {
-			_ = ws.SetReadDeadline(time.Now().Add(4 * time.Second))
+	}
+}
+
+func (s *Service) recordTrafficSample(generation uint64, up, down int64) {
+	if up < 0 || down < 0 {
+		return
+	}
+	s.streamMu.Lock()
+	defer s.streamMu.Unlock()
+	if s.streamGeneration == generation {
+		s.telemetry = Telemetry{Up: up, Down: down, Connected: true}
+		s.trafficSamples[s.trafficNext] = trafficSample{up, down}
+		s.trafficNext = (s.trafficNext + 1) % len(s.trafficSamples)
+		if s.trafficCount < len(s.trafficSamples) {
+			s.trafficCount++
 		}
-		switch kind {
-		case "traffic":
-			var sample struct {
-				Up   *int64 `json:"up"`
-				Down *int64 `json:"down"`
-			}
-			if websocket.JSON.Receive(ws, &sample) != nil || sample.Up == nil || sample.Down == nil || *sample.Up < 0 || *sample.Down < 0 {
-				return
-			}
-			s.streamMu.Lock()
-			if s.streamGeneration == generation && ctx.Err() == nil {
-				s.telemetry = Telemetry{Up: *sample.Up, Down: *sample.Down, Connected: true}
-				s.trafficSamples[s.trafficNext] = trafficSample{*sample.Up, *sample.Down}
-				s.trafficNext = (s.trafficNext + 1) % len(s.trafficSamples)
-				if s.trafficCount < len(s.trafficSamples) {
-					s.trafficCount++
-				}
-			}
-			s.streamMu.Unlock()
-		case "memory":
-			var sample struct {
-				InUse *int64 `json:"inuse"`
-			}
-			if websocket.JSON.Receive(ws, &sample) != nil || sample.InUse == nil || *sample.InUse < 0 {
-				return
-			}
-			s.streamMu.Lock()
-			if s.streamGeneration == generation && ctx.Err() == nil {
-				s.memory = MemoryUsage{InUse: *sample.InUse, Connected: true}
-			}
-			s.streamMu.Unlock()
-		case "logs":
-			var entry LogEntry
-			if websocket.JSON.Receive(ws, &entry) != nil {
-				return
-			}
-			if len(entry.Payload) > 4096 {
-				entry.Payload = entry.Payload[:4096] + "…"
-			}
-			entry.Time = time.Now().Format(time.RFC3339Nano)
-			s.streamMu.Lock()
-			if s.streamGeneration == generation && ctx.Err() == nil {
-				if len(s.logs) == 500 {
-					copy(s.logs, s.logs[1:])
-					s.logs[499] = entry
-				} else {
-					s.logs = append(s.logs, entry)
-				}
-			}
-			s.streamMu.Unlock()
+	}
+}
+
+func (s *Service) recordMemorySample(generation uint64, inuse int64) {
+	if inuse < 0 {
+		return
+	}
+	s.streamMu.Lock()
+	defer s.streamMu.Unlock()
+	if s.streamGeneration == generation {
+		s.memory = MemoryUsage{InUse: inuse, Connected: true}
+	}
+}
+
+func (s *Service) recordLogEntry(generation uint64, entry LogEntry) {
+	if len(entry.Payload) > 4096 {
+		entry.Payload = entry.Payload[:4096] + "…"
+	}
+	entry.Time = time.Now().Format(time.RFC3339Nano)
+	s.streamMu.Lock()
+	defer s.streamMu.Unlock()
+	if s.streamGeneration == generation {
+		if len(s.logs) == 500 {
+			copy(s.logs, s.logs[1:])
+			s.logs[499] = entry
+		} else {
+			s.logs = append(s.logs, entry)
 		}
 	}
 }

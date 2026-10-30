@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -76,9 +75,7 @@ func assertDNSPortsReleased(t *testing.T, address string) {
 }
 
 func TestDNSRuntimeModesIPv6AndListenerLifecycle(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	upstream, closeUpstream := dnsFixture(t)
 	defer closeUpstream()
 	address := freeDNSAddress(t)

@@ -3,14 +3,11 @@
 package core
 
 import (
-	"os"
 	"testing"
 )
 
 func TestStartupAutoConnectTunUsesSavedChoice(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
 	s.proxy = &fakeProxy{}
 	s.geo.dir = t.TempDir()

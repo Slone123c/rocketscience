@@ -1,16 +1,14 @@
 package core
 
 import (
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 // PRX-03: manually chosen Selector nodes must survive stop -> start.
 func TestSelectionsSurviveStopStart(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	content := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: pick\n    type: select\n    proxies: [DIRECT, REJECT]\nrules: ['MATCH,DIRECT']\n"
@@ -40,9 +38,7 @@ func TestSelectionsSurviveStopStart(t *testing.T) {
 
 // CFG-01: Restart re-serializes the stored profile; numeric-looking text must stay intact.
 func TestRestartKeepsNumericLookingScalars(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	content := "mode: rule\nlog-level: silent\nx-id: 01234567\nproxy-groups:\n  - name: pick\n    type: select\n    proxies: [DIRECT]\nrules: ['MATCH,DIRECT']\n"

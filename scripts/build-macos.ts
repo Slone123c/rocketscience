@@ -29,11 +29,8 @@ try {
       const destination=join(stage,file);mkdirSync(dirname(destination),{recursive:true});cpSync(source,destination,{recursive:true});
     }
     symlinkSync(join(root,"node_modules"),join(stage,"node_modules"),"dir");
-    mkdirSync(join(root,".cache","mihomo"),{recursive:true});mkdirSync(join(stage,".cache"),{recursive:true});
-    symlinkSync(join(root,".cache","mihomo"),join(stage,".cache","mihomo"),"dir");
     project=stage;
   }
-  run("sh",["scripts/build-core.sh"],project);
   run("sh",["scripts/build-helper.sh"],project);
   run("bun",["x","mygo","build","-platform",`darwin/${target}`,"-o",join(root,"build.noindex")],project);
   run("bun",["scripts/verify-bundle.ts",`--arch=${target}`,join(root,"build.noindex",`darwin-${target}`,"RocketScience.app")],root);

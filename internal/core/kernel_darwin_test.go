@@ -3,16 +3,12 @@
 package core
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestKernelRestartTun(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
 	s.proxy = &fakeProxy{}
 	s.tunLaunch = fakeTunLaunch
@@ -35,14 +31,8 @@ func TestKernelRestartTun(t *testing.T) {
 }
 
 func TestPathsWithSpacesChineseAndSingleQuotes(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	specialDir := filepath.Join(t.TempDir(), "Clash 测试 '目录' 2026")
-	quoted, err := shellArgument(specialDir)
-	if err != nil || !strings.Contains(quoted, `'\''`) {
-		t.Fatalf("shellArgument(%q): got %q, %v", specialDir, quoted, err)
-	}
 	s := newTestService(t)
 	s.geo.dir = filepath.Join(specialDir, "geo")
 	defer s.Shutdown()

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "sh scripts/build-core.sh && sh scripts/build-helper.sh && mygo dev",
+    "dev": "sh scripts/build-helper.sh && mygo dev",
     "build": "bun scripts/build-macos.ts",
     "verify:bundle": "bun scripts/verify-bundle.ts",
     "generate": "mygo generate",

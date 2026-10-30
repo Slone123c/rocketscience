@@ -41,9 +41,7 @@ func TestTunDNSEnablesResolverAndPreservesUpstreams(t *testing.T) {
 }
 
 func TestTunDNSDefaultConfigPassesRealCoreValidation(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO for real config validation")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	data, err := runtimeConfigWithOptions(direct, 17890, 19090, "test", "", LANSettings{}, true, CoreOptions{})
 	if err != nil {
 		t.Fatal(err)

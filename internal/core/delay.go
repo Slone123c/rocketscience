@@ -1,12 +1,9 @@
 package core
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"net/url"
-	"time"
 )
 
 // TestGroup measures nodes without changing the users selected route.
@@ -26,28 +23,11 @@ func (s *Service) TestGroup(group, target string, timeoutMS int) (map[string]int
 		s.mu.Unlock()
 		return nil, errors.New("内核未启动")
 	}
-	authority, secret := s.controllerAuthority(), s.secret
 	startedAt, content := s.startedAt, s.currentContent
 	s.mu.Unlock()
-	params := url.Values{"url": {target}, "timeout": {fmt.Sprint(timeoutMS)}}
-	endpoint := fmt.Sprintf("http://%s/group/%s/delay?%s", authority, url.PathEscape(group), params.Encode())
-	req, err := http.NewRequest("GET", endpoint, nil)
+	result, err := testInProcessGroupDelay(context.Background(), group, target, timeoutMS)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+secret)
-	client := http.Client{Timeout: time.Duration(timeoutMS)*time.Millisecond + 5*time.Second}
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("测速失败：%s", res.Status)
-	}
-	result := map[string]int{}
-	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("测速结果无效：%w", err)
 	}
 	s.mu.Lock()
 	unchanged := s.cmd != nil && s.startedAt.Equal(startedAt) && s.currentContent == content

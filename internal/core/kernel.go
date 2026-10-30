@@ -1,15 +1,12 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net/url"
-	"os/exec"
 	"runtime"
-	"strings"
-	"time"
+	"runtime/debug"
 
+	C "github.com/metacubex/mihomo/constant"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,24 +17,29 @@ type KernelInfo struct {
 	Platform  string `json:"platform"`
 }
 
+func mihomoVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/metacubex/mihomo" && dep.Version != "" {
+				return dep.Version
+			}
+		}
+	}
+	return "v1.19.33"
+}
+
+func init() {
+	C.Version = mihomoVersion()
+}
+
 // KernelInfo works while stopped and never starts a controller or takes over traffic.
 func (s *Service) KernelInfo() (KernelInfo, error) {
-	info := KernelInfo{Path: corePath(), Platform: runtime.GOOS + "/" + runtime.GOARCH}
-	if info.Path == "" {
-		return info, errors.New("未找到 mihomo，请重新构建或安装应用")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	output, err := exec.CommandContext(ctx, info.Path, "-v").Output()
-	if err != nil {
-		return info, fmt.Errorf("无法读取 mihomo 版本：%w", err)
-	}
-	version := strings.TrimSpace(string(output))
-	if !strings.HasPrefix(version, "Mihomo ") {
-		return info, errors.New("内核未返回有效的 mihomo 版本信息")
-	}
-	info.Available, info.Version = true, version
-	return info, nil
+	return KernelInfo{
+		Available: true,
+		Path:      "embedded",
+		Version:   fmt.Sprintf("Mihomo Meta %s %s %s with %s", mihomoVersion(), runtime.GOOS, runtime.GOARCH, runtime.Version()),
+		Platform:  runtime.GOOS + "/" + runtime.GOARCH,
+	}, nil
 }
 
 // Restart uses the supervised lifecycle rather than /restart, which would bypass
@@ -50,17 +52,9 @@ func (s *Service) Restart() error {
 		s.mu.Unlock()
 		return errors.New("内核未运行或正在停止，无法重启")
 	}
-	var cfg struct {
-		Mode string `json:"mode"`
-	}
-	var groups struct {
-		Proxies map[string]Proxy `json:"proxies"`
-	}
-	if err := s.get("/configs", &cfg); err != nil {
-		s.mu.Unlock()
-		return fmt.Errorf("读取当前模式失败，未重启：%w", err)
-	}
-	if err := s.get("/proxies", &groups); err != nil {
+	mode := currentInProcessMode()
+	proxies, err := inProcessProxiesMap()
+	if err != nil {
 		s.mu.Unlock()
 		return fmt.Errorf("读取当前节点失败，未重启：%w", err)
 	}
@@ -73,13 +67,13 @@ func (s *Service) Restart() error {
 	if document == nil {
 		return errors.New("配置不能为空")
 	}
-	document["mode"] = cfg.Mode
+	document["mode"] = mode
 	updated, err := yaml.Marshal(document)
 	if err != nil {
 		return err
 	}
 	selected := make(map[string]string)
-	for name, group := range groups.Proxies {
+	for name, group := range proxies {
 		if group.Type == "Selector" && group.Now != "" {
 			selected[name] = group.Now
 		}
@@ -96,7 +90,7 @@ func (s *Service) Restart() error {
 // Called with mu held, after the controller is ready and before system takeover.
 func (s *Service) restoreSelections(selected map[string]string) error {
 	for group, node := range selected {
-		if err := s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node}); err != nil {
+		if err := selectInProcessProxy(group, node); err != nil {
 			return fmt.Errorf("恢复策略组 %s 的节点失败：%w", group, err)
 		}
 	}
@@ -106,14 +100,12 @@ func (s *Service) restoreSelections(selected map[string]string) error {
 // snapshotSelections records current Selector choices. Called with mu held;
 // on failure the previous snapshot is kept.
 func (s *Service) snapshotSelections() {
-	var groups struct {
-		Proxies map[string]Proxy `json:"proxies"`
-	}
-	if err := s.get("/proxies", &groups); err != nil {
+	proxies, err := inProcessProxiesMap()
+	if err != nil {
 		return
 	}
 	saved := make(map[string]string)
-	for name, group := range groups.Proxies {
+	for name, group := range proxies {
 		if group.Type == "Selector" && group.Now != "" {
 			saved[name] = group.Now
 		}
@@ -126,6 +118,6 @@ func (s *Service) snapshotSelections() {
 // profile are skipped. Called with mu held, before system takeover.
 func (s *Service) restoreSavedSelections() {
 	for group, node := range s.savedSelections {
-		_ = s.request("PUT", "/proxies/"+url.PathEscape(group), map[string]string{"name": node})
+		_ = selectInProcessProxy(group, node)
 	}
 }

@@ -1,35 +1,25 @@
 package core
 
 import (
+	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestKernelInfoInvalidExecutable(t *testing.T) {
+func TestKernelInfoEmbeddedWithoutExternalBinary(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
-	s := New()
-	if info, err := s.KernelInfo(); err == nil || info.Available {
-		t.Fatalf("missing executable: %+v %v", info, err)
-	}
-	if err := s.Restart(); err == nil {
-		t.Fatal("restart started stopped core")
-	}
-}
-
-func TestKernelInfoStoppedRealCore(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
 	s := newTestService(t)
 	info, err := s.KernelInfo()
 	if err != nil || !info.Available || !strings.HasPrefix(info.Version, "Mihomo ") || info.Platform == "" {
-		t.Fatalf("info: %+v %v", info, err)
+		t.Fatalf("embedded kernel info failed: %+v %v", info, err)
 	}
 	if s.Status().Running || s.proxy.(*fakeProxy).pending {
 		t.Fatal("version query started traffic takeover")
+	}
+	if err := s.Restart(); err == nil {
+		t.Fatal("restart started stopped core")
 	}
 }
 
@@ -48,9 +38,7 @@ func (p *restartProxy) ApplyWithBypass(port int, bypass *[]string) error {
 }
 
 func TestKernelRestartPreservesSession(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	p := &restartProxy{}
 	s.proxy = p
@@ -73,22 +61,14 @@ func TestKernelRestartPreservesSession(t *testing.T) {
 	oldStart, revision := s.startedAt, s.modeRevision
 	s.mu.Unlock()
 	p.beforeApply = func() error {
-		var cfg struct {
-			Mode string `json:"mode"`
-		}
-		if err := s.get("/configs", &cfg); err != nil {
-			return err
-		}
-		if cfg.Mode != "global" {
+		if currentInProcessMode() != "global" {
 			return errors.New("takeover before restoring mode")
 		}
-		var groups struct {
-			Proxies map[string]Proxy `json:"proxies"`
-		}
-		if err := s.get("/proxies", &groups); err != nil {
+		proxies, err := inProcessProxiesMap()
+		if err != nil {
 			return err
 		}
-		if groups.Proxies["choose / 节点"].Now != "REJECT" || groups.Proxies["GLOBAL"].Now != "choose / 节点" {
+		if proxies["choose / 节点"].Now != "REJECT" || proxies["GLOBAL"].Now != "choose / 节点" {
 			return errors.New("takeover before restoring selections")
 		}
 		return nil
@@ -119,32 +99,29 @@ func TestKernelRestartPreservesSession(t *testing.T) {
 }
 
 func TestKernelRestartFailureLeavesNetworkRestored(t *testing.T) {
-	bin := os.Getenv("ROCKETSCIENCE_MIHOMO")
-	if bin == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	if err := s.Start(direct, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
+	s.validateRuntime = func(ctx context.Context, dir, path string) error {
+		return errors.New("simulated validation failure")
+	}
 	if err := s.Restart(); err == nil {
 		t.Fatal("restart unexpectedly succeeded")
 	}
 	if s.Status().Running || s.proxy.(*fakeProxy).pending {
 		t.Fatal("failed restart left traffic takeover")
 	}
-	t.Setenv("ROCKETSCIENCE_MIHOMO", bin)
+	s.validateRuntime = nil
 	if err := s.Start(direct, freePort(t)); err != nil {
 		t.Fatalf("failed restart prevented recovery: %v", err)
 	}
 }
 
 func TestKernelSelectionFailureDoesNotTakeOver(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	s := newTestService(t)
 	defer s.Shutdown()
 	s.opMu.Lock()

@@ -11,9 +11,7 @@ import (
 )
 
 func TestProfilesPreserveValidConfiguration(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	dir := t.TempDir()
 	p := NewProfiles(dir)
 	first, err := p.Save(Profile{Name: "Test", Source: "file", Content: direct}, "")
@@ -28,6 +26,10 @@ func TestProfilesPreserveValidConfiguration(t *testing.T) {
 	v.Content = "rules: ["
 	if _, err = p.Save(v, v.UpdatedAt.Format(time.RFC3339Nano)); err == nil {
 		t.Fatal("invalid update accepted")
+	}
+	v.Content = "rules:\n  - NOT-A-RULE,example,DIRECT\n"
+	if _, err = p.Save(v, v.UpdatedAt.Format(time.RFC3339Nano)); err == nil {
+		t.Fatal("invalid mihomo rule accepted")
 	}
 	again, err := NewProfiles(dir).State()
 	if err != nil || again.Profiles[0].Content != direct || again.ActiveID != id {
@@ -49,9 +51,7 @@ func TestProfilesPreserveValidConfiguration(t *testing.T) {
 	}
 }
 func TestFetchSubscription(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	p := NewProfiles(t.TempDir())
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("User-Agent") != "clash.meta" {

@@ -44,13 +44,7 @@ func (s *Service) wifiMode() (wifiModeState, error) {
 	if !state.running {
 		return state, nil
 	}
-	var cfg struct {
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &cfg); err != nil {
-		return state, err
-	}
-	state.mode = strings.ToLower(cfg.Mode)
+	state.mode = currentInProcessMode()
 	return state, nil
 }
 func (s *Service) wifiSetMode(expected wifiModeState, mode string) (wifiModeState, error) {
@@ -61,20 +55,15 @@ func (s *Service) wifiSetMode(expected wifiModeState, mode string) (wifiModeStat
 	if s.cmd == nil || s.modeRevision != expected.revision {
 		return wifiModeState{}, errors.New("内核或手动选择已改变，未自动切换模式")
 	}
-	var cfg struct {
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &cfg); err != nil {
-		return wifiModeState{}, err
-	}
-	if strings.ToLower(cfg.Mode) != expected.mode {
+	currentMode := currentInProcessMode()
+	if currentMode != expected.mode {
 		return wifiModeState{}, errors.New("出站模式已改变，未覆盖当前选择")
 	}
-	if err := s.request("PATCH", "/configs", map[string]string{"mode": mode}); err != nil {
+	if err := setInProcessMode(mode); err != nil {
 		return wifiModeState{}, err
 	}
-	if !strings.EqualFold(cfg.Mode, mode) {
-		_ = s.request("DELETE", "/connections", nil)
+	if !strings.EqualFold(currentMode, mode) {
+		closeAllInProcessConnections()
 	}
 	return wifiModeState{running: true, mode: mode, revision: s.modeRevision, runID: s.startedAt}, nil
 }

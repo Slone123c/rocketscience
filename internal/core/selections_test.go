@@ -61,9 +61,7 @@ func TestSelectPreviewWhileStopped(t *testing.T) {
 }
 
 func TestSelectPreviewAppliesOnStartAndFollowsTheCore(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO to test a real core")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	dir := t.TempDir()
 	s := newTestService(t)
 	defer s.Shutdown()

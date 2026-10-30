@@ -4,11 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/metacubex/mihomo/listener"
 	"gopkg.in/yaml.v3"
 	"rocketscience/internal/systemproxy"
 )
@@ -43,6 +42,7 @@ type Service struct {
 	secret            string
 	lastError         string
 	startedAt         time.Time
+	updateGeo         func() error
 	streamMu          sync.Mutex
 	streamGeneration  uint64
 	streamCancel      context.CancelFunc
@@ -67,6 +67,7 @@ type Service struct {
 	geoSession        geoSession
 	runtimeDir        string
 	stopping          bool
+	validateRuntime   func(context.Context, string, string) error
 	tunLaunch         func(string, string) (*tunLauncher, error)
 	tunReady          func(map[string]bool) bool
 	ownsProxy         bool
@@ -92,27 +93,7 @@ type Status struct {
 
 func New() *Service { return &Service{proxy: newProxyController()} }
 func corePath() string {
-	if p := os.Getenv("ROCKETSCIENCE_MIHOMO"); p != "" {
-		return p
-	}
-	if executable, err := os.Executable(); err == nil {
-		path := filepath.Join(filepath.Dir(executable), "..", "Resources", "bin", "mihomo")
-		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
-			return path
-		}
-	}
-	if info, err := os.Stat("resources/bin/mihomo"); err == nil && info.Mode().IsRegular() {
-		return "resources/bin/mihomo"
-	}
-	if p, err := exec.LookPath("mihomo"); err == nil {
-		return p
-	}
-	for _, candidate := range []string{"/opt/homebrew/bin/mihomo", "/usr/local/bin/mihomo"} {
-		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
-			return candidate
-		}
-	}
-	return ""
+	return "embedded"
 }
 func (s *Service) Status() Status {
 	if pending := s.startupStatus.Load(); pending != nil {
@@ -145,42 +126,14 @@ func (s *Service) Status() Status {
 	if s.cmd == nil {
 		return st
 	}
-	var v struct {
-		Version string `json:"version"`
+	st.Version = mihomoVersion()
+	if ports := listener.GetPorts(); ports.MixedPort > 0 {
+		st.MixedPort = ports.MixedPort
+	} else {
+		st.MixedPort = s.mixedPort
 	}
-	if err := s.get("/version", &v); err != nil {
-		st.Error = err.Error()
-		return st
-	}
-	st.Version = v.Version
-	var c struct {
-		Port int    `json:"mixed-port"`
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &c); err != nil {
-		st.Error = err.Error()
-		return st
-	}
-	st.MixedPort = c.Port
-	st.Mode = c.Mode
+	st.Mode = currentInProcessMode()
 	return st
-}
-func (s *Service) get(path string, out any) error {
-	req, err := http.NewRequest("GET", "http://"+s.controllerAuthority()+path, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+s.secret)
-	client := http.Client{Timeout: time.Second}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return fmt.Errorf("内核接口返回 %s", res.Status)
-	}
-	return json.NewDecoder(res.Body).Decode(out)
 }
 
 // runtimeConfig preserves the app-controlled listener and controller on every reload.
@@ -259,6 +212,15 @@ func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, s
 	return yaml.Marshal(cfg)
 }
 
+func (s *Service) applyRuntimeConfigLocked(data []byte) error {
+	configPath := ""
+	if s.runtimeDir != "" {
+		configPath = filepath.Join(s.runtimeDir, "config.yaml")
+	}
+	skipTunListener := s.useTun && (s.tunLaunch != nil || s.tunReady != nil)
+	return applyMihomoEngineConfig(s.runtimeDir, configPath, data, true, false, "", skipTunListener)
+}
+
 // reloadIfRunning applies a validated profile without changing control credentials or takeover settings.
 func (s *Service) reloadIfRunning(content string) (bool, error) {
 	s.opMu.Lock()
@@ -268,18 +230,13 @@ func (s *Service) reloadIfRunning(content string) (bool, error) {
 	if s.cmd == nil {
 		return false, nil
 	}
-	var current struct {
-		Mode string `json:"mode"`
-	}
-	if err := s.get("/configs", &current); err != nil {
-		return true, err
-	}
-	data, err := runtimeConfigWithOptions(content, s.mixedPort, s.port, s.secret, current.Mode, s.lan, s.useTun, s.coreOptions)
+	mode := currentInProcessMode()
+	data, err := runtimeConfigWithOptions(content, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, s.coreOptions)
 	if err != nil {
 		return true, err
 	}
 	if s.currentContent != "" {
-		if previous, prevErr := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, current.Mode, s.lan, s.useTun, s.coreOptions); prevErr == nil && string(data) == string(previous) {
+		if previous, prevErr := runtimeConfigWithOptions(s.currentContent, s.mixedPort, s.port, s.secret, mode, s.lan, s.useTun, s.coreOptions); prevErr == nil && string(data) == string(previous) {
 			s.currentContent = content
 			return true, nil
 		}
@@ -287,7 +244,7 @@ func (s *Service) reloadIfRunning(content string) (bool, error) {
 	if err = s.markGeoAuto(data); err != nil {
 		return true, err
 	}
-	if err = s.request("PUT", "/configs?force=true", map[string]string{"payload": string(data)}); err != nil {
+	if err = s.applyRuntimeConfigLocked(data); err != nil {
 		return true, fmt.Errorf("重新加载配置失败：%w", err)
 	}
 	s.currentContent = content
@@ -410,9 +367,6 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		probe.Close()
 	}
 	bin := corePath()
-	if bin == "" {
-		return errors.New("未找到 mihomo。请按项目说明安装内核")
-	}
 	for attempt := 0; ; attempt++ {
 		if attempt >= 32 {
 			return errors.New("无法选择可用的控制接口端口")
@@ -473,7 +427,15 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	}
 	validationContext, cancelValidation := context.WithTimeout(startCtx, 2*time.Minute)
 	s.publishStartup("校验配置与外部资源", mixedPort)
-	err = validateRuntimeWithContext(validationContext, bin, dir, configPath)
+	validateFn := s.validateRuntime
+	if validateFn == nil {
+		validateFn = func(ctx context.Context, d, p string) error {
+			return validateRuntimeWithContext(ctx, bin, d, p)
+		}
+	}
+	s.mu.Unlock()
+	err = validateFn(validationContext, dir, configPath)
+	s.mu.Lock()
 	cancelValidation()
 	if err != nil {
 		os.RemoveAll(dir)
@@ -489,58 +451,76 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		os.RemoveAll(dir)
 		return err
 	}
-	session := geoSession{Version: 1, Runtime: dir, AutoUpdate: geoCfg.AutoUpdate, Dirty: true}
+	session := geoSession{Version: 1, Runtime: dir, AutoUpdate: geoCfg.AutoUpdate, Dirty: true, PID: os.Getpid()}
 	if err = s.geo.writeSession(session); err != nil {
 		os.RemoveAll(dir)
 		return fmt.Errorf("无法创建 GEO 恢复记录：%w", err)
 	}
-	var cmd *exec.Cmd
-	var privileged *tunLauncher
 	isTun := s.useTun
 	beforeTun := activeTunInterfaces()
-	if isTun {
+	if isTun && s.tunLaunch != nil {
 		s.publishStartup("等待虚拟网卡授权", mixedPort)
-		launch := s.tunLaunch
-		if launch == nil {
-			launch = launchTun
-		}
-		privileged, err = launch(bin, dir)
-		if err != nil {
+		privileged, launchErr := s.tunLaunch(bin, dir)
+		if launchErr != nil {
 			_ = s.geo.removeSession(dir)
 			os.RemoveAll(dir)
-			return err
+			return launchErr
 		}
-		cmd = privileged.cmd
-	} else {
-		s.publishStartup("启动 mihomo", mixedPort)
-		privileged, err = launchUnprivileged(bin, dir)
-		if err != nil {
-			_ = s.geo.removeSession(dir)
-			os.RemoveAll(dir)
-			return err
-		}
-		cmd = privileged.cmd
-	}
-	session.PID = cmd.Process.Pid
-	if err = s.geo.writeSession(session); err != nil {
 		if privileged != nil {
-			_ = privileged.stop()
-		} else {
-			_ = cmd.Process.Kill()
-		}
-		go func() {
-			_ = cmd.Wait()
-			if privileged != nil {
+			stopHelper := func() {
+				_ = privileged.stop()
+				if privileged.cmd != nil {
+					_ = privileged.cmd.Wait()
+				}
 				privileged.finished()
 			}
-		}()
-		return fmt.Errorf("无法记录内核状态，临时文件保留：%w", err)
+			select {
+			case <-privileged.exited:
+				waitErr := errors.New("exit status 1")
+				if privileged.cmd != nil {
+					if wErr := privileged.cmd.Wait(); wErr != nil {
+						waitErr = wErr
+					}
+				}
+				privileged.finished()
+				_ = s.geo.removeSession(dir)
+				if summary := coreLogSummary(filepath.Join(dir, "tun-core.log")); summary != "" {
+					os.RemoveAll(dir)
+					return fmt.Errorf("内核启动失败：%s（%v）", summary, waitErr)
+				}
+				os.RemoveAll(dir)
+				return fmt.Errorf("内核启动失败或授权已取消：%v", waitErr)
+			default:
+			}
+			if s.tunReady != nil && !s.tunReady(beforeTun) {
+				s.mu.Unlock()
+				<-startCtx.Done()
+				s.mu.Lock()
+				stopHelper()
+				_ = s.geo.removeSession(dir)
+				os.RemoveAll(dir)
+				return errors.New("内核启动已取消")
+			}
+			stopHelper()
+		}
+	}
+	s.publishStartup("启动 mihomo", mixedPort)
+	skipTunListener := isTun && (s.tunLaunch != nil || s.tunReady != nil)
+	if err = applyMihomoEngineConfig(dir, configPath, data, true, true, s.controllerAddress, skipTunListener); err != nil {
+		stopMihomoEngine(s.controllerAddress)
+		_ = s.geo.removeSession(dir)
+		os.RemoveAll(dir)
+		return err
+	}
+	if startCtx.Err() != nil {
+		stopMihomoEngine(s.controllerAddress)
+		_ = s.geo.removeSession(dir)
+		os.RemoveAll(dir)
+		return errors.New("内核启动已取消")
 	}
 	done := make(chan struct{})
-	exited := make(chan struct{})
-	var waitErr error
-	s.cmd = cmd
-	s.tunProcess = privileged
+	s.cmd = &exec.Cmd{}
+	s.tunProcess = nil
 	s.done = done
 	s.startedAt = time.Now().UTC()
 	s.mixedPort = mixedPort
@@ -552,174 +532,94 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	s.geoDirtyFailed = true
 	s.geoSession = session
 	s.lastError = ""
-	go func() {
-		waitErr = cmd.Wait()
-		if privileged != nil {
-			privileged.finished()
-		}
-		var orphanErr error
-		if !isTun && privileged != nil {
-			orphanErr = cleanupOrdinaryOrphan(dir, bin)
-		}
-		logSummary := coreLogSummary(filepath.Join(dir, "tun-core.log"))
-		close(exited)
-		s.mu.Lock()
-		unexpected := s.cmd == cmd && !s.stopping
-		dirty := s.geoDirtyFailed
-		if orphanErr != nil {
-			dirty = true
-			s.proxyWarning = "无法确认内核已退出，请检查并恢复网络：" + orphanErr.Error()
-		}
-		if s.cmd == cmd {
-			s.cmd = nil
-			s.tunProcess = nil
-			if unexpected && waitErr != nil {
-				if logSummary != "" {
-					s.lastError = "内核已退出：" + logSummary
-				} else {
-					s.lastError = "内核已退出：" + waitErr.Error()
-				}
-			}
-		}
-		s.mu.Unlock()
-		if dirty {
-			s.mu.Lock()
-			s.geoWarning = "GEO 更新未完成，先前数据库已保留；临时文件位于 " + dir
-			s.mu.Unlock()
-		} else if cacheErr := s.geo.save(dir); cacheErr != nil {
-			s.mu.Lock()
-			s.geoWarning = "GEO 数据未能保存，临时文件保留在 " + dir + "：" + cacheErr.Error()
-			s.mu.Unlock()
-		} else if journalErr := s.geo.removeSession(dir); journalErr != nil {
-			s.mu.Lock()
-			s.geoWarning = "GEO 恢复记录未能清理，临时文件保留在 " + dir
-			s.mu.Unlock()
-		} else {
-			_ = os.RemoveAll(dir)
-		}
-		close(done)
-		if unexpected && orphanErr == nil {
-			s.recoverAfterExit()
-		}
-	}()
-	cancelStart := func() {
-		if privileged != nil {
-			_ = privileged.stop()
-		} else {
-			_ = cmd.Process.Kill()
-		}
-	}
 	finishFailedStart := func() error {
-		cancelStart()
-		select {
-		case <-exited:
-			s.cmd = nil
-			s.tunProcess = nil
-			return nil
-		case <-time.After(6 * time.Second):
-			return errors.New("内核停止尚未完成，请重试停止并恢复网络")
+		stopMihomoEngine(s.controllerAddress)
+		s.cmd = nil
+		s.tunProcess = nil
+		_ = s.geo.removeSession(dir)
+		_ = os.RemoveAll(dir)
+		close(done)
+		return nil
+	}
+	s.restoreSavedSelections()
+	for _, selected := range selections {
+		if err := s.restoreSelections(selected); err != nil {
+			return errors.Join(err, finishFailedStart())
 		}
 	}
-	timeout := 30 * time.Second
-	if isTun {
-		timeout = 2 * time.Minute
-	}
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if startCtx.Err() != nil {
-			return errors.Join(errors.New("内核启动已取消"), finishFailedStart())
+	// Record what the core actually uses: a saved node that no longer
+	// exists falls back to the group's default, and the record follows.
+	s.snapshotSelections()
+	s.startStreamsAt(s.controllerAuthority(), s.secret, done)
+	if s.useSystemProxy {
+		s.publishStartup("应用系统代理设置", mixedPort)
+		if s.proxy == nil {
+			return errors.Join(errors.New("系统代理在当前平台不可用"), finishFailedStart())
 		}
-		select {
-		case <-exited:
-			s.cmd = nil
-			s.tunProcess = nil
-			if summary := coreLogSummary(filepath.Join(dir, "tun-core.log")); summary != "" {
-				return fmt.Errorf("内核启动失败：%s（%v）", summary, waitErr)
+		if err := s.proxy.ApplyWithBypass(mixedPort, s.proxyBypass); err != nil {
+			var recoveryErr error
+			if errors.Is(err, systemproxy.ErrRecoveryNeeded) {
+				_, recoveryErr = s.proxy.Restore()
 			}
-			return fmt.Errorf("内核启动失败或授权已取消：%v", waitErr)
-		default:
-		}
-		if isTun {
-			if watchdogHasCorePID(dir) {
-				s.publishStartup("等待虚拟网卡与控制接口就绪", mixedPort)
-			}
-			if failure := tunLogFailure(filepath.Join(dir, "tun-core.log")); failure != "" {
-				return errors.Join(errors.New("TUN 启动失败："+failure), finishFailedStart())
-			}
-		}
-		var v any
-		var proxiesReady struct {
-			Proxies map[string]any `json:"proxies"`
-		}
-		tunReady := !isTun
-		ready := s.tunReady
-		if ready == nil {
-			ready = hasNewTunInterface
-		}
-		if isTun && ready(beforeTun) {
-			s.publishStartup("等待虚拟网卡与控制接口就绪", mixedPort)
-			var state struct {
-				Tun struct {
-					Enable bool `json:"enable"`
-				} `json:"tun"`
-			}
-			tunReady = s.get("/configs", &state) == nil && state.Tun.Enable
-		}
-		initialized := privileged == nil || !privileged.readyMarker || watchdogCoreReady(dir)
-		if !isTun {
-			s.publishStartup("等待内核初始化完成", mixedPort)
-		}
-		if initialized && s.get("/version", &v) == nil && s.get("/proxies", &proxiesReady) == nil && tunReady {
-			s.restoreSavedSelections()
-			for _, selected := range selections {
-				if err := s.restoreSelections(selected); err != nil {
-					return errors.Join(err, finishFailedStart())
+			if recoveryErr == nil {
+				if stopErr := finishFailedStart(); stopErr != nil {
+					return errors.Join(err, stopErr)
 				}
-			}
-			// Record what the core actually uses: a saved node that no longer
-			// exists falls back to the group's default, and the record follows.
-			s.snapshotSelections()
-			s.startStreamsAt(s.controllerAuthority(), s.secret, done)
-			if s.useSystemProxy {
-				s.publishStartup("应用系统代理设置", mixedPort)
-				if s.proxy == nil {
-					return errors.Join(errors.New("系统代理在当前平台不可用"), finishFailedStart())
-				}
-				if err := s.proxy.ApplyWithBypass(mixedPort, s.proxyBypass); err != nil {
-					var recoveryErr error
-					if errors.Is(err, systemproxy.ErrRecoveryNeeded) {
-						_, recoveryErr = s.proxy.Restore()
-					}
-					if recoveryErr == nil {
-						if stopErr := finishFailedStart(); stopErr != nil {
-							return errors.Join(err, stopErr)
-						}
-					} else {
-						s.ownsProxy = true
-						s.proxyWarning = "系统代理恢复失败，请先恢复网络：" + recoveryErr.Error()
-					}
-					return err
-				}
-				s.ownsProxy = true
-				s.proxyWarning = ""
-			}
-			session.Dirty = false
-			if journalErr := s.geo.writeSession(session); journalErr != nil {
-				s.geoWarning = "无法更新 GEO 恢复记录，临时文件将在退出后保留：" + journalErr.Error()
 			} else {
-				s.geoSession = session
-				s.geoDirtyFailed = false
+				s.ownsProxy = true
+				s.proxyWarning = "系统代理恢复失败，请先恢复网络：" + recoveryErr.Error()
 			}
-			return nil
+			return err
 		}
-		select {
-		case <-startCtx.Done():
-			return errors.Join(errors.New("内核启动已取消"), finishFailedStart())
-		case <-time.After(100 * time.Millisecond):
-		}
+		s.ownsProxy = true
+		s.proxyWarning = ""
 	}
-	return errors.Join(errors.New("内核未在规定时间内就绪，请检查授权、端口及配置"), finishFailedStart())
+	session.Dirty = false
+	if journalErr := s.geo.writeSession(session); journalErr != nil {
+		s.geoWarning = "无法更新 GEO 恢复记录，临时文件将在退出后保留：" + journalErr.Error()
+	} else {
+		s.geoSession = session
+		s.geoDirtyFailed = false
+	}
+	return nil
 }
+
+func (s *Service) handleUnexpectedExit(cause error) {
+	s.mu.Lock()
+	if s.cmd == nil || s.stopping {
+		s.mu.Unlock()
+		return
+	}
+	dir := s.runtimeDir
+	dirty := s.geoDirtyFailed
+	done := s.done
+	controllerAddr := s.controllerAddress
+	s.cmd = nil
+	s.tunProcess = nil
+	if cause != nil {
+		s.lastError = "内核已退出：" + cause.Error()
+	}
+	s.mu.Unlock()
+
+	stopMihomoEngine(controllerAddr)
+
+	s.mu.Lock()
+	if dirty {
+		s.geoWarning = "GEO 更新未完成，先前数据库已保留；临时文件位于 " + dir
+	} else if cacheErr := s.geo.save(dir); cacheErr != nil {
+		s.geoWarning = "GEO 数据未能保存，临时文件保留在 " + dir + "：" + cacheErr.Error()
+	} else if journalErr := s.geo.removeSession(dir); journalErr != nil {
+		s.geoWarning = "GEO 恢复记录未能清理，临时文件保留在 " + dir
+	} else {
+		_ = os.RemoveAll(dir)
+	}
+	if done != nil {
+		close(done)
+	}
+	s.mu.Unlock()
+	s.recoverAfterExit()
+}
+
 func (s *Service) Stop() error {
 	s.startCancelMu.Lock()
 	if s.startCancel != nil {
@@ -737,10 +637,7 @@ func (s *Service) Stop() error {
 // stopLocked is called with opMu held, including when the last takeover is disabled.
 func (s *Service) stopLocked() error {
 	s.mu.Lock()
-	cmd := s.cmd
-	done := s.done
-	tunProcess := s.tunProcess
-	if cmd == nil {
+	if s.cmd == nil {
 		s.mu.Unlock()
 		return nil
 	}
@@ -757,35 +654,30 @@ func (s *Service) stopLocked() error {
 		s.ownsProxy = false
 	}
 	s.stopping = true
+	dir := s.runtimeDir
+	dirty := s.geoDirtyFailed
+	done := s.done
+	controllerAddr := s.controllerAddress
 	s.mu.Unlock()
-	var err error
-	if tunProcess != nil {
-		err = tunProcess.stop()
-	} else {
-		err = cmd.Process.Signal(os.Interrupt)
-		if err != nil {
-			_ = cmd.Process.Kill()
-		}
-	}
-	wait := 3 * time.Second
-	if tunProcess != nil {
-		wait = 12 * time.Second
-	}
-	select {
-	case <-done:
-	case <-time.After(wait):
-		if tunProcess == nil {
-			_ = cmd.Process.Kill()
-			<-done
-		} else {
-			s.mu.Lock()
-			s.stopping = false
-			s.mu.Unlock()
-			return errors.Join(errors.New("TUN 内核尚未停止，请重试恢复网络"), err)
-		}
-	}
+
+	stopMihomoEngine(controllerAddr)
+
 	s.mu.Lock()
+	s.cmd = nil
+	s.tunProcess = nil
 	s.stopping = false
+	if dirty {
+		s.geoWarning = "GEO 更新未完成，先前数据库已保留；临时文件位于 " + dir
+	} else if cacheErr := s.geo.save(dir); cacheErr != nil {
+		s.geoWarning = "GEO 数据未能保存，临时文件保留在 " + dir + "：" + cacheErr.Error()
+	} else if journalErr := s.geo.removeSession(dir); journalErr != nil {
+		s.geoWarning = "GEO 恢复记录未能清理，临时文件保留在 " + dir
+	} else {
+		_ = os.RemoveAll(dir)
+	}
+	if done != nil {
+		close(done)
+	}
 	s.mu.Unlock()
 	return nil
 }

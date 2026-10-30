@@ -93,9 +93,7 @@ func TestGeoCrashFixture(t *testing.T) {
 	os.Exit(0)
 }
 func TestGeoRecoveryAfterAppExit(t *testing.T) {
-	if os.Getenv("ROCKETSCIENCE_MIHOMO") == "" {
-		t.Skip("set ROCKETSCIENCE_MIHOMO")
-	}
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	cacheDir := t.TempDir()
 	child := exec.Command(os.Args[0], "-test.run=^TestGeoCrashFixture$")
 	child.Env = append(os.Environ(), "ROCKET_GEO_CRASH_CACHE="+cacheDir)

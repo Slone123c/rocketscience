@@ -1,9 +1,6 @@
 package core
 
-import (
-	"errors"
-	"net/url"
-)
+import "errors"
 
 type ConnectionMetadata struct {
 	Host            string `json:"host"`
@@ -36,15 +33,10 @@ type Rule struct {
 func (s *Service) Connections() (ConnectionSnapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	result := ConnectionSnapshot{Connections: []Connection{}}
 	if s.cmd == nil {
-		return result, nil
+		return ConnectionSnapshot{Connections: []Connection{}}, nil
 	}
-	err := s.get("/connections", &result)
-	if result.Connections == nil {
-		result.Connections = []Connection{}
-	}
-	return result, err
+	return inProcessConnectionsSnapshot(), nil
 }
 func (s *Service) Rules() ([]Rule, error) {
 	s.mu.Lock()
@@ -52,16 +44,7 @@ func (s *Service) Rules() ([]Rule, error) {
 	if s.cmd == nil {
 		return []Rule{}, nil
 	}
-	var result struct {
-		Rules []Rule `json:"rules"`
-	}
-	if err := s.get("/rules", &result); err != nil {
-		return nil, err
-	}
-	if result.Rules == nil {
-		return []Rule{}, nil
-	}
-	return result.Rules, nil
+	return inProcessRules(), nil
 }
 func (s *Service) CloseConnection(id string) error {
 	s.mu.Lock()
@@ -72,7 +55,7 @@ func (s *Service) CloseConnection(id string) error {
 	if id == "" {
 		return errors.New("连接不存在")
 	}
-	return s.request("DELETE", "/connections/"+url.PathEscape(id), nil)
+	return closeInProcessConnection(id)
 }
 
 func (s *Service) CloseAllConnections() error {
@@ -81,5 +64,6 @@ func (s *Service) CloseAllConnections() error {
 	if s.cmd == nil {
 		return errors.New("内核未启动")
 	}
-	return s.request("DELETE", "/connections", nil)
+	closeAllInProcessConnections()
+	return nil
 }
