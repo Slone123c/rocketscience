@@ -13,7 +13,7 @@ bun run dev
 
 `bun run build` 生成应用和 DMG，并自动检查内核与辅助模块是否齐全、处理器架构与最低系统版本是否兼容、网络模块接口、许可证、签名完整性和镜像校验。可用 `bun run verify:bundle` 单独复查；也可在命令末尾传入另一份应用包路径。目前产物使用本地开发签名，尚未完成分发签名与公证。
 
-`bun run build --arch=amd64` 构建 Intel 版本，`--arch=arm64` 构建 Apple Silicon 版本。跨架构构建会复制当前 Git 跟踪文件及未忽略的未跟踪源码到临时目录，包含尚未提交的修改，不覆盖本机开发资源。两种产物分别位于 `build/darwin-amd64` 和 `build/darwin-arm64`。单独复查 Intel 包使用 `bun run verify:bundle --arch=amd64`；内核内容检查需要对应架构的固定下载缓存。
+`bun run build --arch=amd64` 构建 Intel 版本，`--arch=arm64` 构建 Apple Silicon 版本。跨架构构建会复制当前 Git 跟踪文件及未忽略的未跟踪源码到临时目录，包含尚未提交的修改，不覆盖本机开发资源。两种产物分别位于 `build.noindex/darwin-amd64` 和 `build.noindex/darwin-arm64`。单独复查 Intel 包使用 `bun run verify:bundle --arch=amd64`；内核内容检查需要对应架构的固定下载缓存。
 
 两种架构的构建与静态包检查已通过。当前 Swift SDK 在 Intel 构建时提示 `libswiftCompatibilityPacks.a` 缺少 x86_64 切片；链接完成，但 Intel 真机与旧系统运行尚未验收，不能据此宣称兼容性已完成。
 

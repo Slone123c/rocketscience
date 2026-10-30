@@ -47,7 +47,7 @@ try {
   const args=process.argv.slice(2);
   const target=args.find(arg=>arg.startsWith("--arch="))?.slice(7)||(process.arch==="arm64"?"arm64":"amd64");
   requireCondition(target==="arm64"||target==="amd64","架构必须为 arm64 或 amd64");
-  const app=resolve(args.find(arg=>!arg.startsWith("--"))||`build/darwin-${target}/RocketScience.app`);
+  const app=resolve(args.find(arg=>!arg.startsWith("--"))||`build.noindex/darwin-${target}/RocketScience.app`);
   const contents=join(app,"Contents");
   const plist=JSON.parse(run("plutil",["-convert","json","-o","-",join(contents,"Info.plist")]));
   requireCondition(plist.CFBundleIdentifier==="app.rocketscience.desktop","应用标识不匹配");
@@ -55,6 +55,9 @@ try {
   versionParts(minimum);
   requireCondition(plist.NSLocationUsageDescription&&plist.NSLocationWhenInUseUsageDescription,"缺少 Wi-Fi 名称读取的权限说明");
   const resources=join(contents,"Resources");
+  requireCondition(plist.CFBundleIconFile==="AppIcon.icns","应用缺少图标声明");
+  const icon=readFileSync(join(resources,"AppIcon.icns"));
+  requireCondition(icon.length>8&&icon.toString("ascii",0,4)==="icns"&&icon.readUInt32BE(4)===icon.length,"应用图标资源无效");
   const main=join(contents,"MacOS",plist.CFBundleExecutable);
   const nativeArch=target==="arm64"?"arm64":"x86_64";
   const binaries=[main,...["mihomo","rs-system-proxy","rs-tun-supervisor","libRocketNetwork.dylib"].map(name=>join(resources,"bin",name))];

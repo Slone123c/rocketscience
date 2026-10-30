@@ -1,12 +1,16 @@
 package main
 
 import (
+	_ "embed"
 	"github.com/egoist/mygo"
 	"log"
 	"os"
 	"rocketscience/internal/core"
 	"rocketscience/internal/network"
 )
+
+//go:embed resources/icon.png
+var appIcon []byte
 
 func main() {
 	mygo.App.SetName("RocketScience")
@@ -28,6 +32,9 @@ func main() {
 	mygo.Bind(wifi)
 	stopUpdates := make(chan struct{})
 	mygo.App.WhenReady(func() {
+		if err := mygo.App.Dock.SetIcon(appIcon); err != nil {
+			log.Printf("无法加载应用图标：%v", err)
+		}
 		go core.RunUpdates(profiles, stopUpdates)
 		desktop.ready()
 		go func() {

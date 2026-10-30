@@ -16,3 +16,4 @@ resources/bin/
 coverage/
 profiles.json
 proxy-recovery.json
+build.noindex/

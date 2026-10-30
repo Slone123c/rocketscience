@@ -35,8 +35,12 @@ try {
   }
   run("sh",["scripts/build-core.sh"],project);
   run("sh",["scripts/build-helper.sh"],project);
-  run("bun",["x","mygo","build","-platform",`darwin/${target}`,"-o",join(root,"build")],project);
-  run("bun",["scripts/verify-bundle.ts",`--arch=${target}`,join(root,"build",`darwin-${target}`,"RocketScience.app")],root);
+  run("bun",["x","mygo","build","-platform",`darwin/${target}`,"-o",join(root,"build.noindex")],project);
+  run("bun",["scripts/verify-bundle.ts",`--arch=${target}`,join(root,"build.noindex",`darwin-${target}`,"RocketScience.app")],root);
+  // Keep build artifacts out of launchers as well as Spotlight. The installed
+  // copy is registered separately; never unregister /Applications here.
+  const registrar="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  if(existsSync(registrar))spawnSync(registrar,["-u",join(root,"build.noindex",`darwin-${target}`,"RocketScience.app")],{stdio:"ignore"});
 }catch(error){
   console.error(error instanceof Error?error.message:String(error));process.exitCode=1;
 }finally{
