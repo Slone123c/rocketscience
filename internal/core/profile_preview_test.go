@@ -33,8 +33,11 @@ proxy-providers:
 		t.Fatalf("members: %+v", groups)
 	}
 	for _, group := range groups {
-		if group.Now != "" {
-			t.Fatal("preview must not invent a selected node")
+		// A Selector shows the node it uses on the next start (mihomo's default is
+		// its first member); automatic groups decide only after the core tests them.
+		want := map[string]string{"手选": "自动"}[group.Name]
+		if group.Now != want {
+			t.Fatalf("preview selection for %s: %q, want %q", group.Name, group.Now, want)
 		}
 		for _, node := range group.Nodes {
 			if node.Delay != nil || node.DelayAt != "" {

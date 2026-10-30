@@ -15,5 +15,7 @@ resources/bin/
 *.test
 coverage/
 profiles.json
+selections.json
 proxy-recovery.json
+OPEN_SOURCE_BUG_CHECKLIST.md
 build.noindex/

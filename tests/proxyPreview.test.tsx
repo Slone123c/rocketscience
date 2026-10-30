@@ -6,16 +6,17 @@ import {runInNewContext} from "node:vm";
 import {ProxyList} from "../src/ProxyList";
 import type * as Design from "../design-system/components/index";
 
-test("stopped configuration preview shows protocol metadata with unavailable controls and no selected node",()=>{
+test("stopped preview lets people choose the next-start node but keeps latency tests off",()=>{
   const window:any={React,matchMedia:()=>({matches:true})};
   runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
   const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running={false} groups={[{name:"选择",type:"Selector",now:"东京",all:["东京"],nodes:[{name:"东京",type:"ss",udp:true,delay:null,delayAt:""}]}]} delays={{}} testing={Object.create(null)} onTest={()=>{throw Error("preview test")}} onSelect={()=>{throw Error("preview select")}}/>);
-  expect(markup).toContain("配置预览");
+  expect(markup).toContain("下次启动时生效");
   expect(markup).toContain("东京");
   expect(markup).toContain("ss · UDP");
-  expect(markup).toContain('aria-disabled="true"');
   expect(markup).toContain('aria-label="测速：选择" disabled=""');
-  expect(markup).not.toContain('aria-checked="true"');
+  expect(markup).toContain('aria-checked="true"');
+  expect(markup).not.toContain('aria-disabled="true"');
+  expect(markup).toContain("下次启动");
 });
 
 test("running groups show explicit selected labels while the summary names observed usage separately",()=>{
@@ -30,4 +31,20 @@ test("running groups show explicit selected labels while the summary names obser
   expect(markup).toContain("已选");
   expect(markup).toContain("1 条连接");
   expect(markup).toContain("查看连接");
+});
+
+test("rule mode shows one main exit and collapses branch groups to their final node",()=>{
+  const window:any={React,matchMedia:()=>({matches:true})};
+  runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
+  const g=(name:string,now:string,all:string[],rules=0,fallback=false)=>({name,type:"Selector",now,all,nodes:[],rules,fallback});
+  const groups=[g("节点选择","香港 01",["香港 01","日本 01"],40),g("国外媒体","节点选择",["节点选择","日本 01"],12),g("漏网之鱼","节点选择",["节点选择","DIRECT"],1,true),g("GLOBAL","DIRECT",["节点选择","DIRECT"])];
+  const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running mode="rule" groups={groups} delays={{}} testing={Object.create(null)} onTest={()=>{}} onSelect={()=>{}}/>);
+  expect(markup).toContain('aria-label="主出口"');
+  expect(markup).toContain("主出口：节点选择 → 香港 01");
+  expect(markup).toContain("跟随主出口 →");
+  expect(markup).toContain("12 条规则");
+  expect(markup).toContain("1 条规则 · 兜底");
+  expect(markup).not.toContain(">GLOBAL<");
+  // Only the main exit starts expanded.
+  expect(markup.match(/aria-expanded="true"/g)?.length).toBe(1);
 });

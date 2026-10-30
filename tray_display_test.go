@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"rocketscience/internal/core"
+	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 type testTraySurface struct {
@@ -22,24 +24,34 @@ func (t *testTraySurface) SetIcon(_ []byte, _ bool) error {
 func (t *testTraySurface) SetTitle(value string) { t.titles = append(t.titles, value) }
 func TestTrayDisplayFrames(t *testing.T) {
 	data := core.Telemetry{Connected: true, Up: 1024, Down: 1536}
-	icon := makeTrayFrame("icon", data)
+	icon := makeTrayFrame("icon", true, data)
 	if !icon.icon || icon.title != "" {
 		t.Fatalf("icon: %+v", icon)
 	}
-	speed := makeTrayFrame("speed", data)
-	if speed.icon || speed.title != "↑ 1.0K ↓ 1.5K" {
+	speed := makeTrayFrame("speed", true, data)
+	if speed.icon || speed.title != "↑1.0K ↓1.5K" {
 		t.Fatalf("speed: %+v", speed)
 	}
-	both := makeTrayFrame("both", data)
+	both := makeTrayFrame("both", true, data)
 	if !both.icon || both.title != speed.title {
 		t.Fatalf("both: %+v", both)
 	}
-	idle := makeTrayFrame("both", core.Telemetry{})
-	if idle.title != "↑   — ↓   —" {
-		t.Fatalf("idle: %+v", idle)
+	idle := makeTrayFrame("both", false, core.Telemetry{})
+	if !idle.icon || idle.title != "" {
+		t.Fatalf("idle both: %+v", idle)
 	}
-	if speedText(-1) != "   0B" {
+	stopped := makeTrayFrame("speed", false, core.Telemetry{})
+	if stopped.title != "↑   — ↓   —" {
+		t.Fatalf("stopped speed: %+v", stopped)
+	}
+	if speedText(-1) != "  0B" {
 		t.Fatalf("negative: %q", speedText(-1))
+	}
+	for value, want := range map[int64]string{999: "999B", 1023: "1.0K", 10188: "9.9K", 10239: "10K", 1023999: "1.0M", 1048449024: "1.0G"} {
+		got := speedText(value)
+		if strings.TrimLeft(got, "\u2007") != want || utf8.RuneCountInString(got) != 4 {
+			t.Fatalf("speedText(%d) = %q, want %q padded to four characters", value, got, want)
+		}
 	}
 	tray := &testTraySurface{}
 	if err := applyTrayFrame(tray, both, trayFrame{}, true, []byte{1}, []byte{2}); err != nil {

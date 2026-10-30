@@ -18,10 +18,42 @@ func (p *Profiles) PreviewGroups() ([]Proxy, error) {
 	}
 	for _, profile := range d.Profiles {
 		if profile.ID == d.ActiveID {
-			return previewProfileGroups(profile.Content)
+			groups, err := previewProfileGroups(profile.Content)
+			if err != nil {
+				return nil, err
+			}
+			p.mu.Lock()
+			store, storeErr := p.selectionsLocked()
+			p.mu.Unlock()
+			if storeErr == nil {
+				previewNow(groups, store.load(d.ActiveID))
+			}
+			return groups, nil
 		}
 	}
 	return []Proxy{}, nil
+}
+
+// unassignedGroupName lists nodes no group references. It exists only in the
+// preview, so it is never selectable.
+const unassignedGroupName = "配置中的独立节点"
+
+// previewNow fills in what each Selector uses on the next start: the saved
+// choice when it is still a member, otherwise mihomo's default, the first
+// member. Automatic groups decide only after the core tests them, so they stay empty.
+func previewNow(groups []Proxy, saved map[string]string) {
+	for i := range groups {
+		g := &groups[i]
+		if g.Type != "Selector" || g.Name == unassignedGroupName || len(g.All) == 0 {
+			continue
+		}
+		g.Now = g.All[0]
+		for _, member := range g.All {
+			if member == saved[g.Name] {
+				g.Now = member
+			}
+		}
+	}
 }
 
 func previewProfileGroups(content string) ([]Proxy, error) {
@@ -36,6 +68,7 @@ func previewProfileGroups(content string) ([]Proxy, error) {
 			Type    string   `yaml:"type"`
 			Proxies []string `yaml:"proxies"`
 		} `yaml:"proxy-groups"`
+		Rules []string `yaml:"rules"`
 	}
 	if err := yaml.Unmarshal([]byte(content), &config); err != nil {
 		return nil, errors.New("无法读取配置中的节点信息，请检查配置格式")
@@ -63,13 +96,14 @@ func previewProfileGroups(content string) ([]Proxy, error) {
 		}
 		groups = append(groups, v)
 	}
-	unassigned := Proxy{Name: "配置中的独立节点", Type: "Selector", All: []string{}, Nodes: []ProxyNode{}}
+	unassigned := Proxy{Name: unassignedGroupName, Type: "Selector", All: []string{}, Nodes: []ProxyNode{}}
 	for _, node := range config.Proxies {
 		if !referenced[node.Name] {
 			unassigned.All = append(unassigned.All, node.Name)
 			unassigned.Nodes = append(unassigned.Nodes, nodes[node.Name])
 		}
 	}
+	annotateRuleTargets(groups, configRules(config.Rules))
 	if len(unassigned.All) > 0 {
 		groups = append(groups, unassigned)
 	}

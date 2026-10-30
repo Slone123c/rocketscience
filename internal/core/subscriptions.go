@@ -26,6 +26,9 @@ func (p *Profiles) startActiveLocked(d profileData) error {
 			if err != nil {
 				return err
 			}
+			if store, err := p.selectionsLocked(); err == nil {
+				p.service.bindSelections(store, d.ActiveID)
+			}
 			if err = p.service.start(merged, d.MixedPort, d.ProxyBypass, lanValue(d.LAN), coreOptionsValue(d.CoreOptions)); err != nil {
 				return err
 			}

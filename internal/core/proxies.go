@@ -18,6 +18,9 @@ type Proxy struct {
 	Now   string      `json:"now"`
 	All   []string    `json:"all"`
 	Nodes []ProxyNode `json:"nodes"`
+	// Rules counts the rules that target this group; Fallback marks the MATCH target.
+	Rules    int  `json:"rules"`
+	Fallback bool `json:"fallback"`
 }
 
 type ProxyNode struct {
@@ -76,8 +79,75 @@ func (s *Service) Groups() ([]Proxy, error) {
 			groups = append(groups, v)
 		}
 	}
-	sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
+	// GLOBAL lists every group in configuration order; keep that order so the
+	// subscription's main group stays first. GLOBAL itself goes last.
+	order := map[string]int{}
+	for i, name := range result.Proxies["GLOBAL"].All {
+		order[name] = i + 1
+	}
+	rank := func(name string) int {
+		if name == "GLOBAL" {
+			return len(order) + 2
+		}
+		if i, ok := order[name]; ok {
+			return i
+		}
+		return len(order) + 1
+	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		a, b := rank(groups[i].Name), rank(groups[j].Name)
+		if a != b {
+			return a < b
+		}
+		return groups[i].Name < groups[j].Name
+	})
+	// Rule counts only annotate the list; a failed read leaves them at zero.
+	var rules struct {
+		Rules []Rule `json:"rules"`
+	}
+	if err := s.get("/rules", &rules); err == nil {
+		annotateRuleTargets(groups, rules.Rules)
+	}
 	return groups, nil
+}
+
+// annotateRuleTargets records how many rules point at each group and which
+// group receives the MATCH fallback.
+func annotateRuleTargets(groups []Proxy, rules []Rule) {
+	counts := map[string]int{}
+	fallback := ""
+	for _, rule := range rules {
+		counts[rule.Proxy]++
+		if strings.EqualFold(rule.Type, "MATCH") {
+			fallback = rule.Proxy
+		}
+	}
+	for i := range groups {
+		groups[i].Rules = counts[groups[i].Name]
+		groups[i].Fallback = fallback != "" && groups[i].Name == fallback
+	}
+}
+
+// configRules turns `TYPE,payload,target[,options]` lines into rules. Logical
+// rules keep commas inside parentheses, so the target is the last field after
+// trailing options are dropped.
+func configRules(lines []string) []Rule {
+	rules := make([]Rule, 0, len(lines))
+	for _, line := range lines {
+		parts := strings.Split(line, ",")
+		for len(parts) > 2 {
+			last := strings.TrimSpace(parts[len(parts)-1])
+			if last != "no-resolve" && last != "src" {
+				break
+			}
+			parts = parts[:len(parts)-1]
+		}
+		if len(parts) < 2 {
+			continue
+		}
+		rules = append(rules, Rule{Type: strings.TrimSpace(parts[0]), Proxy: strings.TrimSpace(parts[len(parts)-1])})
+	}
+	return rules
 }
 func (s *Service) request(method, path string, body any) error {
 	data, err := json.Marshal(body)
@@ -138,6 +208,7 @@ func (s *Service) Select(group, node string) error {
 	if !hadBefore || before.Now != node {
 		s.closeGroupConnectionsLocked(group)
 	}
+	s.rememberSelectionLocked(group, node)
 	return nil
 }
 
@@ -165,6 +236,7 @@ func (s *Service) SelectRecommendation(group, current, node string) error {
 			if current != node {
 				s.closeGroupConnectionsLocked(group)
 			}
+			s.rememberSelectionLocked(group, node)
 			return nil
 		}
 	}

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"strings"
 	"time"
+	"unicode/utf8"
 
 	"rocketscience/internal/core"
 )
@@ -21,33 +21,46 @@ type trayFrame struct {
 	title string
 }
 
+func padSpeed(text string) string {
+	for utf8.RuneCountInString(text) < 4 {
+		text = "\u2007" + text
+	}
+	return text
+}
+
+func speedNumber(rate float64, index int) string {
+	if index > 0 {
+		if number := fmt.Sprintf("%.1f", rate); len(number) <= 3 {
+			return number
+		}
+	}
+	return fmt.Sprintf("%.0f", rate)
+}
+
+// speedText matches TrayIndicator.shortSpeed: at most four characters, so the
+// menu-bar title keeps a stable width. The unit is chosen after rounding, so
+// 999.6K becomes 1.0M rather than 1000K, and the unit divides by 1024.
 func speedText(value int64) string {
 	if value < 0 {
 		value = 0
 	}
-	units := []string{"B", "K", "M", "G", "T"}
+	units := []string{"B", "K", "M", "G"}
 	rate := float64(value)
 	index := 0
-	for rate >= 1024 && index < len(units)-1 {
+	number := speedNumber(rate, index)
+	for len(number) > 3 && index < len(units)-1 {
 		rate /= 1024
 		index++
+		number = speedNumber(rate, index)
 	}
-	var number string
-	if index == 0 {
-		number = fmt.Sprintf("%4.0f", rate)
-	} else if rate < 100 {
-		number = fmt.Sprintf("%4.1f", rate)
-	} else {
-		number = fmt.Sprintf("%4.0f", rate)
-	}
-	return strings.ReplaceAll(number, " ", "\u2007") + units[index]
+	return padSpeed(number + units[index])
 }
-func makeTrayFrame(display string, data core.Telemetry) trayFrame {
-	if display == "icon" {
+func makeTrayFrame(display string, running bool, data core.Telemetry) trayFrame {
+	if display == "icon" || (display == "both" && !running) {
 		return trayFrame{icon: true}
 	}
-	up, down := "   —", "   —"
-	if data.Connected {
+	up, down := padSpeed("—"), padSpeed("—")
+	if running && data.Connected {
 		up, down = speedText(data.Up), speedText(data.Down)
 	}
 	return trayFrame{icon: display != "speed", title: "↑" + up + " ↓" + down}
@@ -126,11 +139,15 @@ func (d *Desktop) startTrayDisplay() {
 			d.mu.Lock()
 			display := d.display
 			d.mu.Unlock()
+			running := false
 			data := core.Telemetry{}
-			if display != "icon" && d.service != nil {
-				data = d.service.LiveTelemetry()
+			if d.service != nil {
+				running = d.service.Status().Running
+				if display != "icon" {
+					data = d.service.LiveTelemetry()
+				}
 			}
-			frame := makeTrayFrame(display, data)
+			frame := makeTrayFrame(display, running, data)
 			err := applyTrayFrame(tray, frame, previous, first, icon, empty)
 			d.mu.Lock()
 			if err != nil {

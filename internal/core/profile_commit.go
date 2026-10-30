@@ -119,6 +119,9 @@ func (p *Profiles) commitProfile(d profileData, content string) error {
 	}
 	if err == nil {
 		p.draft = content
+		if store, storeErr := p.selectionsLocked(); storeErr == nil && p.service != nil {
+			p.service.bindSelections(store, d.ActiveID)
+		}
 	}
 	return err
 }

@@ -8,6 +8,7 @@
     "verify:bundle": "bun scripts/verify-bundle.ts",
     "generate": "mygo generate",
     "dev:web": "vite",
+    "preview": "vite --mode preview --host 127.0.0.1 --port 4173 --strictPort",
     "build:web": "bun run verify:components && tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "verify:components": "bun test tests/menuBarPopover.test.ts tests/tourInteraction.test.ts tests/trajectory.test.tsx tests/connectivityPresentation.test.tsx tests/profileEditorInteraction.test.ts tests/settingsNavigation.test.ts"

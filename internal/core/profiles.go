@@ -70,6 +70,8 @@ type Profiles struct {
 	updateMu sync.Mutex
 	service  *Service
 	draft    string
+	// selections is created on first use; see selectionsLocked.
+	selections *selectionStore
 }
 
 func NewProfiles(dir string) *Profiles { return &Profiles{dir: dir} }

@@ -119,6 +119,7 @@ func (s *Service) snapshotSelections() {
 		}
 	}
 	s.savedSelections = saved
+	s.persistSelectionsLocked()
 }
 
 // restoreSavedSelections is best effort: groups or nodes missing from the new

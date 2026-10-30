@@ -25,7 +25,10 @@ import (
 // Service owns the mihomo process and coordinates network takeover.
 type Service struct {
 	// savedSelections remembers Selector choices across stop/start; the core's temp work dir drops cache.db.
-	savedSelections   map[string]string
+	savedSelections map[string]string
+	// selectionStore persists savedSelections under selectionProfile (see bindSelections).
+	selectionStore    *selectionStore
+	selectionProfile  string
 	startCancelMu     sync.Mutex
 	startCancel       context.CancelFunc
 	startupStatus     atomic.Pointer[Status]
@@ -673,6 +676,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 					return errors.Join(err, finishFailedStart())
 				}
 			}
+			// Record what the core actually uses: a saved node that no longer
+			// exists falls back to the group's default, and the record follows.
+			s.snapshotSelections()
 			s.startStreamsAt(s.controllerAuthority(), s.secret, done)
 			if s.useSystemProxy {
 				s.publishStartup("应用系统代理设置", mixedPort)

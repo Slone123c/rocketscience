@@ -194,6 +194,9 @@ export interface Proxy {
   now: string;
   all: string[];
   nodes: ProxyNode[];
+  /** Rules counts the rules that target this group; Fallback marks the MATCH target. */
+  rules: number;
+  fallback: boolean;
 }
 
 /** ProxyBypassSettings preserves the system's current exceptions unless Custom is enabled. */
@@ -497,6 +500,13 @@ export const Profiles = {
   /** Save validates before replacing any saved configuration. */
   save(v: Profile, expectedUpdatedAt: string): Promise<ProfileState> {
     return call("Profiles.Save", v, expectedUpdatedAt);
+  },
+  /**
+   * SelectPreview chooses the node a Selector group uses on the next start. It
+   * only works while the core is stopped; a running core takes Service.Select.
+   */
+  selectPreview(group: string, node: string): Promise<void> {
+    return call("Profiles.SelectPreview", group, node);
   },
   setAutoConnect(value: boolean): Promise<void> {
     return call("Profiles.SetAutoConnect", value);

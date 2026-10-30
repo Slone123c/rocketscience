@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useAppearance } from "./appearance";
 import { Desktop, Profiles, Service, WiFi, type WiFiStatus, type ProfileSummary, type Proxy, type Status, type Monitoring } from "./mygo";
 import {proxyNodes,type DelayMeasurement} from "./proxyNodes";
+import { proxyLayout } from "./proxyLayout";
 import {createRefreshQueue} from "./viewRefresh";
 import {createTrayTasks} from "./trayTasks";
 import type * as Design from "../design-system/components/index";
 
 export function TrayPanel({ design: DS }: { design: typeof Design }) {
+  useAppearance();
   const [wifi,setWifi]=useState<WiFiStatus|null>(null);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
@@ -60,9 +63,10 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
       const speed=await Profiles.speedSettings();
       if(!request.current())return;
       const result=await Service.testGroup(group,speed.url,speed.timeoutMs);
+      const completedAt=Date.now();
       // Refresh the core/profile identity before accepting a delayed IPC result.
       await refresh();
-      if(request.current()&&mounted.current)setDelays(old=>({...old,[group]:{values:result,completedAt:Date.now()}}));
+      if(request.current()&&mounted.current)setDelays(old=>({...old,[group]:{values:result,completedAt}}));
     } catch(e) { if(request.current()&&mounted.current)setError(String(e)); }
     finally { if(request.finish()&&mounted.current)setTesting(null); }
   }
@@ -74,11 +78,13 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
       catch (e) { await Profiles.setSystemProxy(previous); throw e; }
     });
   }
-  const proxyGroups: NonNullable<Design.MenuBarPopoverProps["groups"]> = groups.map(g => ({
+  const mode = status?.mode?.toLowerCase();
+  // Same order as the proxy page: the main exit opens first, GLOBAL only in global mode.
+  const layout = proxyLayout(groups, mode || "rule");
+  const proxyGroups: NonNullable<Design.MenuBarPopoverProps["groups"]> = [layout.main, ...layout.branches].flatMap(route => route ? [route.group] : []).map(g => ({
     name: g.name, type: g.type as Design.ProxyGroupProps["type"], now: g.now,
     nodes: proxyNodes(g,delays[g.name])
   }));
-  const mode = status?.mode?.toLowerCase();
   const transitioning=busy||!!status?.starting;
   return <div className="tray-page"><DS.MenuBarPopover
     state={transitioning || !ready ? "igniting" : status?.running ? "orbit" : "idle"}
@@ -98,5 +104,5 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     onCopyCommand={async()=>{try{const effectivePort=(status?.running||status?.starting)&&status.mixedPort?status.mixedPort:(await Profiles.summary()).mixedPort;await Desktop.copyTerminalProxy(effectivePort)}catch(e){setError(String(e));throw e}}}
     onOpenDashboard={() => void Desktop.openDashboard().catch(e => setError(String(e)))}
     onQuit={() => void Desktop.quit().catch(e => setError(String(e)))}
-  />{error && <div className="tray-error" role="alert">{error}<button onClick={() => setError("")} aria-label="关闭">×</button></div>}</div>;
+  />{error && <div className="tray-error" role="alert"><span>{error}</span><DS.Button size="sm" variant="ghost" icon="close" aria-label="关闭" onClick={() => setError("")}/></div>}</div>;
 }

@@ -16,7 +16,7 @@ func TestProxySelectionAndMode(t *testing.T) {
 	}
 	s := newTestService(t)
 	defer s.Shutdown()
-	config := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: 选择\n    type: select\n    proxies: [DIRECT, REJECT]\nrules:\n  - MATCH,选择\n"
+	config := "mode: rule\nlog-level: silent\nproxy-groups:\n  - name: 选择\n    type: select\n    proxies: [DIRECT, REJECT]\n  - name: 广告\n    type: select\n    proxies: [REJECT, DIRECT]\nrules:\n  - DOMAIN,ads.example,广告\n  - DOMAIN,a.example,选择\n  - MATCH,选择\n"
 	if err := s.Start(config, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
@@ -24,14 +24,12 @@ func TestProxySelectionAndMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := false
-	for _, g := range groups {
-		if g.Name == "选择" && g.Type == "Selector" {
-			found = true
-		}
+	// Configuration order, not name order: 选择 sorts after 广告 by code point.
+	if len(groups) < 3 || groups[0].Name != "选择" || groups[0].Type != "Selector" || groups[1].Name != "广告" || groups[len(groups)-1].Name != "GLOBAL" {
+		t.Fatalf("group order: %+v", groups)
 	}
-	if !found {
-		t.Fatalf("missing group: %+v", groups)
+	if groups[0].Rules != 2 || !groups[0].Fallback || groups[1].Rules != 1 || groups[1].Fallback {
+		t.Fatalf("rule targets: %+v", groups)
 	}
 	if err = s.Select("选择", "REJECT"); err != nil {
 		t.Fatal(err)
@@ -125,5 +123,14 @@ func TestSelectAndSetModeCloseStaleConnections(t *testing.T) {
 	case <-done2:
 	case <-time.After(3 * time.Second):
 		t.Fatal("SetMode did not close active connection")
+	}
+}
+
+func TestRuleTargetsFromConfig(t *testing.T) {
+	rules := configRules([]string{"DOMAIN-SUFFIX,example.com,媒体", "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve", "AND,((DOMAIN,a.com),(NETWORK,UDP)),媒体", "GEOIP,CN,DIRECT", "MATCH,兜底", "bad"})
+	groups := []Proxy{{Name: "媒体"}, {Name: "兜底"}, {Name: "空闲"}}
+	annotateRuleTargets(groups, rules)
+	if groups[0].Rules != 2 || groups[0].Fallback || groups[1].Rules != 1 || !groups[1].Fallback || groups[2].Rules != 0 {
+		t.Fatalf("targets: %+v", groups)
 	}
 }

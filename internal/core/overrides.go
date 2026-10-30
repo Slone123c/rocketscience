@@ -262,6 +262,9 @@ func (p *Profiles) StartDraft(content string, port int) error {
 	if err != nil {
 		return err
 	}
+	if store, err := p.selectionsLocked(); err == nil {
+		p.service.bindSelections(store, d.ActiveID)
+	}
 	if err = p.service.start(merged, port, d.ProxyBypass, lanValue(d.LAN), coreOptionsValue(d.CoreOptions)); err != nil {
 		return err
 	}

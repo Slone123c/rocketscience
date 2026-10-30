@@ -1,15 +1,19 @@
 import type {Connection,Proxy} from "./mygo";
 
 export interface ProxyRouteSummary {
-  title:string; detail:string; path:string[];
+  title:string; detail:string; path:string[]; pathLabel:string;
   actual:Array<{name:string;count:number}>; unknown:number; observed:boolean;
   groupUsage:Record<string,number>;
 }
 
 /** Selection is a routing preference; connection chains are observed usage. */
-export function proxyRouteSummary(running:boolean,mode:string,groups:Proxy[],connections:Connection[]|null):ProxyRouteSummary {
-  const result:ProxyRouteSummary={title:"当前未使用任何节点",detail:"内核未启动，下方仅为配置预览。",path:[],actual:[],unknown:0,observed:connections!==null,groupUsage:Object.create(null)};
-  if(!running)return result;
+/** `main` is the main exit's chain from proxyLayout, shown in rule mode. */
+export function proxyRouteSummary(running:boolean,mode:string,groups:Proxy[],connections:Connection[]|null,main:string[]=[]):ProxyRouteSummary {
+  const result:ProxyRouteSummary={title:"当前未使用任何节点",detail:"内核未启动，下方仅为配置预览。",path:[],pathLabel:"选择路径",actual:[],unknown:0,observed:connections!==null,groupUsage:Object.create(null)};
+  if(!running) {
+    if(main.length>1){result.detail="内核未启动。下方是下次启动将使用的节点，可以直接修改。";result.path=main.map(name=>name==="DIRECT"?"直连":name==="REJECT"?"拒绝连接":name);result.pathLabel="下次启动"}
+    return result;
+  }
   const byName=new Map(groups.map(group=>[group.name,group]));
   const counts=new Map<string,number>();
   for(const connection of connections||[]) {
@@ -39,7 +43,8 @@ export function proxyRouteSummary(running:boolean,mode:string,groups:Proxy[],con
     }
   } else if(mode.toLowerCase()==="rule") {
     result.title="当前出站：按规则分流";
-    result.detail="不同网站和应用可能使用不同节点。各组的“当前选择”仅在规则命中该组时生效。";
+    result.detail="大部分流量走主出口；分流组只在规则命中时生效，标有“跟随主出口”的组会随主出口一起切换。";
+    if(main.length>1){result.path=main.map(name=>name==="DIRECT"?"直连":name==="REJECT"?"拒绝连接":name);result.pathLabel="主出口"}
   } else {
     result.title="当前出站模式待确认";result.detail="以活动连接中记录的实际出站为准。";
   }
