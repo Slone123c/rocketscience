@@ -542,6 +542,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	s.geoSession = session
 	s.lastError = ""
 	finishFailedStart := func() error {
+		if s.tunDevice != nil {
+			tunDebugf("内核启动的后续步骤失败，撤销本次启动")
+		}
 		stopMihomoEngine(s.controllerAddress)
 		s.closeTunDeviceLocked()
 		s.cmd = nil
@@ -590,6 +593,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	} else {
 		s.geoSession = session
 		s.geoDirtyFailed = false
+	}
+	if s.tunDevice != nil {
+		go s.diagnoseTun(s.tunDevice.name, done)
 	}
 	return nil
 }

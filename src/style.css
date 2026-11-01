@@ -8,7 +8,7 @@
 .aside-bottom{position:relative}.network-check{width:100%;padding:11px 0;margin-bottom:15px;background:transparent;border:0;border-bottom:1px solid #393c37;color:#d1d3cd;text-align:left;font-size:12px}.network-check span{float:right;color:#979b94}.check-popover{position:absolute;bottom:55px;left:0;width:300px;z-index:3;background:#242624;border:1px solid #565951;border-radius:10px;padding:16px;box-shadow:0 12px 35px #0008}.check-popover p{margin:8px 0}.check-popover .secondary{margin-top:12px}.check-popover .text-button{display:block;margin:10px 0 0;padding:0;text-align:left}
 .telemetry-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px}.lf-group{margin-top:24px}.lf-seg{margin-top:18px}
 .lf-sidebar{flex:none}.lf-conn,.lf-logs{margin-top:20px}
-.override-groups{display:flex;flex-direction:column;gap:14px;margin-top:18px}.override-groups[aria-busy="true"]{pointer-events:none;opacity:.65}.new-group{display:flex;gap:10px;margin-top:20px}.new-group input{background:#111311;border:1px solid #555950;border-radius:6px;color:#eee;padding:9px;min-width:0;flex:1}
+.override-groups{display:flex;flex-direction:column;gap:14px;margin-top:18px}.override-groups[aria-busy="true"]{pointer-events:none;opacity:.65}.new-group{display:flex;align-items:center;gap:var(--space-2);margin-top:14px;padding:var(--space-3) var(--space-4);border:1px dashed var(--line-strong);border-radius:var(--radius-lg)}.new-group>:first-child{flex:0 1 280px;min-width:0}.new-group__or{font:400 12px/16px var(--font-sans);color:var(--ink-faint)}
 
 .override-groups{border:0;padding:0;min-width:0}
 
@@ -99,7 +99,16 @@ main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;
 .proxy-route__head{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .proxy-route h2{margin:0;font:600 18px/26px var(--font-sans);color:var(--ink);overflow-wrap:anywhere}
 .proxy-route p{margin:0;color:var(--ink-muted);font:400 13px/21px var(--font-sans);overflow-wrap:anywhere}
-.proxy-route__path{color:var(--ink)!important}
+.proxy-route__path{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;color:var(--ink)!important}
+.proxy-route__path-label{flex:none;font:500 12px/18px var(--font-sans),"PingFang SC",sans-serif;color:var(--ink-faint)}
+.proxy-route__path ol{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin:0;padding:0;list-style:none;min-width:0}
+.proxy-route__path li{display:flex;align-items:center;min-width:0;max-width:100%}
+.proxy-route__hop{display:inline-flex;align-items:center;box-sizing:border-box;min-height:28px;max-width:100%;padding:4px 10px;border:1px solid var(--line-strong);border-radius:var(--radius-sm,6px);background:var(--surface-raised);color:var(--ink);font:500 13px/18px var(--font-sans),"PingFang SC",sans-serif;overflow-wrap:anywhere}
+.proxy-route__hop.is-exit{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink)}
+.proxy-route__link{position:relative;width:28px;height:1px;margin:0 8px;flex:none;background:var(--line-strong);overflow:visible}
+.proxy-route__link::after{content:"";position:absolute;top:50%;left:0;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--ink-faint)}
+.proxy-route__link.is-live::after{background:var(--ink);animation:proxy-route-flow 1.4s linear infinite}
+@keyframes proxy-route-flow{from{transform:translateX(0)}to{transform:translateX(23px)}}
 .proxy-route__actual{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:400 12px/20px var(--font-sans);color:var(--ink-muted)}
 .proxy-route__actual ul{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;min-width:0}
 .proxy-route__actual li{display:flex;gap:10px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--radius-sm,6px);overflow-wrap:anywhere;min-width:0}
@@ -120,3 +129,8 @@ main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;
 /* The legacy bare `header` rule adds a 28px margin that pads every group header. */
 .lf-group__head{margin-bottom:0}
 #tour-nodes > .proxy-section + .proxy-section{margin-top:24px}
+
+/* Menu-bar panel: the flyout grows to fit the content, so the page itself never scrolls sideways. */
+.tray-page{width:320px;overflow:hidden}
+html:has(.tray-page),html:has(.tray-page) body{overflow-x:hidden;background:transparent}
+.tray-page .lf-seg{margin-top:0}

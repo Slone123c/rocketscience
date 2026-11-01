@@ -73,8 +73,13 @@ func openTunDevice(ctx context.Context, request tunhelper.Request) (*tunDevice, 
 	if tunServiceCurrent(helper) {
 		device, err := dialTunService(ctx, request, 0)
 		if err == nil || errors.As(err, new(tunHelperError)) || ctx.Err() != nil {
+			tunDebugf("通过 TUN 服务获取：错误=%v", err)
 			return device, err
 		}
+		tunDebugf("TUN 服务不可用，将重新安装：%v", err)
+	} else {
+		_, plistErr := os.Stat(tunhelper.ServicePlist)
+		tunDebugf("TUN 服务未安装或版本不同（plist 错误=%v），将请求授权安装", plistErr)
 	}
 	if err := runPrivileged(ctx, helper, "install", strconv.Itoa(os.Getuid())); err != nil {
 		if ctx.Err() != nil {
@@ -85,8 +90,10 @@ func openTunDevice(ctx context.Context, request tunhelper.Request) (*tunDevice, 
 	// launchd starts the daemon right away; give it a moment to listen.
 	device, err := dialTunService(ctx, request, 3*time.Second)
 	if err == nil || errors.As(err, new(tunHelperError)) || ctx.Err() != nil {
+		tunDebugf("安装后通过 TUN 服务获取：错误=%v", err)
 		return device, err
 	}
+	tunDebugf("安装后仍无法连接 TUN 服务，改用单次授权：%v", err)
 	return openTunOnce(ctx, helper, request)
 }
 

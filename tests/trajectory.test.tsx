@@ -32,10 +32,27 @@ describe("prototype trajectory safety",()=>{
     await import("../design-system/components/bundle.js");
     const DS=target.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const markup=renderToStaticMarkup(<DS.Trajectory originGeo={null} zoomable={false} nodes={[{name:"东京 01",estimated:true},{name:"no-location-xyz"}]}/>);
-    expect(markup).toContain("东京 01 · 推测");
+    // Labels show only the node; the caption says positions are guessed.
+    expect(markup).toContain("东京 01</text>");
+    expect(markup).not.toContain("推测");
     expect(markup).not.toContain("lf-traj__origin");
     expect(markup).not.toContain("lf-traj__path");
     expect(markup).not.toContain("NaN");
     expect(markup).not.toContain("no-location-xyz</text>");
+  });
+  test("draws each city hop as its own labelled marker",async()=>{
+    const host=globalThis as unknown as {window:Record<string,unknown>};
+    host.window={React,matchMedia:()=>({matches:true})};
+    // bundle.js is a browser IIFE, not an ES module, so a static import cannot load it.
+    await import("../design-system/components/bundle.js?hop");
+    const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
+    const markup=renderToStaticMarkup(<DS.Trajectory origin="" originGeo={[113.3,23.1]} zoomable={false} nodes={[{
+      name:"CN2-1-备",active:true,lon:-118.24,lat:34.05,place:"Los Angeles, US",
+      hops:[{at:[-122.42,37.77],place:"San Francisco, US"}],
+    }]}/>);
+    expect(markup).toContain("San Francisco, US");
+    expect(markup).toContain("Los Angeles, US");
+    expect(markup.match(/class="lf-traj__hop"/g)).toHaveLength(1);
+    expect(markup.match(/ Q/g)).toHaveLength(2);
   });
 });

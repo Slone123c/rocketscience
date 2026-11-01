@@ -18,3 +18,6 @@ func (*tunDevice) dup() (int, error) { return -1, errors.New("TUN 仅支持 macO
 func (*tunDevice) Close()            {}
 func tunServiceInstalled() bool      { return false }
 func uninstallTunService() error     { return nil }
+
+func tunServiceLogPath() string                      { return "" }
+func (*Service) diagnoseTun(string, <-chan struct{}) {}

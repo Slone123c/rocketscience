@@ -77,7 +77,7 @@ try {
   }
   const library=join(resources,"bin","libRocketNetwork.dylib");
   const symbols=run("nm",["-gU",library]);
-  for(const symbol of ["rs_wifi_snapshot","rs_wifi_free","rs_wifi_request_access","rs_app_icon"])
+  for(const symbol of ["rs_wifi_snapshot","rs_wifi_free","rs_wifi_request_access","rs_app_icon","rs_tray_speeds"])
     requireCondition(new RegExp(`\\b_${symbol}\\b`).test(symbols),`网络模块缺少接口：${symbol}`);
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
   const license=join(resources,"licenses","mihomo-GPL-3.0.txt");

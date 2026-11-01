@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"runtime"
+	"strings"
 
 	"github.com/metacubex/mihomo/listener"
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -42,10 +44,15 @@ func (s *Service) attachTunLocked(ctx context.Context) func(LC.Tun) (int, error)
 			if open == nil {
 				open = openTunDevice
 			}
-			device, err := open(ctx, tunRequest(conf))
+			request := tunRequest(conf)
+			tunDebugf("请求虚拟网卡：name=%q mtu=%d inet4=%v inet6=%v auto-route=%v dns-mode=%q 路由 %d 条 排除 %d 条；stack=%s dns-hijack=%v auto-detect-interface=%v",
+				request.Name, request.MTU, request.Inet4Address, request.Inet6Address, request.AutoRoute, request.DNSMode, len(request.RouteAddress), len(request.RouteExclude), conf.Stack, conf.DNSHijack, conf.AutoDetectInterface)
+			device, err := open(ctx, request)
 			if err != nil {
+				tunDebugf("获取虚拟网卡失败：%v", err)
 				return -1, err
 			}
+			tunDebugf("已获得虚拟网卡 %s", device.name)
 			s.tunDevice = device
 		} else if current := listener.GetTunConf(); current.Enable && current.FileDescriptor > 0 {
 			// A reload with the same settings keeps mihomo's listener, so hand
@@ -54,6 +61,7 @@ func (s *Service) attachTunLocked(ctx context.Context) func(LC.Tun) (int, error)
 			next.FileDescriptor, next.AutoRoute = current.FileDescriptor, false
 			next.Sort()
 			if next.Equal(current) {
+				tunDebugf("重新加载：TUN 参数未变，沿用描述符 %d", current.FileDescriptor)
 				return current.FileDescriptor, nil
 			}
 		}
@@ -65,6 +73,7 @@ func (s *Service) attachTunLocked(ctx context.Context) func(LC.Tun) (int, error)
 // Called with mu held.
 func (s *Service) closeTunDeviceLocked() {
 	if s.tunDevice != nil {
+		tunDebugf("释放虚拟网卡 %s（调用来源：%s）", s.tunDevice.name, callers())
 		s.tunDevice.Close()
 		s.tunDevice = nil
 	}
@@ -89,4 +98,23 @@ func (s *Service) UninstallTunService() error {
 		return nil
 	}
 	return uninstallTunService()
+}
+
+// callers names the functions that led here, so the debug log shows why a
+// device was released (a stop, a TUN switch, a failed start).
+func callers() string {
+	pc := make([]uintptr, 8)
+	frames := runtime.CallersFrames(pc[:runtime.Callers(3, pc)])
+	var names []string
+	for {
+		frame, more := frames.Next()
+		name := frame.Function[strings.LastIndex(frame.Function, "/")+1:]
+		if strings.HasPrefix(name, "core.") {
+			names = append(names, strings.TrimPrefix(name, "core."))
+		}
+		if !more {
+			break
+		}
+	}
+	return strings.Join(names, " ← ")
 }

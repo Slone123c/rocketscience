@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"image/png"
+	"os"
 	"rocketscience/internal/core"
+	"rocketscience/internal/network"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -23,6 +27,9 @@ func (t *testTraySurface) SetIcon(_ []byte, _ bool) error {
 }
 func (t *testTraySurface) SetTitle(value string) { t.titles = append(t.titles, value) }
 func TestTrayDisplayFrames(t *testing.T) {
+	saved := drawSpeeds
+	drawSpeeds = nil
+	defer func() { drawSpeeds = saved }()
 	data := core.Telemetry{Connected: true, Up: 1024, Down: 1536}
 	icon := makeTrayFrame("icon", true, data)
 	if !icon.icon || icon.title != "" {
@@ -54,20 +61,20 @@ func TestTrayDisplayFrames(t *testing.T) {
 		}
 	}
 	tray := &testTraySurface{}
-	if err := applyTrayFrame(tray, both, trayFrame{}, true, []byte{1}, []byte{2}); err != nil {
+	if _, err := applyTrayFrame(tray, both, trayFrame{}, true, []byte{1}, []byte{2}); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyTrayFrame(tray, both, both, false, []byte{1}, []byte{2}); err != nil {
+	if _, err := applyTrayFrame(tray, both, both, false, []byte{1}, []byte{2}); err != nil {
 		t.Fatal(err)
 	}
 	if tray.icons != 1 || len(tray.titles) != 1 {
 		t.Fatal("unchanged frame redrawn")
 	}
-	if err := applyTrayFrame(tray, speed, both, false, []byte{1}, []byte{2}); err != nil || tray.icons != 2 {
+	if _, err := applyTrayFrame(tray, speed, both, false, []byte{1}, []byte{2}); err != nil || tray.icons != 2 {
 		t.Fatal("icon mode not updated")
 	}
 	tray.fail = true
-	if err := applyTrayFrame(tray, both, speed, false, []byte{1}, []byte{2}); err == nil {
+	if _, err := applyTrayFrame(tray, both, speed, false, []byte{1}, []byte{2}); err == nil {
 		t.Fatal("icon error ignored")
 	}
 }
@@ -88,5 +95,43 @@ func TestTrayDisplaySettingBridge(t *testing.T) {
 	}
 	if d.display != "speed" {
 		t.Fatal("failed update changed display")
+	}
+}
+
+func TestTraySpeedsImage(t *testing.T) {
+	speeds, ok := network.TraySpeeds("11K", "7.5K")
+	if !ok {
+		t.Skip("build the native helpers first")
+	}
+	text, err := png.Decode(bytes.NewReader(speeds))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Stacked lines keep the readout narrow: well under the old one-line title.
+	if text.Bounds().Dy() != 36 || text.Bounds().Dx() > 64 {
+		t.Fatalf("speeds image %v", text.Bounds())
+	}
+	wide, _ := network.TraySpeeds("888K", "1.0G")
+	if w, _ := png.Decode(bytes.NewReader(wide)); w.Bounds().Dx() != text.Bounds().Dx() {
+		t.Fatal("readout width changes with the value")
+	}
+	icon, err := trayAsset.ReadFile("assets/tray.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tray := &testTraySurface{}
+	frame := makeTrayFrame("both", true, core.Telemetry{Connected: true, Up: 11 * 1024, Down: 7680})
+	drawn, err := applyTrayFrame(tray, frame, trayFrame{}, true, icon, transparentTrayIcon())
+	if err != nil || !drawn || tray.icons != 1 || len(tray.titles) != 1 || tray.titles[0] != "" {
+		t.Fatalf("drawn=%v err=%v icons=%d titles=%q", drawn, err, tray.icons, tray.titles)
+	}
+	frame.drawn = drawn
+	if again, _ := applyTrayFrame(tray, frame, frame, false, icon, nil); !again || tray.icons != 1 {
+		t.Fatal("unchanged readout redrawn")
+	}
+	S := os.Getenv("TRAY_PREVIEW")
+	if S != "" {
+		composed, _ := besideIcon(icon, speeds)
+		_ = os.WriteFile(S, composed, 0o644)
 	}
 }

@@ -79,3 +79,34 @@ public func appIcon(_ path: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar
     guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return nil }
     return strdup(json)
 }
+
+// The menu-bar speed readout: two stacked lines, ↑ over ↓, drawn black on clear as a template image
+// 36 px tall (18 pt at 2x). Width is fixed by the widest possible value so the status item never jitters.
+@_cdecl("rs_tray_speeds")
+public func traySpeeds(_ up: UnsafePointer<CChar>?, _ down: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+    guard let up, let down else { return nil }
+    let font = NSFont.monospacedDigitSystemFont(ofSize: 17, weight: .medium)
+    let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
+    let dim: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 13, weight: .semibold), .foregroundColor: NSColor.black.withAlphaComponent(0.55)]
+    let arrow = max(("↑" as NSString).size(withAttributes: dim).width, ("↓" as NSString).size(withAttributes: dim).width)
+    let number = ["888B", "8.8K", "888K", "8.8M", "888M", "8.8G"].map { ($0 as NSString).size(withAttributes: ink).width }.max() ?? 0
+    let gap: CGFloat = 2
+    let width = Int(ceil(arrow + gap + number))
+    let height = 36
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    for (row, glyph, value) in [(1, "↑", String(cString: up)), (0, "↓", String(cString: down))] {
+        // Each line owns half the height; draw(at:) places the line box's bottom-left corner.
+        let half = CGFloat(height / 2), base = CGFloat(row) * half
+        let arrowSize = (glyph as NSString).size(withAttributes: dim)
+        (glyph as NSString).draw(at: NSPoint(x: 0, y: base + (half - arrowSize.height) / 2), withAttributes: dim)
+        let size = (value as NSString).size(withAttributes: ink)
+        (value as NSString).draw(at: NSPoint(x: CGFloat(width) - size.width, y: base + (half - size.height) / 2), withAttributes: ink)
+    }
+    NSGraphicsContext.restoreGraphicsState()
+    guard let png = rep.representation(using: .png, properties: [:]) else { return nil }
+    let value: [String: Any] = ["png": png.base64EncodedString(), "width": width]
+    guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return nil }
+    return strdup(json)
+}

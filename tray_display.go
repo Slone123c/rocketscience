@@ -9,7 +9,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"image/draw"
+	"strings"
+
 	"rocketscience/internal/core"
+	"rocketscience/internal/network"
 )
 
 type traySurface interface {
@@ -19,7 +23,14 @@ type traySurface interface {
 type trayFrame struct {
 	icon  bool
 	title string
+	// up and down feed the stacked image readout; title is the one-line fallback.
+	up, down string
+	// drawn records that the speeds went out as an image rather than as the title.
+	drawn bool
 }
+
+// drawSpeeds renders the stacked ↑/↓ readout; nil, or a failed draw, falls back to the title.
+var drawSpeeds = network.TraySpeeds
 
 func padSpeed(text string) string {
 	for utf8.RuneCountInString(text) < 4 {
@@ -63,27 +74,75 @@ func makeTrayFrame(display string, running bool, data core.Telemetry) trayFrame 
 	if running && data.Connected {
 		up, down = speedText(data.Up), speedText(data.Down)
 	}
-	return trayFrame{icon: display != "speed", title: "↑" + up + " ↓" + down}
+	return trayFrame{icon: display != "speed", title: "↑" + up + " ↓" + down, up: strings.TrimLeft(up, "\u2007"), down: strings.TrimLeft(down, "\u2007")}
+}
+
+// besideIcon puts the 32 px rocket, centred in the 36 px tall canvas, left of the speeds.
+func besideIcon(icon, speeds []byte) ([]byte, error) {
+	rocket, err := png.Decode(bytes.NewReader(icon))
+	if err != nil {
+		return nil, err
+	}
+	text, err := png.Decode(bytes.NewReader(speeds))
+	if err != nil {
+		return nil, err
+	}
+	const gap = 5
+	r, t := rocket.Bounds(), text.Bounds()
+	height := max(r.Dy(), t.Dy())
+	canvas := image.NewRGBA(image.Rect(0, 0, r.Dx()+gap+t.Dx(), height))
+	draw.Draw(canvas, image.Rect(0, (height-r.Dy())/2, r.Dx(), (height-r.Dy())/2+r.Dy()), rocket, r.Min, draw.Src)
+	draw.Draw(canvas, image.Rect(r.Dx()+gap, (height-t.Dy())/2, r.Dx()+gap+t.Dx(), (height-t.Dy())/2+t.Dy()), text, t.Min, draw.Src)
+	var out bytes.Buffer
+	if err := png.Encode(&out, canvas); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 func transparentTrayIcon() []byte {
 	var output bytes.Buffer
 	_ = png.Encode(&output, image.NewRGBA(image.Rect(0, 0, 1, 18)))
 	return output.Bytes()
 }
-func applyTrayFrame(tray traySurface, frame, previous trayFrame, first bool, icon, empty []byte) error {
-	if first || frame.icon != previous.icon {
+
+// applyTrayFrame reports whether the speeds went out as an image, so the next
+// frame knows whether a title is still showing.
+func applyTrayFrame(tray traySurface, frame, previous trayFrame, first bool, icon, empty []byte) (bool, error) {
+	if frame.title != "" && drawSpeeds != nil {
+		if !first && previous.drawn && frame.icon == previous.icon && frame.up == previous.up && frame.down == previous.down {
+			return true, nil
+		}
+		if speeds, ok := drawSpeeds(frame.up, frame.down); ok {
+			img := speeds
+			if frame.icon {
+				var err error
+				if img, err = besideIcon(icon, speeds); err != nil {
+					return false, err
+				}
+			}
+			if err := tray.SetIcon(img, true); err != nil {
+				return false, err
+			}
+			if first || !previous.drawn {
+				tray.SetTitle("")
+			}
+			return true, nil
+		}
+	}
+	// A frame after an image readout always resets the icon it replaced.
+	if first || previous.drawn || frame.icon != previous.icon {
 		img := empty
 		if frame.icon {
 			img = icon
 		}
 		if err := tray.SetIcon(img, true); err != nil {
-			return err
+			return false, err
 		}
 	}
-	if first || frame.title != previous.title {
+	if first || previous.drawn || frame.title != previous.title {
 		tray.SetTitle(frame.title)
 	}
-	return nil
+	return false, nil
 }
 func (d *Desktop) TrayDisplay() (string, error) {
 	if d.profiles == nil {
@@ -148,7 +207,8 @@ func (d *Desktop) startTrayDisplay() {
 				}
 			}
 			frame := makeTrayFrame(display, running, data)
-			err := applyTrayFrame(tray, frame, previous, first, icon, empty)
+			drawn, err := applyTrayFrame(tray, frame, previous, first, icon, empty)
+			frame.drawn = drawn
 			d.mu.Lock()
 			if err != nil {
 				d.trayError = "菜单栏显示更新失败：" + err.Error()

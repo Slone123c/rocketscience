@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -107,13 +108,17 @@ func session(conn *net.UnixConn, uid uint32) error {
 	}
 	opening.Unlock()
 	if err != nil {
+		log.Printf("创建失败：%v；请求 %s", err, line)
 		return reply(conn, tunhelper.Response{Error: err.Error()}, -1)
 	}
 	defer device.Close()
 	if err := reply(conn, tunhelper.Response{Name: name}, fd); err != nil {
+		log.Printf("交付 %s 失败：%v", name, err)
 		return err
 	}
+	log.Printf("已创建 %s 并交给应用（地址 %v，auto-route=%v，路由 %d 条，排除 %d 条）", name, request.Inet4Address, request.AutoRoute, len(request.RouteAddress), len(request.RouteExclude))
 	_, _ = io.Copy(io.Discard, conn)
+	log.Printf("应用已断开，释放 %s", name)
 	return nil
 }
 

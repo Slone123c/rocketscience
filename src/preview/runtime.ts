@@ -47,17 +47,17 @@ function clone<T>(value: T): T {
 
 const sampleYaml = `proxies: []
 proxy-groups:
-  - { name: 节点选择, type: select, proxies: [香港 01, 日本 01, 美国 01, DIRECT] }
+  - { name: 🚀 节点选择, type: select, proxies: [美国 02, 日本 01, 美国 01, DIRECT] }
 rules:
   - DOMAIN-SUFFIX,local,DIRECT
-  - MATCH,节点选择
+  - MATCH,🚀 节点选择
 `;
 
 function node(name: string, type: string, delay: number): ProxyNode {
   return { name, type, udp: true, delay, delayAt: new Date().toISOString() };
 }
 
-const previewNodes = [node("香港 01", "ss", 86), node("日本 01", "vmess", 124), node("美国 01", "trojan", 210)];
+const previewNodes = [node("美国 02", "ss", 86), node("日本 01", "vmess", 124), node("美国 01", "trojan", 210)];
 const nodeNames = previewNodes.map(item => item.name);
 
 function group(name: string, type: string, now: string, members: string[]): Proxy {
@@ -68,14 +68,14 @@ function group(name: string, type: string, now: string, members: string[]): Prox
 // A common subscription shape: one main selector and branch groups that follow it.
 function makeGroups(): Proxy[] {
   return [
-    group("节点选择", "Selector", "香港 01", ["自动选择", ...nodeNames, "DIRECT"]),
+    group("🚀 节点选择", "Selector", "美国 02", ["自动选择", ...nodeNames, "DIRECT"]),
     group("自动选择", "URLTest", "日本 01", nodeNames),
-    group("国外媒体", "Selector", "节点选择", ["节点选择", "自动选择", ...nodeNames]),
-    group("电报消息", "Selector", "日本 01", ["节点选择", ...nodeNames]),
-    group("国内服务", "Selector", "DIRECT", ["DIRECT", "节点选择"]),
+    group("国外媒体", "Selector", "🚀 节点选择", ["🚀 节点选择", "自动选择", ...nodeNames]),
+    group("电报消息", "Selector", "日本 01", ["🚀 节点选择", ...nodeNames]),
+    group("国内服务", "Selector", "DIRECT", ["DIRECT", "🚀 节点选择"]),
     group("广告拦截", "Selector", "REJECT", ["REJECT", "DIRECT"]),
-    group("漏网之鱼", "Selector", "节点选择", ["节点选择", "DIRECT"]),
-    group("GLOBAL", "Selector", "节点选择", ["节点选择", "自动选择", "国外媒体", "电报消息", "国内服务", "广告拦截", "漏网之鱼", ...nodeNames, "DIRECT", "REJECT"]),
+    group("漏网之鱼", "Selector", "🚀 节点选择", ["🚀 节点选择", "DIRECT"]),
+    group("GLOBAL", "Selector", "🚀 节点选择", ["🚀 节点选择", "自动选择", "国外媒体", "电报消息", "国内服务", "广告拦截", "漏网之鱼", ...nodeNames, "DIRECT", "REJECT"]),
   ];
 }
 
@@ -85,8 +85,8 @@ const subscriptionRules: Rule[] = [
   { type: "DOMAIN-SUFFIX", payload: "youtube.com", proxy: "国外媒体" },
   { type: "DOMAIN-SUFFIX", payload: "netflix.com", proxy: "国外媒体" },
   { type: "DOMAIN-SUFFIX", payload: "telegram.org", proxy: "电报消息" },
-  { type: "DOMAIN-SUFFIX", payload: "github.com", proxy: "节点选择" },
-  { type: "DOMAIN-SUFFIX", payload: "google.com", proxy: "节点选择" },
+  { type: "DOMAIN-SUFFIX", payload: "github.com", proxy: "🚀 节点选择" },
+  { type: "DOMAIN-SUFFIX", payload: "google.com", proxy: "🚀 节点选择" },
   { type: "GEOIP", payload: "CN", proxy: "国内服务" },
   { type: "MATCH", payload: "", proxy: "漏网之鱼" },
 ];
@@ -161,7 +161,7 @@ const state: PreviewState = {
   nextId: 2,
   groups: makeGroups(),
   connections: [
-    conn("c1", "www.example.com", "443", "tcp", "Safari", ["香港 01", "节点选择"], "MATCH", "", 180_000, 2_400_000),
+    conn("c1", "www.example.com", "443", "tcp", "Safari", ["美国 02", "🚀 节点选择"], "MATCH", "", 180_000, 2_400_000),
     conn("c2", "api.example.com", "443", "tcp", "Mail", ["日本 01", "自动选择"], "MATCH", "", 40_000, 610_000),
     conn("c3", "10.0.0.8", "53", "udp", "mDNSResponder", ["DIRECT"], "GEOIP", "CN", 2_000, 1_200),
   ] as Connection[],
@@ -173,7 +173,7 @@ const state: PreviewState = {
       rules: [{ type: "IP-CIDR", payload: "192.168.0.0/16", policy: "DIRECT" }],
     }],
     revision: 1,
-    policies: ["节点选择", "自动选择", "DIRECT", "REJECT"],
+    policies: ["🚀 节点选择", "自动选择", "DIRECT", "REJECT"],
     skipped: [],
     origins: [],
   },
@@ -327,6 +327,8 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Desktop.TrayDisplay": () => state.tray,
   "Desktop.SetTrayDisplay": (args) => { state.tray = String(args[0] || "both"); },
   "Desktop.OpenDashboard": () => undefined,
+  "Desktop.ClosePanel": () => undefined,
+  "Desktop.TrayReady": () => undefined,
   "Desktop.Apps": (args) => Object.fromEntries((args[0] as string[]).filter(path => path.includes(".app/")).map(path => {
     const name = path.split("/").find(part => part.endsWith(".app"))!.slice(0, -4);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="13" fill="#2f6fde"/><text x="32" y="42" font-size="28" text-anchor="middle" fill="#fff" font-family="sans-serif">${name[0]}</text></svg>`;
@@ -441,7 +443,39 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Profiles.SetWiFiSettings": (args) => { state.wifi = clone(args[0] as WiFiSettings); return clone(state.wifi); },
 
   "Service.Status": () => status(),
+  "Service.NodeLocations": (args) => Object.fromEntries(((args[0] as string[]) || []).map((name) => [name, {
+    // a relay: enters in Shanghai, lands where the name says
+    entry: { known: true, city: "Shanghai", region: "Shanghai", country: "CN", lon: 121.47, lat: 31.23, source: "ipinfo.io", error: "" },
+    exit: /洛杉矶|美国|US/.test(name) ? { known: true, city: "Los Angeles", region: "California", country: "US", lon: -118.24, lat: 34.05, source: "ipinfo.io", error: "" }
+      : { known: true, city: "Tokyo", region: "Tokyo", country: "JP", lon: 139.69, lat: 35.69, source: "ipinfo.io", error: "" },
+    // the measured path from here to the entry
+    forward: /洛杉矶|美国|US/.test(name) ? {
+      known: true, reached: true, silent: 2, error: "",
+      hops: [{ ip: "192.168.1.1", ms: 2 }, { ip: "100.64.0.1", ms: 6 }, { ip: "", ms: -1 }, { ip: "202.97.33.1", ms: 9 }, { ip: "202.97.50.2", ms: 14 }, { ip: "59.43.80.1", ms: 21 }, { ip: "59.43.183.5", ms: 156 }, { ip: "203.0.113.9", ms: 162 }],
+      segments: [
+        { label: "本地网络", kind: "local", hops: 1, ms: 2 },
+        { label: "城域网", kind: "carrier", hops: 2, ms: 6 },
+        { label: "电信 163", kind: "carrier", hops: 2, ms: 14 },
+        { label: "CN2 GT", kind: "premium", hops: 2, ms: 156 },
+        { label: "入口", kind: "entry", hops: 1, ms: 162 },
+      ],
+      verdict: "去程走 CN2 GT（先经电信 163），8 跳到入口，162 ms",
+    } : {
+      known: true, reached: true, silent: 1, error: "",
+      hops: [{ ip: "192.168.1.1", ms: 2 }, { ip: "100.64.0.1", ms: 5 }, { ip: "59.43.80.1", ms: 9 }, { ip: "203.0.113.20", ms: 12 }],
+      segments: [
+        { label: "本地网络", kind: "local", hops: 1, ms: 2 },
+        { label: "城域网", kind: "carrier", hops: 1, ms: 5 },
+        { label: "CN2 GIA", kind: "premium", hops: 1, ms: 9 },
+        { label: "入口", kind: "entry", hops: 1, ms: 12 },
+      ],
+      verdict: "去程走 CN2 GIA，4 跳到入口，12 ms",
+    },
+    pending: false,
+  }])),
+  "Service.LocalIPLocation": () => ({ known: true, city: "Guangzhou", region: "Guangdong", country: "CN", lon: 113.25, lat: 23.12, source: "ipinfo.io", error: "" }),
   "Service.TunServiceInstalled": () => state.tunService,
+  "Service.TunDebugLog": () => "==> ~/Library/Logs/RocketScience/tun.log <==\n（预览模式没有日志）\n",
   "Service.UninstallTunService": () => { if (state.running && state.tun) fail("TUN 正在使用，请先关闭 TUN 再卸载服务"); state.tunService = false; },
   "Service.Monitoring": () => traffic(),
   "Service.LiveTelemetry": () => traffic().telemetry,

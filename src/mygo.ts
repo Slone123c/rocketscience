@@ -93,10 +93,37 @@ export interface DesktopState {
   trayError: string;
 }
 
+/** ForwardRoute is the measured outbound path from this Mac to a node's entry server. */
+export interface ForwardRoute {
+  known: boolean;
+  reached: boolean;
+  hops: RouteHop[];
+  segments: RouteSegment[];
+  silent: number;
+  verdict: string;
+  error: string;
+}
+
 export interface GeoOptions {
   dataMode: boolean | null;
   autoUpdate: boolean | null;
   updateInterval: number | null;
+}
+
+/**
+ * IPLocation is where this Mac's public IP is registered, for the route map's
+ * origin. It asks ipinfo.io (ipapi.co as a fallback) over a direct connection:
+ * through the proxy it would report the exit node instead.
+ */
+export interface IPLocation {
+  known: boolean;
+  city: string;
+  region: string;
+  country: string;
+  lon: number;
+  lat: number;
+  source: string;
+  error: string;
 }
 
 export interface ImportedProfileFile {
@@ -144,6 +171,21 @@ export interface Monitoring {
   telemetry: Telemetry;
   memory: MemoryUsage;
   history: TrafficHistory;
+}
+
+/**
+ * NodeLocation is where a proxy node really is, for the route map: Entry is
+ * its server (the address in the config, resolved and located), Exit is the
+ * public IP sites see when traffic leaves through it. They differ for relays,
+ * e.g. a Hong Kong entry that lands in Los Angeles. Forward is the measured
+ * path from this Mac to the entry. Pending means a lookup is still running;
+ * ask again shortly.
+ */
+export interface NodeLocation {
+  entry: IPLocation;
+  exit: IPLocation;
+  forward: ForwardRoute;
+  pending: boolean;
 }
 
 /** NodeRecommendation is an observation or applied node switch. */
@@ -226,6 +268,30 @@ export interface ProxyNode {
   udp: boolean | null;
   delay: number | null;
   delayAt: string;
+}
+
+/**
+ * RouteHop is one traceroute hop; MS is -1 for a hop that never answered.
+ * City is set only for a public hop whose city could be located.
+ */
+export interface RouteHop {
+  ip: string;
+  ms: number;
+  city?: string;
+  country?: string;
+  lon: number;
+  lat: number;
+}
+
+/**
+ * RouteSegment groups consecutive hops on the same network.
+ * Kind is local, carrier, premium, intl or entry.
+ */
+export interface RouteSegment {
+  label: string;
+  kind: string;
+  hops: number;
+  ms: number;
 }
 
 export interface Rule {
@@ -353,8 +419,20 @@ export const Service = {
   liveTelemetry(): Promise<Telemetry> {
     return call("Service.LiveTelemetry");
   },
+  /** LocalIPLocation returns the public IP's city, cached for ten minutes. */
+  localIPLocation(): Promise<IPLocation> {
+    return call("Service.LocalIPLocation");
+  },
   monitoring(): Promise<Monitoring> {
     return call("Service.Monitoring");
+  },
+  /**
+   * NodeLocations returns what is known about each node right away and looks up
+   * the rest in the background. Only the busiest few nodes are worth a lookup:
+   * each exit check sends one small request through that node.
+   */
+  nodeLocations(names: string[]): Promise<Record<string, NodeLocation>> {
+    return call("Service.NodeLocations", names);
   },
   recoverGeoCache(): Promise<void> {
     return call("Service.RecoverGeoCache");
@@ -415,6 +493,13 @@ export const Service = {
     return call("Service.TestGroup", group, target, timeoutMS);
   },
   /**
+   * TunDebugLog returns the end of the TUN debug log and the helper service's
+   * log, ready to paste into a bug report.
+   */
+  tunDebugLog(): Promise<string> {
+    return call("Service.TunDebugLog");
+  },
+  /**
    * TunServiceInstalled reports whether the TUN service is installed, so turning
    * TUN on needs no password.
    */
@@ -445,6 +530,9 @@ export const Desktop = {
   },
   clearQuitError(): Promise<void> {
     return call("Desktop.ClearQuitError");
+  },
+  closePanel(): Promise<void> {
+    return call("Desktop.ClosePanel");
   },
   copyTerminalProxy(port: number): Promise<void> {
     return call("Desktop.CopyTerminalProxy", port);
@@ -478,6 +566,9 @@ export const Desktop = {
   },
   trayDisplay(): Promise<string> {
     return call("Desktop.TrayDisplay");
+  },
+  trayReady(): Promise<void> {
+    return call("Desktop.TrayReady");
   },
 } as const;
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"testing"
 
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -32,6 +33,7 @@ func TestTunRequestFollowsParsedConfig(t *testing.T) {
 
 // The device is opened once per session; mihomo gets duplicates it may close.
 func TestAttachTunOpensOnceAndHandsOutDuplicates(t *testing.T) {
+	t.Setenv("ROCKETSCIENCE_TUN_LOG", filepath.Join(t.TempDir(), "tun.log"))
 	reader, writer, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)

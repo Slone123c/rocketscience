@@ -14,6 +14,7 @@ var appIcon []byte
 
 func main() {
 	mygo.App.SetName("RocketScience")
+	keepWebKitRenderingInProcess()
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}

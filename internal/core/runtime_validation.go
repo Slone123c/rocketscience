@@ -142,7 +142,13 @@ func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, wi
 	if wantTun && !skipTunListener && attachTun != nil && !listener.GetTunConf().Enable {
 		// ApplyConfig logs the listener error and continues, so the only
 		// signal left here is Enable=false. The log names the real cause.
-		return fmt.Errorf("TUN 启动失败：虚拟网卡未能就绪（%s）", lastTunError(tunLog))
+		reason := lastTunError(tunLog)
+		tunDebugf("mihomo TUN 监听启动失败：%s", reason)
+		return fmt.Errorf("TUN 启动失败：虚拟网卡未能就绪（%s）", reason)
+	}
+	if wantTun && !skipTunListener && attachTun != nil {
+		conf := listener.GetTunConf()
+		tunDebugf("mihomo TUN 监听已启动：fd=%d stack=%s auto-route=%v", conf.FileDescriptor, conf.Stack, conf.AutoRoute)
 	}
 	return nil
 }

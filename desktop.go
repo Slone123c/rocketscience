@@ -23,6 +23,8 @@ type Desktop struct {
 	main           *mygo.Window
 	tray           *mygo.Tray
 	panel          *mygo.Window
+	panelReady     bool
+	panelPending   bool
 	quitting       bool
 	stopping       bool
 	quitError      string
@@ -91,9 +93,10 @@ func (d *Desktop) OpenDashboard() {
 	}
 	w := d.main
 	panel := d.panel
+	d.panelPending = false
 	d.mu.Unlock()
 	if panel != nil {
-		panel.Close()
+		panel.Hide()
 	}
 	if w != nil {
 		w.Show()
@@ -154,31 +157,98 @@ func (d *Desktop) ready() {
 	d.trayIcon = icon
 	d.mu.Unlock()
 	d.startTrayDisplay()
+	d.initPanel(tray)
 	tray.OnClick(d.togglePanel)
 }
 
-func (d *Desktop) togglePanel() {
-	d.mu.Lock()
-	panel, tray, quitting := d.panel, d.tray, d.quitting
-	d.mu.Unlock()
-	if quitting || tray == nil {
-		return
-	}
-	if panel != nil {
-		panel.Close()
-		return
-	}
-	panel = mygo.NewFlyout(mygo.FlyoutOptions{Tray: tray, Placement: mygo.PlacementBottom, Width: 320, Height: 600, MinWidth: 320, MaxWidth: 320, MinHeight: 160, MaxHeight: 700, FitContent: true, Focusable: true, Shadow: true, Popover: true, URL: "/?panel=tray"})
+func (d *Desktop) initPanel(tray *mygo.Tray) *mygo.Window {
+	panel := mygo.NewFlyout(mygo.FlyoutOptions{Tray: tray, Placement: mygo.PlacementBottom, Width: 320, Height: 600, MinWidth: 320, MaxWidth: 320, MinHeight: 160, MaxHeight: 820, FitContent: true, Focusable: true, Hidden: true, Shadow: true, CornerRadius: 14, URL: "/?panel=tray"})
 	d.mu.Lock()
 	d.panel = panel
+	d.panelReady = false
 	d.mu.Unlock()
+	panel.Page().OnDidNavigate(func(string) {
+		d.mu.Lock()
+		if d.panel == panel {
+			d.panelReady = false
+		}
+		d.mu.Unlock()
+	})
 	panel.OnClosed(func() {
 		d.mu.Lock()
 		if d.panel == panel {
 			d.panel = nil
+			d.panelReady = false
+			d.panelPending = false
 		}
 		d.mu.Unlock()
 	})
+	panel.OnClose(func(e *mygo.CloseEvent) {
+		d.mu.Lock()
+		quitting := d.quitting
+		hasTray := d.tray != nil
+		d.panelPending = false
+		d.mu.Unlock()
+		if !quitting && hasTray {
+			e.PreventDefault()
+			panel.Hide()
+		}
+	})
+	return panel
+}
+
+func (d *Desktop) TrayReady() {
+	d.mu.Lock()
+	d.panelReady = true
+	pending := d.panelPending
+	d.panelPending = false
+	panel := d.panel
+	tray := d.tray
+	quitting := d.quitting
+	d.mu.Unlock()
+	if pending && !quitting && tray != nil && panel != nil {
+		panel.SetAnchor(mygo.Rectangle{})
+		panel.Show()
+	}
+}
+
+func (d *Desktop) togglePanel() {
+	d.mu.Lock()
+	panel, tray, quitting, ready, pending := d.panel, d.tray, d.quitting, d.panelReady, d.panelPending
+	if quitting || tray == nil {
+		d.mu.Unlock()
+		return
+	}
+	if panel != nil && !ready {
+		d.panelPending = !pending
+		d.mu.Unlock()
+		return
+	}
+	d.panelPending = false
+	d.mu.Unlock()
+	if panel == nil {
+		d.mu.Lock()
+		d.panelPending = true
+		d.mu.Unlock()
+		d.initPanel(tray)
+		return
+	}
+	if panel.IsVisible() {
+		panel.Hide()
+		return
+	}
+	panel.SetAnchor(mygo.Rectangle{})
+	panel.Show()
+}
+
+func (d *Desktop) ClosePanel() {
+	d.mu.Lock()
+	panel := d.panel
+	d.panelPending = false
+	d.mu.Unlock()
+	if panel != nil {
+		panel.Hide()
+	}
 }
 func (d *Desktop) beforeQuit(e *mygo.QuitEvent) {
 	d.mu.Lock()

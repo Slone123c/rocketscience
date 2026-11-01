@@ -100,3 +100,30 @@ test("testing another group disables another test; mutations disable node select
   expect(ui.find(n=>n.props["aria-label"]==="测速：A")?.props.disabled).toBe(true);
   ui.unmount();
 });
+
+test("idle state shows node info, sort toggle, and allows preview selection and testing unless readOnly",()=>{
+  const ui=popover();
+  const selected:string[]=[],tested:string[]=[];
+  const groups=[
+    {name:"主出口",type:"Selector",now:"节点 B",nodes:[{name:"节点 B",type:"ss"},{name:"节点 A",type:"vmess"}]},
+    {name:"配置中的独立节点",type:"Selector",now:"",readOnly:true,nodes:[{name:"独立 1",type:"trojan"},{name:"独立 2",type:"ss"}]}
+  ];
+  ui.render({state:"idle",groups,sort:"asc",onSelect:(g:string,n:string)=>selected.push(`${g}:${n}`),onTest:(g:string)=>tested.push(g)});
+  expect(ui.find(n=>n.props.className?.includes("lf-pop__sort"))).toBeDefined();
+  const testBtn=ui.find(n=>n.props["aria-label"]==="测速：主出口");
+  expect(testBtn?.props.disabled).toBe(false);
+  testBtn?.props.onClick();
+  const firstRadio=ui.find(n=>n.props.role==="radio");
+  expect(firstRadio?.props.disabled).toBe(false);
+  expect(firstRadio?.props["aria-disabled"]).toBeUndefined();
+  firstRadio?.props.onClick();
+  expect(tested).toEqual(["主出口"]);
+  expect(selected).toEqual(["主出口:节点 A"]);
+
+  ui.render({state:"idle",groups:[groups[1]],onSelect:(g:string,n:string)=>selected.push(`${g}:${n}`)});
+  const readOnlyRadio=ui.find(n=>n.props.role==="radio");
+  expect(readOnlyRadio?.props["aria-disabled"]).toBe(true);
+  readOnlyRadio?.props.onClick();
+  expect(selected).toHaveLength(1);
+  ui.unmount();
+});

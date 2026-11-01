@@ -4,6 +4,7 @@ import type {Proxy,ConnectionSnapshot} from "./mygo";
 import {proxyNodes,type DelayMeasurement} from "./proxyNodes";
 import {filterProxyGroups} from "./listFilters";
 import {PageTools} from "./pageTools";
+import {useNameSort} from "./nameSort";
 
 import {proxyRouteSummary} from "./proxyRouteSummary";
 import {ProxyRouteSummary} from "./ProxyRouteCard";
@@ -14,6 +15,7 @@ const GROUP_TYPES=["Selector","URLTest","Fallback","LoadBalance","Relay"];
 interface Props{mode?:string;snapshot?:ConnectionSnapshot|null;onConnections?:()=>void;design:typeof Design;groups:Proxy[];running:boolean;delays:Record<string,DelayMeasurement>;testing:Record<string,boolean>;onSelect:(group:string,node:string)=>void;onTest:(group:string)=>void}
 export function ProxyList({design:DS,groups,running,delays,testing,onSelect,onTest,mode="rule",snapshot=null,onConnections}:Props){
   const [query,setQuery]=useState("");
+  const [sort,setSort]=useNameSort();
   const layout=proxyLayout(groups,mode);
   const main=layout.main;
   const summary=proxyRouteSummary(running,mode,groups,snapshot?.connections??null,main?[main.group.name,...main.path]:[]);
@@ -26,7 +28,7 @@ export function ProxyList({design:DS,groups,running,delays,testing,onSelect,onTe
   const card=(route:GroupRoute,open:boolean)=>{
     const group=visible.get(route.group.name)!;
     const {label,via,leaf}=routeLabel(route,main,running);
-    return <DS.ProxyGroup key={group.name+(searching?":search":"")} defaultOpen={open||searching} name={group.name} label={label} via={via} leaf={leaf} meta={branchMeta(route)} activity={summary.groupUsage[group.name]} readOnly={!running&&!group.now} type={(GROUP_TYPES.includes(group.type)?group.type:undefined) as Design.ProxyGroupProps["type"]} now={group.now||undefined} nodes={proxyNodes(group,delays[group.name])} testing={!!testing[group.name]} onTest={()=>onTest(group.name)} onSelect={name=>onSelect(group.name,name)}/>;
+    return <DS.ProxyGroup key={group.name+(searching?":search":"")} defaultOpen={open||searching} name={group.name} label={label} via={via} leaf={leaf} meta={branchMeta(route)} activity={summary.groupUsage[group.name]} readOnly={!running&&!group.now} type={(GROUP_TYPES.includes(group.type)?group.type:undefined) as Design.ProxyGroupProps["type"]} now={group.now||undefined} nodes={proxyNodes(group,delays[group.name])} testing={!!testing[group.name]} onTest={()=>onTest(group.name)} onSelect={name=>onSelect(group.name,name)} sort={sort} onSortChange={setSort}/>;
   };
   return <><PageTools><DS.SearchField aria-label="搜索节点或策略组" placeholder="搜索节点或策略组" autoCapitalize="off" autoCorrect="off" spellCheck={false} value={query} onValueChange={setQuery}/></PageTools><ProxyRouteSummary design={DS} summary={summary} running={running} onConnections={onConnections}/>{searching&&<p className="ovr-intro"><span>测速仍覆盖整个策略组。</span></p>}{!running&&groups.length>0&&<p className="ovr-intro" role="status">未启动：选好的节点下次启动时生效。测速会从本机直接连接各节点；外部提供者的节点需启动后加载。</p>}<div id="tour-nodes">{groups.length===0&&<p className="empty">{running?"没有可测速的策略组，请检查所选配置。":"当前配置未声明节点或策略组。请先导入并使用配置；外部提供者的节点需启动后加载。"}</p>}{groups.length>0&&visible.size===0&&<p className="empty">没有匹配的节点或策略组。</p>}
     {shown(main)&&<section className="proxy-section" aria-label="主出口"><h2 className="cap">主出口</h2>{card(main!,true)}</section>}

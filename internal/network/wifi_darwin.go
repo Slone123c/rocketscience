@@ -18,6 +18,7 @@ var snapshotFn func() unsafe.Pointer
 var freeFn func(unsafe.Pointer)
 var authorizeFn func()
 var appIconFn func(string) unsafe.Pointer
+var traySpeedsFn func(string, string) unsafe.Pointer
 
 func load() error {
 	once.Do(func() {
@@ -40,6 +41,7 @@ func load() error {
 			purego.RegisterLibFunc(&freeFn, library, "rs_wifi_free")
 			purego.RegisterLibFunc(&authorizeFn, library, "rs_wifi_request_access")
 			purego.RegisterLibFunc(&appIconFn, library, "rs_app_icon")
+			purego.RegisterLibFunc(&traySpeedsFn, library, "rs_tray_speeds")
 			return
 		}
 		loadErr = errors.New("找不到 Wi-Fi 辅助模块，请重新构建应用")
