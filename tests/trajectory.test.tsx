@@ -55,6 +55,22 @@ describe("prototype trajectory safety",()=>{
     expect(markup.match(/class="lf-traj__hop"/g)).toHaveLength(1);
     expect(markup.match(/ Q/g)).toHaveLength(2);
   });
+  test("the CN2 line name is not read as China",async()=>{
+    const host=globalThis as unknown as {window:Record<string,unknown>};
+    host.window={React,matchMedia:()=>({matches:true})};
+    await import("../design-system/components/bundle.js?cn2");
+    const DS=host.window.RocketScience as {flagOf:(name:string)=>{code:string}|null;geoOf:(name:string)=>unknown};
+    for(const name of ["CN2-1-备-2","CN2 GIA 01","CN2GIA"]){
+      expect(DS.flagOf(name)).toBeNull();
+      expect(DS.geoOf(name)).toBeNull();
+    }
+    // Another place in the name still counts, and so does the country code itself.
+    expect(DS.flagOf("JP-CN2-01")?.code).toBe("JP");
+    expect(DS.flagOf("中国 CN2")?.code).toBe("CN");
+    expect(DS.flagOf("CN-01")?.code).toBe("CN");
+    expect(DS.flagOf("CN01")?.code).toBe("CN");
+    expect(DS.flagOf("HK01")?.code).toBe("HK");
+  });
   test("draws the flag of the country each IP was located in",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
