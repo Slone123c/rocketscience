@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -105,18 +104,20 @@ func TestKernelRestartFailureLeavesNetworkRestored(t *testing.T) {
 	if err := s.Start(direct, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
-	s.validateRuntime = func(ctx context.Context, dir, path string) error {
-		return errors.New("simulated validation failure")
-	}
+	s.mu.Lock()
+	s.currentContent = "not: [yaml"
+	s.mu.Unlock()
 	if err := s.Restart(); err == nil {
 		t.Fatal("restart unexpectedly succeeded")
 	}
-	if s.Status().Running || s.proxy.(*fakeProxy).pending {
-		t.Fatal("failed restart left traffic takeover")
+	if !s.Status().Running || !s.proxy.(*fakeProxy).pending {
+		t.Fatal("invalid config stopped the running core")
 	}
-	s.validateRuntime = nil
-	if err := s.Start(direct, freePort(t)); err != nil {
-		t.Fatalf("failed restart prevented recovery: %v", err)
+	s.mu.Lock()
+	s.currentContent = direct
+	s.mu.Unlock()
+	if err := s.Restart(); err != nil {
+		t.Fatalf("valid config could not restart: %v", err)
 	}
 }
 

@@ -69,7 +69,6 @@ type Service struct {
 	runtimeDir        string
 	stopping          bool
 	startActive       func() error
-	validateRuntime   func(context.Context, string, string) error
 	tunLaunch         func(string, string) (*tunLauncher, error)
 	tunReady          func(map[string]bool) bool
 	tunDevice         *tunDevice
@@ -213,6 +212,7 @@ func runtimeConfigWithTakeovers(content string, mixedPort, controllerPort int, s
 		}
 		cfg["profile"] = profileSection
 	}
+	applyDefaultGeoX(cfg)
 	return yaml.Marshal(cfg)
 }
 
@@ -429,24 +429,9 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 		os.RemoveAll(dir)
 		return err
 	}
-	validationContext, cancelValidation := context.WithTimeout(startCtx, 2*time.Minute)
-	s.publishStartup("校验配置与外部资源", mixedPort)
-	validateFn := s.validateRuntime
-	if validateFn == nil {
-		validateFn = func(ctx context.Context, d, p string) error {
-			return validateRuntimeWithContext(ctx, bin, d, p)
-		}
-	}
-	s.mu.Unlock()
-	err = validateFn(validationContext, dir, configPath)
-	s.mu.Lock()
-	cancelValidation()
-	if err != nil {
+	if startCtx.Err() != nil {
 		os.RemoveAll(dir)
-		if startCtx.Err() != nil {
-			return errors.New("内核启动已取消")
-		}
-		return err
+		return errors.New("内核启动已取消")
 	}
 	var geoCfg struct {
 		AutoUpdate bool `yaml:"geo-auto-update"`

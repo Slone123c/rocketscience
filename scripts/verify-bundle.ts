@@ -81,6 +81,10 @@ try {
     requireCondition(new RegExp(`\\b_${symbol}\\b`).test(symbols),`网络模块缺少接口：${symbol}`);
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
   const license=join(resources,"licenses","mihomo-GPL-3.0.txt");
+  const geo=join(resources,"geoip.metadb");
+  const geosite=join(resources,"geosite.dat");
+  requireCondition(existsSync(geo)&&statSync(geo).size>1024*1024,"应用缺少 geoip.metadb");
+  requireCondition(existsSync(geosite)&&statSync(geosite).size>1024*1024,"应用缺少 geosite.dat");
   requireCondition(existsSync(license)&&readFileSync(license,"utf8").includes("GNU GENERAL PUBLIC LICENSE"),"缺少 mihomo 许可证");
   run("codesign",["--verify","--deep","--strict",app]);
   const dmg=join(app,"..",`rocketscience-${plist.CFBundleShortVersionString}-${target==="arm64"?"arm64":"amd64"}.dmg`);

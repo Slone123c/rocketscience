@@ -3,10 +3,10 @@ package core
 import (
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"net"
 	"strconv"
-
-	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // A nil field means the active profile controls that setting.
@@ -174,6 +174,61 @@ func runtimeConfigWithOptions(content string, mixedPort, controllerPort int, sec
 		ensureLoopbackAuth(cfg)
 	}
 	return yaml.Marshal(cfg)
+}
+
+// mihomo's built-in GEO URLs point at GitHub releases. The documented jsDelivr
+// copies are the ones that answer from the mainland. A URL already in the
+// profile stays.
+var defaultGeoX = map[string]string{
+	"mmdb":    "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb",
+	"geosite": "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat",
+	"geoip":   "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat",
+	"asn":     "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb",
+}
+
+func applyDefaultGeoX(cfg map[string]any) {
+	switch section := cfg["geox-url"].(type) {
+	case nil:
+		cfg["geox-url"] = defaultGeoXMap()
+	case map[string]any:
+		for key, url := range defaultGeoX {
+			current, _ := section[key].(string)
+			if strings.TrimSpace(current) == "" {
+				section[key] = url
+			}
+		}
+	case *yaml.Node:
+		if section == nil || section.Kind != yaml.MappingNode {
+			return
+		}
+		present := map[string]bool{}
+		for i := 0; i+1 < len(section.Content); i += 2 {
+			key := section.Content[i]
+			if key.Kind != yaml.ScalarNode {
+				continue
+			}
+			if strings.TrimSpace(section.Content[i+1].Value) != "" {
+				present[key.Value] = true
+			}
+		}
+		for key, url := range defaultGeoX {
+			if present[key] {
+				continue
+			}
+			section.Content = append(section.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key},
+				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: url},
+			)
+		}
+	}
+}
+
+func defaultGeoXMap() map[string]any {
+	out := make(map[string]any, len(defaultGeoX))
+	for key, url := range defaultGeoX {
+		out[key] = url
+	}
+	return out
 }
 func (p *Profiles) CoreSettings() (CoreOptions, error) {
 	p.mu.Lock()
