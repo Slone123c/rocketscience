@@ -29,8 +29,10 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;tasks.current.cancelTest()}},[]);
   useEffect(()=>{
     if(!loaded)return;
-    const id=requestAnimationFrame(()=>{void Desktop.trayReady().catch(()=>{})});
-    return ()=>cancelAnimationFrame(id);
+    // The flyout is created hidden. requestAnimationFrame does not run
+    // until that window is on screen, so a frame callback never reports
+    // ready and the status-item click only toggles a pending flag.
+    void Desktop.trayReady().catch(()=>{});
   },[loaded]);
   async function read() {
     const desktop = await Desktop.state();
@@ -118,7 +120,7 @@ export function TrayPanel({ design: DS }: { design: typeof Design }) {
     speed={{ up: streams?.telemetry.connected ? streams.telemetry.up : null, down: streams?.telemetry.connected ? streams.telemetry.down : null, history: streams?.telemetry.connected ? streams.history : {up:[],down:[]} }}
     mode={mode === "global" || mode === "direct" ? mode : "rule"}
     groups={proxyGroups} sort={sort} onSortChange={setSort} testing={testing} systemProxy={!!status?.systemProxy} tun={!!status?.tun}
-    onToggle={() => void perform(async () => { if (status?.running) await Service.stop(); else if (profiles?.activeId) await Profiles.startActive(); else throw new Error("请先在控制台保存并选择配置。"); }, true)}
+    onToggle={() => void perform(async () => { if (status?.running) await Service.stop(); else if (profiles?.activeId) await Profiles.startActive(); else throw new Error("请先在主窗口导入并选用配置。"); }, true)}
     onSystemProxyChange={transitioning || !ready || !status ? undefined : value => void setProxy(value)}
     onTunChange={transitioning || !ready || !status ? undefined : value => void perform(() => Profiles.changeTun(value), !!status?.running)}
     ssid={wifi?.ssid || undefined} ssidBypass={wifi?.enabled || false}

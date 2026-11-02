@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -32,7 +33,7 @@ func TestConnectivityRejectsChangesWhileRequestIsPending(t *testing.T) {
 			}
 			done := make(chan error, 1)
 			go func() {
-				result, err := s.CheckConnectivity(server.URL + "/probe")
+				result, err := s.CheckConnectivity(context.Background(), server.URL+"/probe")
 				if err == nil || result.Core || result.Request || len(result.Recommendations) != 0 {
 					done <- nil
 					return

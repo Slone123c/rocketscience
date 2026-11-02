@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -73,18 +74,18 @@ func TestConnectivity(t *testing.T) {
 	defer server.Close()
 	s := newTestService(t)
 	defer s.Shutdown()
-	result, err := s.CheckConnectivity(server.URL)
+	result, err := s.CheckConnectivity(context.Background(), server.URL)
 	if err != nil || result.Core {
 		t.Fatal("stopped core should fail first step")
 	}
 	if err = s.Start(direct, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
-	result, err = s.CheckConnectivity(server.URL)
+	result, err = s.CheckConnectivity(context.Background(), server.URL)
 	if err != nil || !result.Core || !result.Request {
 		t.Fatalf("check failed: %+v %v", result, err)
 	}
-	if _, err = s.CheckConnectivity("file:///tmp/x"); err == nil {
+	if _, err = s.CheckConnectivity(context.Background(), "file:///tmp/x"); err == nil {
 		t.Fatal("bad URL accepted")
 	}
 }
@@ -102,7 +103,7 @@ func TestConnectivityDoesNotRecommendBuiltInDirectOrReject(t *testing.T) {
 	if err := s.Start(cfg, freePort(t)); err != nil {
 		t.Fatal(err)
 	}
-	result, err := s.CheckConnectivity(target.URL)
+	result, err := s.CheckConnectivity(context.Background(), target.URL)
 	if err != nil {
 		t.Fatal(err)
 	}

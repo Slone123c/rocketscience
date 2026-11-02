@@ -213,16 +213,18 @@ func (s *Service) SetMode(mode string) error {
 	defer s.opMu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.cmd == nil {
-		return errors.New("内核未启动")
-	}
 	if mode != "rule" && mode != "global" && mode != "direct" {
 		return errors.New("无效的出站模式")
+	}
+	if s.cmd == nil {
+		s.chosenMode = mode
+		return nil
 	}
 	beforeMode := currentInProcessMode()
 	if err := setInProcessMode(mode); err != nil {
 		return err
 	}
+	s.chosenMode = mode
 	s.modeRevision++
 	if !strings.EqualFold(beforeMode, mode) {
 		closeAllInProcessConnections()

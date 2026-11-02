@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +38,7 @@ func TestNetworkDiagnosticsAndConfirmedRecommendation(t *testing.T) {
 	}
 
 	// Step 1 passes (local network ok), Step 3 finds "good" and auto-switches "choose" from "bad" to "good", Step 2 passes.
-	got, err := s.CheckConnectivity(probeServer.URL + "/probe")
+	got, err := s.CheckConnectivity(context.Background(), probeServer.URL+"/probe")
 	if err != nil || !got.Local || got.LocalStatus != "ok" || !got.Core || got.TakeoverStatus != "ok" || !got.Request || got.NodeStatus != "ok" || got.VerifiedNode != "good" || !got.Switched {
 		t.Fatalf("diagnosis: %+v %v", got, err)
 	}
@@ -61,7 +62,7 @@ func TestNetworkDiagnosticsAndConfirmedRecommendation(t *testing.T) {
 	}
 
 	// Second check when already on "good" succeeds without needing another switch.
-	got, err = s.CheckConnectivity(probeServer.URL + "/probe")
+	got, err = s.CheckConnectivity(context.Background(), probeServer.URL+"/probe")
 	if err != nil || got.NodeStatus != "ok" || got.VerifiedNode != "good" || got.Switched {
 		t.Fatalf("after selection: %+v %v", got, err)
 	}
@@ -69,7 +70,7 @@ func TestNetworkDiagnosticsAndConfirmedRecommendation(t *testing.T) {
 	// Step 2: When all proxy nodes fail and traffic through proxy is broken, while local network is still online,
 	// CheckConnectivity must detect that proxy caused disconnect and automatically exit the proxy.
 	enabled.Store(false)
-	got, err = s.CheckConnectivity(probeServer.URL + "/probe")
+	got, err = s.CheckConnectivity(context.Background(), probeServer.URL+"/probe")
 	if err != nil || !got.Local || got.TakeoverStatus != "fail" || !got.AutoExited || got.Core || got.Request || got.NodeStatus != "fail" {
 		t.Fatalf("expected auto-exit when proxy causes disconnect: %+v %v", got, err)
 	}
@@ -79,7 +80,7 @@ func TestNetworkDiagnosticsAndConfirmedRecommendation(t *testing.T) {
 
 	// Step 1: When local network itself is down in no-proxy state, Check 1 fails and proxy remains off.
 	localOnline.Store(false)
-	got, err = s.CheckConnectivity(probeServer.URL + "/probe")
+	got, err = s.CheckConnectivity(context.Background(), probeServer.URL+"/probe")
 	if err != nil || got.Local || got.LocalStatus != "fail" || got.TakeoverStatus != "skip" || got.NodeStatus != "skip" || got.Core {
 		t.Fatalf("expected local network failure in step 1: %+v %v", got, err)
 	}

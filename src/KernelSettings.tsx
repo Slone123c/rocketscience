@@ -8,7 +8,7 @@ export function KernelSettings({design:DS,running, memory, busy, onRestart}:{des
   useEffect(()=>{let active=true;void Service.kernelInfo().then(v=>{if(active){setInfo(v);setError("")}}).catch(e=>{if(active)setError(String(e))});return ()=>{active=false}},[running]);
   return <DS.SettingsSection title="代理内核">
     <DS.SettingRow label="内核版本" description={info?.version || "尚未读取到版本"}><code className="lf-setrow__value">{info?.platform||"—"}</code></DS.SettingRow>
-    <DS.SettingRow label="内核内存" description="mihomo 当前报告的内存用量。"><code className="lf-setrow__value">{running&&memory?.connected?`${(memory.inuse/1048576).toFixed(1)} MB`:"—"}</code></DS.SettingRow>
+    <DS.SettingRow label="应用内存" description="应用主进程的占用，已包含内核，不含页面进程。"><code className="lf-setrow__value">{running&&memory?.connected?`${(memory.inuse/1048576).toFixed(1)} MB`:"—"}</code></DS.SettingRow>
     {info?.path && <DS.SettingRow label="内核路径"><code className="lf-setrow__value">{info.path}</code></DS.SettingRow>}
     <DS.SettingRow label="重启内核" description="中断现有连接，保留出站模式、手动选择的节点和接管方式。TUN 可能再次请求授权。"><DS.Button size="sm" icon="refresh" disabled={!running||busy} onClick={()=>void onRestart()}>{busy?"处理中…":"重启内核"}</DS.Button></DS.SettingRow>
     {error && <p className="profile-error" role="alert">{error}</p>}

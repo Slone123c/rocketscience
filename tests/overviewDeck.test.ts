@@ -5,10 +5,10 @@ describe("overview flight copy",()=>{
   test("matches the prototype takeover phrases",()=>{
     expect(takeoverSummary(true,true)).toBe("系统代理 + TUN");
     expect(takeoverSummary(false,false)).toBe("未接管");
-    expect(takeoverNote("idle",true)).toBe("启动后接管");
+    expect(takeoverNote("idle",true)).toBe("");
     expect(takeoverNote("igniting",true)).toBe("正在接管…");
     expect(takeoverNote("orbit",true,"127.0.0.1:7890")).toBe("已接管 · 127.0.0.1:7890");
-    expect(takeoverNote("orbit",false)).toBe("不接管");
+    expect(takeoverNote("orbit",false)).toBe("");
     expect(modeLabel("global")).toBe("全局");
     expect(modeLabel("direct")).toBe("直连");
     expect(modeLabel("rule")).toBe("规则");

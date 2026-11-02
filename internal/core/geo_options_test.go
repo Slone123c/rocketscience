@@ -48,6 +48,21 @@ func TestGeoSettingsMergePersistenceAndValidation(t *testing.T) {
 	if cfg["geodata-mode"] != true || cfg["geo-auto-update"] != true || cfg["geo-update-interval"] != 12 || cfg["log-level"] != "warning" {
 		t.Fatalf("merge: %+v", cfg)
 	}
+	geox, _ := cfg["geox-url"].(map[string]any)
+	if geox["geosite"] != defaultGeoX["geosite"] || geox["mmdb"] != defaultGeoX["mmdb"] {
+		t.Fatalf("geox defaults: %+v", geox)
+	}
+	kept, err := runtimeConfigWithOptions("geox-url:\n  geosite: https://example.test/geosite.dat\nrules: [MATCH,DIRECT]\n", 7890, 9999, "secret", "", LANSettings{}, false, CoreOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = yaml.Unmarshal(kept, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	geox, _ = cfg["geox-url"].(map[string]any)
+	if geox["geosite"] != "https://example.test/geosite.dat" || geox["mmdb"] != defaultGeoX["mmdb"] {
+		t.Fatalf("profile geosite replaced: %+v", geox)
+	}
 }
 func TestGeoCacheCopiesOnlyDataAndPreservesOnFailure(t *testing.T) {
 	runtime := t.TempDir()
@@ -85,6 +100,57 @@ func TestGeoCacheCopiesOnlyDataAndPreservesOnFailure(t *testing.T) {
 		t.Fatalf("symlink changed cache %s %v", b, err)
 	}
 }
+func TestInstallBundledGeoCopiesMissingMetadbOnly(t *testing.T) {
+	bundle := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bundle, "geoip.metadb"), []byte("bundled"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cache := geoCache{dir: t.TempDir()}
+	if err := cache.installBundled(bundle); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(cache.dir, "geoip.metadb"))
+	if err != nil || string(got) != "bundled" {
+		t.Fatalf("first install: %q %v", got, err)
+	}
+	if err = os.WriteFile(filepath.Join(bundle, "geoip.metadb"), []byte("newer"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(filepath.Join(bundle, "notes.txt"), []byte("no"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err = cache.installBundled(bundle); err != nil {
+		t.Fatal(err)
+	}
+	got, err = os.ReadFile(filepath.Join(cache.dir, "geoip.metadb"))
+	if err != nil || string(got) != "bundled" {
+		t.Fatalf("existing database replaced: %q %v", got, err)
+	}
+	if _, err = os.Stat(filepath.Join(cache.dir, "notes.txt")); !os.IsNotExist(err) {
+		t.Fatal("non-geo file copied")
+	}
+}
+func TestValidateProfileUsesCachedMMDB(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("ROCKETSCIENCE_DATA_DIR", root)
+	geo := filepath.Join(root, "geo")
+	if err := os.Mkdir(geo, 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join("..", "..", "resources", "geoip.metadb")
+	data, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(filepath.Join(geo, "geoip.metadb"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	config := "mode: rule\nlog-level: silent\ngeodata-mode: false\ngeo-auto-update: false\nrules:\n  - GEOIP,CN,DIRECT\n  - MATCH,DIRECT\n"
+	if err = validateProfile(config); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestGeoManualUpdateAndFailure(t *testing.T) {
 	runtime, err := os.MkdirTemp("", "rocketscience-core-")
 	if err != nil {

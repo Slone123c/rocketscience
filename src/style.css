@@ -34,10 +34,12 @@ fieldset.profile-list{border:0;padding:0;min-width:0;margin-inline:0}
 body{background:var(--ground);color:var(--ink)}
 .win{height:100vh;display:flex;min-width:700px;background:var(--ground);color:var(--ink)}
 main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:0;background:var(--ground)}
-.bar{display:flex;align-items:center;gap:var(--space-3,12px);padding:var(--space-6,24px) var(--space-8,32px) var(--space-4,16px);flex:none}
-.bar h1{margin:0;font:600 22px/28px var(--font-sans),"PingFang SC",sans-serif;letter-spacing:-.01em;color:var(--ink)}
-.bar .sp{flex:1}
-.bar .lf-search{width:280px;flex:none}
+.bar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3,12px);padding:var(--space-6,24px) var(--space-8,32px) var(--space-4,16px);flex:none}
+.bar h1{margin:0;flex:none;font:600 22px/28px var(--font-sans),"PingFang SC",sans-serif;letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
+.bar .sp{flex:1 1 12px}
+.bar .lf-seg{flex:none;white-space:nowrap}
+.bar .lf-seg__item{white-space:nowrap}
+.bar .lf-search{width:min(280px,100%);flex:1 1 180px;min-width:0}
 .view{flex:1;min-height:0;overflow:auto;padding:0 var(--space-8,32px) var(--space-8,32px);display:flex;flex-direction:column;gap:var(--space-6,24px)}
 .view>section+section,.view>.settings-topic>section+section{margin-top:0}
 .view .panel{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-lg);padding:var(--space-6,24px);color:var(--ink)}
@@ -49,6 +51,9 @@ main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;
 .tele{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8,32px)}
 .quick{display:flex;flex-direction:column}
 .quick>*+*{border-top:1px solid var(--line)}
+/* Wider than its rows, so the takeover guide spotlight clears the text and ends on the rules. */
+.quick>.quick__switches{display:flex;flex-direction:column;margin:0 -12px;padding:0 12px;border-top:0}
+.quick__switches>*{border-top:1px solid var(--line)}
 .flight-actions{display:flex;gap:8px;padding-top:12px;align-items:center}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6,24px)}
 .stat b{display:block;margin-top:var(--space-2,8px);font:500 22px/28px var(--font-mono),ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--ink)}

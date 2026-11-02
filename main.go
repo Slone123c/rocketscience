@@ -5,14 +5,27 @@ import (
 	"github.com/egoist/mygo"
 	"log"
 	"os"
+	"path/filepath"
 	"rocketscience/internal/core"
 	"rocketscience/internal/network"
+	"runtime/debug"
 )
 
 //go:embed resources/icon.png
 var appIcon []byte
 
+func hasBundledIcon() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(filepath.Join(filepath.Dir(exe), "..", "Resources", "AppIcon.icns"))
+	return err == nil
+}
+
 func main() {
+	// A proxy mostly allocates short-lived buffers; collect them earlier to keep the heap small.
+	debug.SetGCPercent(50)
 	mygo.App.SetName("RocketScience")
 	keepWebKitRenderingInProcess()
 	if !mygo.App.RequestSingleInstanceLock() {
@@ -33,14 +46,25 @@ func main() {
 	mygo.Bind(wifi)
 	stopUpdates := make(chan struct{})
 	mygo.App.WhenReady(func() {
-		if err := mygo.App.Dock.SetIcon(appIcon); err != nil {
-			log.Printf("无法加载应用图标：%v", err)
+		// The packaged app already has AppIcon.icns. Setting the PNG as well
+		// keeps a 32 MB rendering of it in memory, so only unpackaged runs do.
+		if !hasBundledIcon() {
+			if err := mygo.App.Dock.SetIcon(appIcon); err != nil {
+				log.Printf("无法加载应用图标：%v", err)
+			}
 		}
 		go core.RunUpdates(profiles, stopUpdates)
 		desktop.ready()
 		go func() {
+			resources, err := mygo.App.Path(mygo.PathResources)
+			if err == nil {
+				err = service.InstallBundledGeo(resources)
+			}
+			if err != nil {
+				log.Printf("无法安装随包 GEO 数据：%v", err)
+			}
 			_ = service.RecoverGeoCache()
-			err := profiles.Initialize()
+			err = profiles.Initialize()
 			_ = wifi.Check()
 			desktop.completeStartup(err)
 			core.RunWiFi(wifi, stopUpdates)

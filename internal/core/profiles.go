@@ -92,7 +92,9 @@ func (p *Profiles) directory() (string, error) {
 	return filepath.Join(path, "RocketScience"), nil
 }
 func (p *Profiles) load() (profileData, error) {
-	d := profileData{Profiles: []Profile{}, MixedPort: 7890, Overrides: defaultOverrides()}
+	// A new install uses the system proxy, so the first start needs no takeover choice.
+	// A saved file keeps its explicit value.
+	d := profileData{Profiles: []Profile{}, MixedPort: 7890, SystemProxy: true, Overrides: defaultOverrides()}
 	dir, err := p.directory()
 	if err != nil {
 		return d, err
@@ -189,6 +191,9 @@ func validateProfile(content string) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
+	if err = (&geoCache{}).seed(dir); err != nil {
+		return fmt.Errorf("无法准备 GEO 数据：%w", err)
+	}
 	path := filepath.Join(dir, "config.yaml")
 	if err = os.WriteFile(path, []byte(content), 0600); err != nil {
 		return err

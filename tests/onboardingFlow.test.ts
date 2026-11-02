@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { prepareOnboarding, shouldAdvanceAfterLaunch } from "../src/onboardingFlow";
+import { prepareOnboarding, shouldAdvanceAfterLaunch, takeoverGuideAction } from "../src/onboardingFlow";
 
 describe("new user tour lifecycle", () => {
   test("recovers before checking state and preserves the selected takeover preference", async () => {
@@ -18,10 +18,17 @@ describe("new user tour lifecycle", () => {
     }
   });
   test("advances only when launch succeeds while the launch step is visible", () => {
-    expect(shouldAdvanceAfterLaunch(true, 3, false, true)).toBe(true);
-    expect(shouldAdvanceAfterLaunch(true, 3, false, false)).toBe(false);
-    expect(shouldAdvanceAfterLaunch(true, 3, true, true)).toBe(false);
-    expect(shouldAdvanceAfterLaunch(false, 3, false, true)).toBe(false);
-    expect(shouldAdvanceAfterLaunch(true, 2, false, true)).toBe(false);
+    expect(shouldAdvanceAfterLaunch(true, 2, false, true)).toBe(true);
+    expect(shouldAdvanceAfterLaunch(true, 2, false, false)).toBe(false);
+    expect(shouldAdvanceAfterLaunch(true, 2, true, true)).toBe(false);
+    expect(shouldAdvanceAfterLaunch(false, 2, false, true)).toBe(false);
+    expect(shouldAdvanceAfterLaunch(true, 1, false, true)).toBe(false);
+  });
+  test("takeover guide continues the start only after a choice, and never stops a running core", () => {
+    expect(takeoverGuideAction(true, false, false, false)).toBe("none");
+    expect(takeoverGuideAction(true, true, false, true)).toBe("none");
+    expect(takeoverGuideAction(true, false, false, true)).toBe("start");
+    expect(takeoverGuideAction(true, false, true, true)).toBe("close");
+    expect(takeoverGuideAction(false, false, false, true)).toBe("none");
   });
 });

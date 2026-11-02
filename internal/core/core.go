@@ -56,6 +56,7 @@ type Service struct {
 	logs              []LogEntry
 	proxy             proxyController
 	useSystemProxy    bool
+	chosenMode        string // Last mode picked in this session; a Wi-Fi policy change does not set it.
 	proxyBypass       *[]string
 	lan               LANSettings
 	useTun            bool
@@ -127,6 +128,7 @@ func (s *Service) Status() Status {
 		}
 	}
 	if s.cmd == nil {
+		st.Mode = s.chosenMode
 		return st
 	}
 	st.Version = mihomoVersion()

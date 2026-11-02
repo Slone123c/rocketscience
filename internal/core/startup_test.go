@@ -9,6 +9,9 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 	s := New()
 	s.proxy = &fakeProxy{}
 	p := NewProfilesWithService(t.TempDir(), s)
+	if err := p.SetSystemProxy(false); err != nil {
+		t.Fatal(err)
+	}
 	if err := p.SetAutoConnect(true); err != nil {
 		t.Fatal(err)
 	}
@@ -33,6 +36,20 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 	st := s.Status()
 	if st.Running || !st.SystemProxy {
 		t.Fatalf("saved choice: %+v", st)
+	}
+}
+func TestNewInstallDefaultsToSystemProxyAndKeepsSavedChoice(t *testing.T) {
+	p := NewProfiles(t.TempDir())
+	summary, err := p.Summary()
+	if err != nil || !summary.SystemProxy {
+		t.Fatalf("new install: %+v %v", summary, err)
+	}
+	if err = p.SetSystemProxy(false); err != nil {
+		t.Fatal(err)
+	}
+	summary, err = NewProfiles(p.dir).Summary()
+	if err != nil || summary.SystemProxy {
+		t.Fatalf("saved choice: %+v %v", summary, err)
 	}
 }
 func TestStartupAutomaticConnectAndRecoveryGuard(t *testing.T) {

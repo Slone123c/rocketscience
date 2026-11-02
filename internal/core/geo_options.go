@@ -133,3 +133,11 @@ func (s *Service) RecoverGeoCache() error {
 	}
 	return nil
 }
+
+// InstallBundledGeo copies databases shipped in the app into the GEO cache
+// when they are not there yet.
+func (s *Service) InstallBundledGeo(resourcesDir string) error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
+	return s.geo.installBundled(resourcesDir)
+}

@@ -34,20 +34,39 @@ export function Onboarding({ design: DS, running, open, onView, onClose, onCheck
   const steps: Design.TourStep[] = [
     { title: "先认识代理", body: <>已停止 RocketScience 的代理并恢复原有网络设置。连接后，流量会按照配置选择的路径访问网站。</>, media: <RouteDiagram design={DS}/>, view: "总览" },
     { title: "导入并保存配置", body: <>导入本地配置或填写订阅链接，保存后选择要使用的配置。编辑窗口关闭后可继续引导。</>, target: "#page-tools .lf-btn--primary", placement: "bottom", view: "配置" },
-    { title: "选择接管方式", body: <>打开系统代理，启动后才会接管。停止代理会恢复之前的设置。</>, target: "#tour-takeover .lf-setrow", view: "设置" },
-    { title: "手动启动", body: <>点击启动。遇到网络问题时，再点停止即可恢复之前的网络设置。</>, target: "#tour-launch .lf-ignite__core", padding: 12, view: "总览", hint: "启动成功后会自动进入下一步" },
+    { title: "启动", body: <>点击启动，大多数应用就会走代理。遇到网络问题时，再点停止即可恢复之前的网络设置。</>, target: "#tour-launch .lf-ignite__core", padding: 12, view: "总览", hint: "启动成功后会自动进入下一步" },
     { title: "测速并选择节点", body: <>在策略组中测速，再选择可用的节点；如果连接有问题，可返回总览停止代理。</>, target: "#tour-nodes .lf-group", placement: "bottom", view: "代理" },
     { title: "检查网络", body: <>打开网络检查，确认连接是否正常。失败时可以更换节点，或选择停止代理、恢复网络。</>, target: "#tour-check .lf-chkpop__trigger", placement: "right", view: "代理" },
     { title: "选择模式", body: <>日常推荐规则模式；也可以选择全局或直连。配置中的规则决定流量走向。</>, target: "#tour-mode .lf-seg", view: "代理" },
-    { title: "引导完成", body: <>先导入配置，选择接管方式并启动，再测速、选择节点和检查网络。遇到断网时，停止代理以恢复之前的网络设置。</>, view: "总览" }
+    { title: "引导完成", body: <>先导入配置并启动，再测速、选择节点和检查网络。遇到断网时，停止代理以恢复之前的网络设置。</>, view: "总览" }
   ];
   useEffect(() => { onCheck(false); if (open) { setStep(0); onView("总览"); } }, [open]);
   useEffect(() => {
     const advance = shouldAdvanceAfterLaunch(open, step, previousRunning.current, running);
     previousRunning.current = running;
     if (!advance) return;
-    const timer = window.setTimeout(() => { setStep(4); onView("代理"); }, LAUNCH_VISUAL_MS);
+    const timer = window.setTimeout(() => { setStep(3); onView("代理"); }, LAUNCH_VISUAL_MS);
     return () => window.clearTimeout(timer);
   }, [open, step, running]);
-  return <DS.Tour open={open&&!profileEditing} steps={steps} step={step} onStepChange={(index, next) => {if(step===1&&profileEditing)return;setStep(index); if (next.view) onView(next.view); onCheck(index === 5); }} onClose={onClose}/>;
+  return <DS.Tour open={open&&!profileEditing} steps={steps} step={step} onStepChange={(index, next) => {if(step===1&&profileEditing)return;setStep(index); if (next.view) onView(next.view); onCheck(index === 4); }} onClose={onClose}/>;
+}
+
+// Shown when start is pressed with no takeover on. Turning a switch on continues that start.
+export function TakeoverGuide({ design: DS, open, onClose }: { design: typeof Design; open: boolean; onClose: () => void }) {
+  return <DS.Tour open={open} doneLabel="稍后再选" onClose={onClose} steps={[{
+    title: "选择代理方式",
+    body: <>打开一个开关后继续启动。不确定就选系统代理；TUN 首次需要管理员密码。</>,
+    target: "#tour-takeover",
+    padding: 0,
+  }]}/>;
+}
+
+// Shown when start is pressed with no profile. Opening the editor closes it.
+export function ImportGuide({ design: DS, open, onClose }: { design: typeof Design; open: boolean; onClose: () => void }) {
+  return <DS.Tour open={open} doneLabel="稍后再说" onClose={onClose} steps={[{
+    title: "先导入配置",
+    body: <>导入配置文件或填写订阅链接，保存并选用后就能启动。</>,
+    target: "#page-tools",
+    placement: "bottom",
+  }]}/>;
 }

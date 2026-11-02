@@ -120,3 +120,72 @@ func (c *geoCache) save(runtimeDir string) error {
 	}
 	return copyGeoFiles(runtimeDir, dir)
 }
+
+// installBundled copies GEO databases shipped with the app into the cache.
+// A file that already exists stays: a later update must not be replaced by
+// the copy from the installer.
+func (c *geoCache) installBundled(resourcesDir string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	destination, err := c.path()
+	if err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(resourcesDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var missing []string
+	for _, entry := range entries {
+		if !isGeoName(entry.Name()) || !entry.Type().IsRegular() {
+			continue
+		}
+		target := filepath.Join(destination, entry.Name())
+		if _, err = os.Lstat(target); err == nil {
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		missing = append(missing, entry.Name())
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	stage, err := os.MkdirTemp("", "rocketscience-geo-bundle-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stage)
+	for _, name := range missing {
+		if err = copyFile(filepath.Join(resourcesDir, name), filepath.Join(stage, name)); err != nil {
+			return err
+		}
+	}
+	return copyGeoFiles(stage, destination)
+}
+
+func copyFile(source, destination string) error {
+	input, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+	if err = os.MkdirAll(filepath.Dir(destination), 0700); err != nil {
+		return err
+	}
+	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(output, input)
+	if closeErr := output.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(destination)
+	}
+	return err
+}

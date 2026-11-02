@@ -163,6 +163,7 @@ const state: PreviewState = {
   connections: [
     conn("c1", "www.example.com", "443", "tcp", "Safari", ["美国 02", "🚀 节点选择"], "MATCH", "", 180_000, 2_400_000),
     conn("c2", "api.example.com", "443", "tcp", "Mail", ["日本 01", "自动选择"], "MATCH", "", 40_000, 610_000),
+    conn("c4", "very-long-subdomain.cdn.streaming-provider.example.com", "443", "tcp", "Safari", ["美国 02", "IEPL 专线中转", "自动选择", "国外媒体", "🚀 节点选择"], "RuleSet", "https://raw.githubusercontent.com/example/rules/main/streaming-global.yaml", 90_000, 52_000_000),
     conn("c3", "10.0.0.8", "53", "udp", "mDNSResponder", ["DIRECT"], "GEOIP", "CN", 2_000, 1_200),
   ] as Connection[],
   overrides: {
@@ -290,6 +291,17 @@ function connections(): ConnectionSnapshot {
   };
 }
 
+// `?preview=stopped|stoppedOff|runningTun|noProfile` opens the preview in that backend state.
+const scenario = new URLSearchParams(globalThis.location?.search ?? "").get("preview");
+if (scenario && scenario !== "running") {
+  if (scenario === "runningTun") state.tun = true;
+  else {
+    state.running = false;
+    if (scenario === "stoppedOff") state.systemProxy = false;
+    if (scenario === "noProfile") { state.profiles = []; state.activeId = ""; state.groups = []; }
+  }
+}
+
 function requireRunning() {
   if (!state.running) fail("内核未启动");
 }
@@ -329,6 +341,7 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Desktop.OpenDashboard": () => undefined,
   "Desktop.ClosePanel": () => undefined,
   "Desktop.TrayReady": () => undefined,
+  "Desktop.SetPageBusy": () => undefined,
   "Desktop.Apps": (args) => Object.fromEntries((args[0] as string[]).filter(path => path.includes(".app/")).map(path => {
     const name = path.split("/").find(part => part.endsWith(".app"))!.slice(0, -4);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="13" fill="#2f6fde"/><text x="32" y="42" font-size="28" text-anchor="middle" fill="#fff" font-family="sans-serif">${name[0]}</text></svg>`;
@@ -484,6 +497,7 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Profiles.PreviewGroups": () => withRuleCounts(clone(state.groups).filter(item => item.name !== "GLOBAL").map(item => ({ ...item, now: item.type === "Selector" ? item.now : "", nodes: item.nodes.map(n => ({ ...n, delay: null, delayAt: "" })) }))),
   "Profiles.SelectPreview": (args) => {
     if (state.running) fail("内核运行中，请直接选择节点");
+    if (!state.activeId) fail("没有正在使用的配置");
     const group = state.groups.find(item => item.name === String(args[0]) && item.name !== "GLOBAL");
     const nodeName = String(args[1]);
     if (!group) fail("策略组不存在");
@@ -494,7 +508,6 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Service.Connections": () => { requireRunning(); return connections(); },
   "Service.Rules": () => { requireRunning(); return effectiveRules().rules; },
   "Service.SetMode": (args) => {
-    requireRunning();
     const mode = String(args[0]);
     if (mode !== "rule" && mode !== "global" && mode !== "direct") fail("无效的出站模式");
     state.mode = mode;
@@ -542,6 +555,7 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   },
   "Profiles.TestPreview": (args) => {
     if (state.running) fail("内核运行中，请直接测速");
+    if (!state.activeId) fail("没有正在使用的配置");
     const group = state.groups.find(item => item.name === String(args[0]));
     if (!group) fail("策略组不存在");
     const values: Record<string, number> = {};
@@ -585,6 +599,15 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "WiFi.State": () => clone(state.wifiState),
   "WiFi.Check": () => undefined,
 };
+
+/** Go events never fire in the browser preview, so subscribing does nothing. */
+export function event<T>(name: string) {
+  return {
+    name,
+    on: (_listener: (payload: T) => void) => () => {},
+    once: (_listener: (payload: T) => void) => () => {},
+  };
+}
 
 export async function call<T = unknown>(method: string, ...args: unknown[]): Promise<T> {
   const handler = handlers[method];

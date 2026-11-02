@@ -130,3 +130,40 @@ func TestRuleTargetsFromConfig(t *testing.T) {
 		t.Fatalf("targets: %+v", groups)
 	}
 }
+
+func TestModeChosenWhileStoppedAppliesOnStartAndSurvivesStop(t *testing.T) {
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
+	s := newTestService(t)
+	defer s.Shutdown()
+	if err := s.SetMode("bogus"); err == nil {
+		t.Fatal("invalid mode accepted while stopped")
+	}
+	if err := s.SetMode("global"); err != nil {
+		t.Fatalf("set while stopped: %v", err)
+	}
+	if st := s.Status(); st.Running || st.Mode != "global" {
+		t.Fatalf("stopped choice: %+v", st)
+	}
+	config := "mode: rule\nlog-level: silent\n"
+	if err := s.Start(config, freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	if st := s.Status(); !st.Running || st.Mode != "global" {
+		t.Fatalf("after start: %+v", st)
+	}
+	if err := s.SetMode("direct"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if st := s.Status(); st.Running || st.Mode != "direct" {
+		t.Fatalf("after stop: %+v", st)
+	}
+	if err := s.Start(config, freePort(t)); err != nil {
+		t.Fatal(err)
+	}
+	if st := s.Status(); !st.Running || st.Mode != "direct" {
+		t.Fatalf("after second start: %+v", st)
+	}
+}

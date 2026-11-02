@@ -42,8 +42,13 @@ private func snapshot() -> [String: Any] {
     return ["known": true, "ssid": ssid, "detail": ""]
 }
 
+// These exports run on Go threads, which never drain an autorelease pool, so each call brings its own.
 @_cdecl("rs_wifi_snapshot")
 public func wifiSnapshot() -> UnsafeMutablePointer<CChar>? {
+    autoreleasepool { encodedWiFiSnapshot() }
+}
+
+private func encodedWiFiSnapshot() -> UnsafeMutablePointer<CChar>? {
     guard let data = try? JSONSerialization.data(withJSONObject: snapshot()), let json = String(data: data, encoding: .utf8) else { return nil }
     return strdup(json)
 }
@@ -65,6 +70,10 @@ private func enclosingApp(_ path: String) -> String? {
 // Returns {"name","icon"} as JSON: the app's display name and a 64 px PNG data URI. Command-line tools return null.
 @_cdecl("rs_app_icon")
 public func appIcon(_ path: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+    autoreleasepool { encodedAppIcon(path) }
+}
+
+private func encodedAppIcon(_ path: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
     guard let path, let app = enclosingApp(String(cString: path)) else { return nil }
     let image = NSWorkspace.shared.icon(forFile: app)
     let side = 64
@@ -84,6 +93,10 @@ public func appIcon(_ path: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar
 // 36 px tall (18 pt at 2x). Width is fixed by the widest possible value so the status item never jitters.
 @_cdecl("rs_tray_speeds")
 public func traySpeeds(_ up: UnsafePointer<CChar>?, _ down: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+    autoreleasepool { encodedTraySpeeds(up, down) }
+}
+
+private func encodedTraySpeeds(_ up: UnsafePointer<CChar>?, _ down: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
     guard let up, let down else { return nil }
     let font = NSFont.monospacedDigitSystemFont(ofSize: 17, weight: .medium)
     let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]

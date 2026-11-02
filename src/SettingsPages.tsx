@@ -34,7 +34,7 @@ export function SettingsPages({design:DS,topic,status,memory,busy,initialized,po
         <DS.SettingRow label="代理端口" description="本机混合代理端口；停止内核后修改。">
           <DS.SettingField aria-label="代理端口" type="number" width={120} value={port} disabled={running||busy} validate={text=>{const n=Number(text);return /^\d+$/.test(text.trim())&&n>=1&&n<=65535?null:"端口必须在 1 到 65535 之间"}} onCommit={value=>onSavePort(String(value))}/>
         </DS.SettingRow>
-        <div id="tour-takeover"><DS.SettingRow label="系统代理" description="启动后接管；关闭最后一种接管方式会恢复网络并停止内核。"><DS.Switch aria-label="系统代理" checked={status?.systemProxy||false} disabled={busy||!initialized} onChange={onSystemProxy}/></DS.SettingRow></div>
+        <DS.SettingRow label="系统代理" description="启动后接管；关闭最后一种接管方式会恢复网络并停止内核。"><DS.Switch aria-label="系统代理" checked={status?.systemProxy||false} disabled={busy||!initialized} onChange={onSystemProxy}/></DS.SettingRow>
         <DS.SettingRow label="TUN 增强模式" description="首次开启时需要一次管理员授权来安装 TUN 服务；运行中修改会重启内核。关闭最后一种接管方式会停止内核。">
           <DS.Button size="sm" variant="ghost" disabled={busy} onClick={()=>onTopic("net")}>设置虚拟网卡参数</DS.Button>
           <DS.Switch aria-label="TUN 增强模式" checked={status?.tun||false} disabled={busy||!initialized} onChange={onTun}/>
@@ -49,7 +49,7 @@ export function SettingsPages({design:DS,topic,status,memory,busy,initialized,po
     </div>
     <div className="settings-topic" hidden={topic!=="general"}><StartupSettings design={DS}/><SpeedSettings design={DS}/></div>
     <div className="settings-topic" hidden={topic!=="dns"}><DNSSettings design={DS} running={running} tun={!!status?.tun}/></div>
-    <div className="settings-topic" hidden={topic!=="net"}><InboundSettings design={DS} running={running}/><TunSettings design={DS} running={running}/></div>
+    <div className="settings-topic" hidden={topic!=="net"}><InboundSettings design={DS} running={running}/><TunSettings design={DS} running={running} tun={!!status?.tun}/></div>
     <div className="settings-topic" hidden={topic!=="general"&&topic!=="net"}><CoreSettings design={DS} running={running} section={topic==="general"?"general":"connections"}/></div>
     <div className="settings-topic" hidden={topic!=="core"}>
       <ControllerSettings design={DS} running={running} effective={status?.controller||""}/>

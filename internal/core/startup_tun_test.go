@@ -21,6 +21,9 @@ func TestStartupAutoConnectTunUsesSavedChoice(t *testing.T) {
 	if err := p.SetPort(freePort(t)); err != nil {
 		t.Fatal(err)
 	}
+	if err := p.SetSystemProxy(false); err != nil {
+		t.Fatal(err)
+	}
 	if err := p.ChangeTun(true); err != nil {
 		t.Fatal(err)
 	}

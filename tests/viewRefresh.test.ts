@@ -13,7 +13,7 @@ describe("view data scope",()=>{
   test("overview and tray-style monitoring omit logs, YAML and rule lists",async()=>{
     const mock=source();
     await loadViewData({page:"总览",topic:"proxy"},mock.readers);
-    expect(mock.calls.sort()).toEqual(["connections","monitoring","status"]);
+    expect(mock.calls.sort()).toEqual(["connections","groups","monitoring","status"]);
   });
   test("each operation page reads only the data its controls need",async()=>{
     for(const [page,expected] of [["代理",["connections","groups","status"]],["规则",["overrides","rules","status"]],["连接",["connections","overrides","status"]],["日志",["status","streams"]],["配置",["profiles","status"]]] as const){

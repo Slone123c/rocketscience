@@ -7,7 +7,8 @@ const fields:Array<{key:"autoRoute"|"autoDetectInterface"|"strictRoute";label:st
   {key:"strictRoute",label:"严格路由",hint:"strict-route · 效果取决于内核和系统支持。"}
 ];
 const tri=[{value:"default",label:"默认"},{value:"on",label:"开启"},{value:"off",label:"关闭"}];
-export function TunSettings({design:DS,running}:{design:typeof Design;running:boolean}){
+export function TunSettings({design:DS,running,tun=false}:{design:typeof Design;running:boolean;tun?:boolean}){
+  const tunInUse=running&&tun;
   const [saved,setSaved]=useState<TunOptions|null>(null),[draft,setDraft]=useState<TunOptions|null>(null),[mtu,setMTU]=useState(""),[dns,setDNS]=useState("");
   const dnsRef=useRef(dns);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
@@ -33,8 +34,8 @@ export function TunSettings({design:DS,running}:{design:typeof Design;running:bo
       <DS.Button size="sm" variant="ghost" disabled={disabled||!saved} onClick={()=>{if(saved)load(saved);setMessage("")}}>撤回修改</DS.Button>
     </DS.SettingRow>
     {message&&<p role="status">{message}</p>}
-    <DS.SettingRow label="TUN 服务" description={service?"已安装：开启 TUN 时不再询问管理员密码。应用更新后如服务版本不同，会再请求一次密码。":"未安装：首次开启 TUN 时请求一次管理员密码，安装后不再询问。"}>
-      {service&&<DS.Button size="sm" variant="ghost" disabled={serviceBusy} onClick={()=>void uninstall()}>{serviceBusy?"处理中…":"卸载服务"}</DS.Button>}
+    <DS.SettingRow label="TUN 服务" description={service?tunInUse?"已安装。TUN 使用中，关闭 TUN 或停止内核后可以卸载。":"已安装：开启 TUN 时不再询问管理员密码。应用更新后如服务版本不同，会再请求一次密码。":"未安装：首次开启 TUN 时请求一次管理员密码，安装后不再询问。"}>
+      {service&&<DS.Button size="sm" variant="ghost" disabled={serviceBusy||tunInUse} onClick={()=>void uninstall()}>{serviceBusy?"处理中…":"卸载服务"}</DS.Button>}
     </DS.SettingRow>
     <DS.SettingRow label="调试日志" description="记录每次 TUN 启动的步骤和启动后的自检（路由出口、地址冲突、DNS、连接测试）。日志位于 ~/Library/Logs/RocketScience/tun.log。">
       <DS.Button size="sm" variant="ghost" onClick={()=>void copyDebugLog()}>复制调试日志</DS.Button>

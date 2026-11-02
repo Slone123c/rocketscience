@@ -18,6 +18,11 @@ var trayAsset embed.FS
 // Desktop owns the macOS menu bar item and the windows.
 type Desktop struct {
 	mu             sync.Mutex
+	pageBusy       bool
+	mainBounds     *mygo.Rectangle
+	mainIdle       pageIdle
+	panelIdle      pageIdle
+	idleStop       chan struct{}
 	service        *core.Service
 	profiles       *core.Profiles
 	main           *mygo.Window
@@ -98,6 +103,9 @@ func (d *Desktop) OpenDashboard() {
 	if panel != nil {
 		panel.Hide()
 	}
+	if w == nil {
+		mygo.RunOnMain(func() { w = d.openMain() })
+	}
 	if w != nil {
 		w.Show()
 		w.Restore()
@@ -127,11 +135,36 @@ func (d *Desktop) CopyText(text string) error {
 	return nil
 }
 func (d *Desktop) Quit() { mygo.App.Quit() }
-func (d *Desktop) ready() {
-	w := mygo.NewWindow(mygo.WindowOptions{Title: "RocketScience", Width: 1200, Height: 780, MinWidth: 760, MinHeight: 560, URL: "/"})
+
+// openMain creates the dashboard, or rebuilds it where it was after its page was released.
+func (d *Desktop) openMain() *mygo.Window {
+	d.mu.Lock()
+	if d.main != nil || d.quitting {
+		w := d.main
+		d.mu.Unlock()
+		return w
+	}
+	bounds := d.mainBounds
+	d.mu.Unlock()
+	url := "/"
+	if bounds != nil {
+		url = "/?restore=1"
+	}
+	w := mygo.NewWindow(mygo.WindowOptions{Title: "RocketScience", Width: 1200, Height: 780, MinWidth: 760, MinHeight: 560, URL: url})
+	if bounds != nil {
+		w.SetBounds(*bounds)
+	}
 	d.mu.Lock()
 	d.main = w
 	d.mu.Unlock()
+	w.OnClosed(func() {
+		d.mu.Lock()
+		if d.main == w {
+			d.main = nil
+			d.pageBusy = false
+		}
+		d.mu.Unlock()
+	})
 	w.OnClose(func(e *mygo.CloseEvent) {
 		d.mu.Lock()
 		quitting := d.quitting
@@ -142,6 +175,12 @@ func (d *Desktop) ready() {
 			w.Hide()
 		}
 	})
+	return w
+}
+
+func (d *Desktop) ready() {
+	d.openMain()
+	d.watchIdlePages()
 	icon, err := trayAsset.ReadFile("assets/tray.png")
 	if err != nil {
 		log.Printf("tray icon: %v", err)
@@ -157,7 +196,7 @@ func (d *Desktop) ready() {
 	d.trayIcon = icon
 	d.mu.Unlock()
 	d.startTrayDisplay()
-	d.initPanel(tray)
+	// The flyout page is created on the first click.
 	tray.OnClick(d.togglePanel)
 }
 
@@ -285,11 +324,16 @@ func (d *Desktop) destroy() {
 	panel := d.panel
 	stop := d.trayStop
 	d.trayStop = nil
+	idleStop := d.idleStop
+	d.idleStop = nil
 	d.tray = nil
 	d.panel = nil
 	d.mu.Unlock()
 	if stop != nil {
 		close(stop)
+	}
+	if idleStop != nil {
+		close(idleStop)
 	}
 	if panel != nil {
 		panel.Close()
