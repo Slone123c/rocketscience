@@ -4,7 +4,7 @@ import type {NameSort} from "../design-system/components/index";
 const STORAGE_KEY="rs-node-sort";
 
 export function readNameSort(value:string|null):NameSort {
-  return value==="asc"||value==="desc"?value:"none";
+  return value==="asc"||value==="desc"||value==="latency"?value:"none";
 }
 
 // One order for every node list: the proxy page and the menu-bar popover share it,

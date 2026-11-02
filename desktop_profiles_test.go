@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -47,5 +48,44 @@ func TestNativeProfileFileImport(t *testing.T) {
 	f.Close()
 	if _, err := readProfileFile(large); err == nil {
 		t.Fatal("oversized import accepted")
+	}
+}
+
+func TestNormalizeProfilePathAcceptsCopiedForms(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{
+		"  /tmp/my config.yaml\n":      "/tmp/my config.yaml",
+		`"/tmp/my config.yaml"`:        "/tmp/my config.yaml",
+		`'/tmp/my config.yaml'`:        "/tmp/my config.yaml",
+		`/tmp/my\ config\ \(1\).yaml`:  "/tmp/my config (1).yaml",
+		"file:///tmp/my%20config.yaml": "/tmp/my config.yaml",
+		"file://localhost/tmp/配置.yml":  "/tmp/配置.yml",
+		"~/Downloads/config.yaml":      filepath.Join(home, "Downloads/config.yaml"),
+		"/tmp/../tmp/config.yaml":      "/tmp/config.yaml",
+	}
+	for raw, want := range cases {
+		got, err := normalizeProfilePath(raw)
+		if err != nil || got != want {
+			t.Errorf("normalizeProfilePath(%q) = %q, %v; want %q", raw, got, err, want)
+		}
+	}
+}
+
+func TestNormalizeProfilePathRejectsWhatIsNotOneLocalPath(t *testing.T) {
+	for _, raw := range []string{"", "   ", "config.yaml", "./config.yaml", "/a.yaml\n/b.yaml", "file://server/a.yaml", "https://example.com/a.yaml"} {
+		if got, err := normalizeProfilePath(raw); err == nil {
+			t.Errorf("normalizeProfilePath(%q) = %q, want an error", raw, got)
+		}
+	}
+}
+
+func TestReadProfilePathNamesTheMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.yaml")
+	_, err := (&Desktop{}).ReadProfilePath(path)
+	if err == nil || !strings.Contains(err.Error(), "找不到这个文件") {
+		t.Fatalf("got %v", err)
 	}
 }

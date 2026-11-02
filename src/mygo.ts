@@ -559,6 +559,10 @@ export const Desktop = {
   quit(): Promise<void> {
     return call("Desktop.Quit");
   },
+  /** ReadProfilePath imports a YAML path typed or pasted by hand, under the same limits as the file picker. */
+  readProfilePath(raw: string): Promise<ImportedProfileFile | null> {
+    return call("Desktop.ReadProfilePath", raw);
+  },
   requestWiFiAccess(): Promise<void> {
     return call("Desktop.RequestWiFiAccess");
   },

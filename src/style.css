@@ -73,6 +73,7 @@ main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;
 .ovr{display:flex;flex-direction:column;gap:var(--space-3,12px);max-width:880px}
 .ovr-intro{display:flex;align-items:center;gap:var(--space-3,12px);margin:0;font:400 13px/20px var(--font-sans),"PingFang SC",sans-serif;color:var(--ink-muted)}
 .ovr-intro span{flex:1}
+.profile-path{display:flex;align-items:center;gap:var(--space-2,8px);margin-top:var(--space-3,12px)}.profile-path>:first-child{flex:1;min-width:0}
 .rules.eff .lf-table__head,.rules.eff .lf-table__row{grid-template-columns:48px 140px minmax(0,1fr) 140px 160px}
 .rules .src{color:var(--ink-faint)}
 .rules .src.is-ovr{color:var(--ink)}

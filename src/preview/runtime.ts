@@ -349,6 +349,11 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   })),
   "Desktop.Quit": () => undefined,
   "Desktop.RequestWiFiAccess": () => { state.wifiState = { ...state.wifiState, known: true, detail: "" }; },
+  "Desktop.ReadProfilePath": (args) => {
+    const path = String(args[0]).trim();
+    if (!/\.ya?ml["']?$/i.test(path)) fail("请选择 .yaml 或 .yml 配置文件");
+    return { path, name: path.split("/").pop()!.replace(/\.ya?ml["']?$/i, ""), content: sampleYaml };
+  },
   "Desktop.PickProfileFile": (): ImportedProfileFile => ({ path: "示例配置.yaml", name: "示例配置.yaml", content: sampleYaml }),
 
   "Profiles.State": () => profileState(),
