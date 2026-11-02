@@ -35,7 +35,7 @@ function withHops(forward:ForwardRoute):Design.RouteSegment[] {
   const hops=forward.hops||[];
   let at=0;
   return (forward.segments||[]).map(segment=>{
-    const slice=hops.slice(at,at+segment.hops).map(hop=>({ip:hop.ip,ms:hop.ms,place:[hop.city,hop.country].filter(Boolean).join(", ")}));
+    const slice=hops.slice(at,at+segment.hops).map(hop=>({ip:hop.ip,ms:hop.ms,place:hop.country}));
     at+=segment.hops;
     const kind=segment.kind as Design.RouteSegment["kind"];
     return slice.length===segment.hops?{...segment,kind,hopList:slice}:{...segment,kind};
@@ -84,8 +84,8 @@ export function TrajectoryPanel({design:DS,running,connections}:{design:typeof D
     const exitPlace=exit?.known?placeOf(exit):"",entryPlace=entry?.known?placeOf(entry):"";
     // An anycast entry names its network, with the site when it could be asked.
     const entryLabel=[entry?.network,entryPlace].filter(Boolean).join(" · ");
-    const passed=(forward?.hops||[]).flatMap(hop=>hop.city?[{at:[hop.lon,hop.lat] as [number,number],place:placeOf(hop),country:hop.country}]:[]);
-    const hops=[...passed,...(entryAt?[{at:entryAt,place:entryPlace,country:entry?.country}]:[])];
+    // Only measured ends go on the map: routers register to a carrier's head office, not where they stand.
+    const hops=entryAt?[{at:entryAt,place:entryPlace,country:entry?.country}]:[];
     const relay=!!(entry?.known&&exit?.known&&entry.country&&exit.country&&entry.country!==exit.country);
     // A trace that has not finished yet shows as pending; a failed one shows its reason.
     const route=forward?.known||forward?.error?{segments:withHops(forward),error:forward.known?"":forward.error}:undefined;

@@ -273,15 +273,12 @@ export interface ProxyNode {
 
 /**
  * RouteHop is one traceroute hop; MS is -1 for a hop that never answered.
- * City is set only for a public hop whose city could be located.
+ * Country comes from the local GeoIP database, for a public hop it knows.
  */
 export interface RouteHop {
   ip: string;
   ms: number;
-  city?: string;
   country?: string;
-  lon: number;
-  lat: number;
 }
 
 /**

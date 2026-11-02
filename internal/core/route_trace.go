@@ -6,14 +6,11 @@ import (
 )
 
 // RouteHop is one traceroute hop; MS is -1 for a hop that never answered.
-// City is set only for a public hop whose city could be located.
+// Country comes from the local GeoIP database, for a public hop it knows.
 type RouteHop struct {
-	IP      string  `json:"ip"`
-	MS      int     `json:"ms"`
-	City    string  `json:"city,omitempty"`
-	Country string  `json:"country,omitempty"`
-	Lon     float64 `json:"lon"`
-	Lat     float64 `json:"lat"`
+	IP      string `json:"ip"`
+	MS      int    `json:"ms"`
+	Country string `json:"country,omitempty"`
 }
 
 // RouteSegment groups consecutive hops on the same network.

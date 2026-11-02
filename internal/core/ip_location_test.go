@@ -3,6 +3,7 @@ package core
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -36,15 +37,12 @@ func TestIPLocationParsesProvidersAndFallsBack(t *testing.T) {
 	}
 }
 
-func TestIPAPIComParsesCityAndRejectsFailure(t *testing.T) {
-	got, err := parseIPAPICom([]byte(`{"status":"success","countryCode":"US","regionName":"California","city":"San Francisco","lat":37.77,"lon":-122.42}`))
-	if err != nil || got.City != "San Francisco" || got.Country != "US" || got.Lon != -122.42 {
-		t.Fatalf("ip-api.com = %+v, %v", got, err)
-	}
-	if _, err := parseIPAPICom([]byte(`{"status":"fail","message":"reserved range"}`)); err == nil {
-		t.Fatal("accepted a failed lookup")
-	}
-	if ipAPIURL("") != "" || ipAPIURL("1.2.3.4") == "" {
-		t.Fatal("ip-api.com must require a concrete IP")
+func TestLocationProvidersUseHTTPS(t *testing.T) {
+	for _, provider := range ipLocationProviders {
+		for _, ip := range []string{"", "1.2.3.4"} {
+			if url := provider.url(ip); !strings.HasPrefix(url, "https://") {
+				t.Fatalf("%s(%q) = %q", provider.name, ip, url)
+			}
+		}
 	}
 }

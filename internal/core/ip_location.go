@@ -109,10 +109,11 @@ type ipLocationProvider struct {
 	parse func([]byte) (IPLocation, error)
 }
 
+// HTTPS only: a looked-up address may be a node's entry, which must not cross
+// the network in the clear.
 var ipLocationProviders = []ipLocationProvider{
 	{"ipinfo.io", func(ip string) string { return "https://ipinfo.io/" + pathIP(ip) + "json" }, parseIPInfo},
 	{"ipapi.co", func(ip string) string { return "https://ipapi.co/" + pathIP(ip) + "json/" }, parseIPAPI},
-	{"ip-api.com", ipAPIURL, parseIPAPICom},
 }
 
 func pathIP(ip string) string {
@@ -123,11 +124,7 @@ func pathIP(ip string) string {
 }
 
 func (p ipLocationProvider) fetch(client *http.Client, ip string) (IPLocation, error) {
-	address := p.url(ip)
-	if address == "" {
-		return IPLocation{}, errors.New("这个接口需要具体 IP")
-	}
-	request, err := http.NewRequest(http.MethodGet, address, nil)
+	request, err := http.NewRequest(http.MethodGet, p.url(ip), nil)
 	if err != nil {
 		return IPLocation{}, err
 	}
@@ -183,36 +180,4 @@ func parseIPAPI(body []byte) (IPLocation, error) {
 		return IPLocation{}, fmt.Errorf("响应缺少坐标 %s", raw.Reason)
 	}
 	return IPLocation{City: raw.City, Region: raw.Region, Country: raw.Country, Lon: *raw.Longitude, Lat: *raw.Latitude}, nil
-}
-
-// ipAPIURL is the public lookup NextTrace uses for IP-API.com. It needs an IP,
-// so a caller's own address cannot use it.
-func ipAPIURL(ip string) string {
-	if ip == "" {
-		return ""
-	}
-	return "http://ip-api.com/json/" + ip + "?fields=status,countryCode,regionName,city,lat,lon"
-}
-
-// parseIPAPICom reads ip-api.com's {"status","countryCode","regionName","city","lat","lon"}.
-func parseIPAPICom(body []byte) (IPLocation, error) {
-	var raw struct {
-		Status    string  `json:"status"`
-		Message   string  `json:"message"`
-		City      string  `json:"city"`
-		Region    string  `json:"regionName"`
-		Country   string  `json:"countryCode"`
-		Latitude  float64 `json:"lat"`
-		Longitude float64 `json:"lon"`
-	}
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return IPLocation{}, err
-	}
-	if raw.Status != "success" || (raw.Latitude == 0 && raw.Longitude == 0) {
-		if raw.Message == "" {
-			raw.Message = "响应缺少坐标"
-		}
-		return IPLocation{}, errors.New(raw.Message)
-	}
-	return IPLocation{City: raw.City, Region: raw.Region, Country: raw.Country, Lon: raw.Longitude, Lat: raw.Latitude}, nil
 }

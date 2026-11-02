@@ -95,7 +95,7 @@ func locateNode(name string) {
 		value.Forward = ForwardRoute{Error: value.Entry.Error}
 		if ip != "" {
 			value.Forward = traceForward(ip)
-			annotateForwardCities(&value.Forward)
+			annotateForwardCountries(&value.Forward)
 		}
 	}
 	mihomoLog.Debugln("[节点位置] %s：入口 %s %s（%s），落地 %s %s（%s）", name, value.Entry.City, value.Entry.Country, value.Entry.Error, value.Exit.City, value.Exit.Country, value.Exit.Error)
@@ -162,31 +162,26 @@ func locateNodeExit(proxy C.Proxy) IPLocation {
 	return lookupIPLocation(client, "")
 }
 
-// annotateForwardCities locates public hops that answered. Private addresses
-// and silent hops stay unlabelled; a lookup that fails leaves that hop blank.
-func annotateForwardCities(route *ForwardRoute) {
+// annotateForwardCountries names each public hop's country from the local GeoIP
+// database, so hop addresses never leave this Mac. Private and Cloudflare (anycast,
+// so its registered country means nothing) hops stay blank, as does every hop
+// when no database has been downloaded yet.
+func annotateForwardCountries(route *ForwardRoute) {
 	if !route.Known {
 		return
 	}
-	client := &http.Client{Timeout: 6 * time.Second, Transport: &http.Transport{Proxy: nil, DialContext: directDialer(true)}}
-	seen := map[string]IPLocation{}
+	dir, err := defaultGeoCacheDir()
+	if err != nil {
+		return
+	}
+	lookup, closeDB := openLocalCountryDB(dir)
+	defer closeDB()
 	for i := range route.Hops {
 		hop := &route.Hops[i]
-		if hop.MS < 0 || hop.IP == "" {
-			continue
-		}
 		ip, err := netip.ParseAddr(hop.IP)
-		if err != nil || privateHop(ip) {
+		if hop.MS < 0 || err != nil || privateHop(ip) || isCloudflare(ip) {
 			continue
 		}
-		location, ok := seen[hop.IP]
-		if !ok {
-			location = lookupIPLocation(client, hop.IP)
-			seen[hop.IP] = location
-		}
-		if !location.Known || location.City == "" {
-			continue
-		}
-		hop.City, hop.Country, hop.Lon, hop.Lat = location.City, location.Country, location.Lon, location.Lat
+		hop.Country = lookup(ip)
 	}
 }
