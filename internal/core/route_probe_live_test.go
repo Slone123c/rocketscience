@@ -17,7 +17,6 @@ func TestTraceForwardLive(t *testing.T) {
 	if !route.Known {
 		t.Fatalf("trace failed: %s", route.Error)
 	}
-	t.Logf("%s", route.Verdict)
 	t.Logf("%v", route.Hops)
 	for _, s := range route.Segments {
 		t.Logf("%s (%s) %d 跳 %d ms", s.Label, s.Kind, s.Hops, s.MS)

@@ -138,6 +138,9 @@ func locateNodeEntry(proxy C.Proxy) (string, IPLocation) {
 		}
 		ip = addr.Unmap().String()
 	}
+	if parsed, err := netip.ParseAddr(ip); err == nil && isCloudflare(parsed) {
+		return ip, locateCloudflareEntry(ip)
+	}
 	client := &http.Client{Timeout: 6 * time.Second, Transport: &http.Transport{Proxy: nil, DialContext: directDialer(true)}}
 	return ip, lookupIPLocation(client, ip)
 }

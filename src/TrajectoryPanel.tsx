@@ -82,15 +82,17 @@ export function TrajectoryPanel({design:DS,running,connections}:{design:typeof D
     const geo:[number,number]|null=exit?.known?[exit.lon,exit.lat]:DS.geoOf(node.name);
     const entryAt:[number,number]|undefined=entry?.known?[entry.lon,entry.lat]:undefined;
     const exitPlace=exit?.known?placeOf(exit):"",entryPlace=entry?.known?placeOf(entry):"";
-    const passed=(forward?.hops||[]).flatMap(hop=>hop.city?[{at:[hop.lon,hop.lat] as [number,number],place:placeOf(hop)}]:[]);
-    const hops=[...passed,...(entryAt?[{at:entryAt,place:entryPlace}]:[])];
+    // An anycast entry names its network, with the site when it could be asked.
+    const entryLabel=[entry?.network,entryPlace].filter(Boolean).join(" · ");
+    const passed=(forward?.hops||[]).flatMap(hop=>hop.city?[{at:[hop.lon,hop.lat] as [number,number],place:placeOf(hop),country:hop.country}]:[]);
+    const hops=[...passed,...(entryAt?[{at:entryAt,place:entryPlace,country:entry?.country}]:[])];
     const relay=!!(entry?.known&&exit?.known&&entry.country&&exit.country&&entry.country!==exit.country);
     // A trace that has not finished yet shows as pending; a failed one shows its reason.
-    const route=forward?.known||forward?.error?{segments:withHops(forward),verdict:forward.verdict,error:forward.known?"":forward.error}:undefined;
-    return {node,geo,measured:!!exit?.known,entry:entryAt,hops:hops.length?hops:undefined,place:exitPlace,entryPlace,relay,route,tracing:!!pending&&!forward?.known};
+    const route=forward?.known||forward?.error?{segments:withHops(forward),error:forward.known?"":forward.error}:undefined;
+    return {node,geo,measured:!!exit?.known,entry:entryAt,hops:hops.length?hops:undefined,place:exitPlace,country:exit?.known?exit.country:undefined,entryPlace:entryLabel,relay,route,tracing:!!pending&&!forward?.known};
   }).filter(item=>item.geo);
   return <section className="panel"><div className="cap">连接轨迹</div>
-    <DS.Trajectory origin={originPlace} originGeo={origin.geo} nodes={placed.map(({node,geo,measured,entry,hops,place,entryPlace,relay,route,tracing})=>({name:node.name,active:node.active,weight:node.weight,lon:geo![0],lat:geo![1],entry,hops,place,estimated:!measured,entryPlace:entryPlace||undefined,relay,route:route as Design.TrajectoryRoute|undefined,tracing}))} caption={running?undefined:"启动内核后显示活动连接"}/>
+    <DS.Trajectory origin={originPlace} originCountry={ip?.known?ip.country:undefined} originGeo={origin.geo} nodes={placed.map(({node,geo,measured,entry,hops,place,country,entryPlace,relay,route,tracing})=>({name:node.name,active:node.active,weight:node.weight,lon:geo![0],lat:geo![1],entry,hops,place,country,estimated:!measured,entryPlace:entryPlace||undefined,relay,route:route as Design.TrajectoryRoute|undefined,tracing}))} caption={running?undefined:"启动内核后显示活动连接"}/>
     {running && routes.length===0 && unknownCount===0 && <p className="empty">当前没有活动连接。</p>}
   </section>;
 }

@@ -100,7 +100,6 @@ export interface ForwardRoute {
   hops: RouteHop[];
   segments: RouteSegment[];
   silent: number;
-  verdict: string;
   error: string;
 }
 
@@ -123,6 +122,8 @@ export interface IPLocation {
   lon: number;
   lat: number;
   source: string;
+  /** Network names an anycast network, whose address has no fixed place. */
+  network?: string;
   error: string;
 }
 
@@ -285,7 +286,8 @@ export interface RouteHop {
 
 /**
  * RouteSegment groups consecutive hops on the same network.
- * Kind is local, carrier, premium, intl or entry.
+ * Kind is local, carrier, premium, intl, entry or unreached (the end of a trace
+ * that stopped short; Hops counts the silent hops it stopped on).
  */
 export interface RouteSegment {
   label: string;

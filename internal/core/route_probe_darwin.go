@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	traceMaxTTL    = 24
+	traceMaxTTL    = 40 // paths over 25 hops are ordinary through a carrier's internal network
 	traceHopWait   = 900 * time.Millisecond
-	traceGiveUp    = 6 // consecutive silent hops before stopping
+	traceGiveUp    = 10 // consecutive silent hops before stopping; a run of six is seen on live paths
 	ipBoundIf      = 25
 	icmpHeaderSize = 8
 )
@@ -48,7 +48,7 @@ func traceForward(target string) ForwardRoute {
 	copy(to.Addr[:], dst)
 	id := int(traceID.Add(1)+uint32(os.Getpid())) & 0xffff
 	hops := []RouteHop{}
-	silent := 0
+	silent, answered := 0, false
 	for ttl := 1; ttl <= traceMaxTTL; ttl++ {
 		_ = syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, ttl)
 		msg := icmp.Message{Type: ipv4.ICMPTypeEcho, Body: &icmp.Echo{ID: id, Seq: ttl, Data: []byte("rocketscience")}}
@@ -69,14 +69,13 @@ func traceForward(target string) ForwardRoute {
 		if hop.MS < 0 {
 			silent++
 		} else {
-			silent = 0
+			silent, answered = 0, true
 		}
 		if silent >= traceGiveUp {
-			hops = hops[:len(hops)-silent]
 			break
 		}
 	}
-	if len(hops) == 0 {
+	if !answered {
 		return ForwardRoute{Error: "去程探测没有任何回应"}
 	}
 	return summarizeRoute(hops, false)

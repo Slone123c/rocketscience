@@ -459,7 +459,6 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
         { label: "CN2 GT", kind: "premium", hops: 2, ms: 156 },
         { label: "入口", kind: "entry", hops: 1, ms: 162 },
       ],
-      verdict: "去程走 CN2 GT（先经电信 163），8 跳到入口，162 ms",
     } : {
       known: true, reached: true, silent: 1, error: "",
       hops: [{ ip: "192.168.1.1", ms: 2 }, { ip: "100.64.0.1", ms: 5 }, { ip: "59.43.80.1", ms: 9 }, { ip: "203.0.113.20", ms: 12 }],
@@ -469,7 +468,6 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
         { label: "CN2 GIA", kind: "premium", hops: 1, ms: 9 },
         { label: "入口", kind: "entry", hops: 1, ms: 12 },
       ],
-      verdict: "去程走 CN2 GIA，4 跳到入口，12 ms",
     },
     pending: false,
   }])),

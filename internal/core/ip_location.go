@@ -28,7 +28,9 @@ type IPLocation struct {
 	Lon     float64 `json:"lon"`
 	Lat     float64 `json:"lat"`
 	Source  string  `json:"source"`
-	Error   string  `json:"error"`
+	// Network names an anycast network, whose address has no fixed place.
+	Network string `json:"network,omitempty"`
+	Error   string `json:"error"`
 }
 
 const ipLocationTTL = 10 * time.Minute

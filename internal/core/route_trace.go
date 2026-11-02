@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"net/netip"
-	"strings"
 )
 
 // RouteHop is one traceroute hop; MS is -1 for a hop that never answered.
@@ -18,7 +17,8 @@ type RouteHop struct {
 }
 
 // RouteSegment groups consecutive hops on the same network.
-// Kind is local, carrier, premium, intl or entry.
+// Kind is local, carrier, premium, intl, entry or unreached (the end of a trace
+// that stopped short; Hops counts the silent hops it stopped on).
 type RouteSegment struct {
 	Label string `json:"label"`
 	Kind  string `json:"kind"`
@@ -33,9 +33,10 @@ type ForwardRoute struct {
 	Hops     []RouteHop     `json:"hops"`
 	Segments []RouteSegment `json:"segments"`
 	Silent   int            `json:"silent"`
-	Verdict  string         `json:"verdict"`
 	Error    string         `json:"error"`
 }
+
+const cloudflareLabel = "Cloudflare"
 
 type backbone struct {
 	prefix  netip.Prefix
@@ -58,6 +59,18 @@ var backbones = func() []backbone {
 		{"221.183.0.0/16", "移动 CMNET", false},
 		{"223.118.0.0/15", "移动 CMI", true},
 		{"223.120.0.0/15", "移动 CMI", true},
+		{"183.91.56.0/22", "电信香港", false},
+	}
+	// Cloudflare's published IPv4 ranges: https://www.cloudflare.com/ips-v4
+	for _, cidr := range []string{
+		"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
+		"108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
+		"162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+	} {
+		list = append(list, struct {
+			cidr, label string
+			premium     bool
+		}{cidr, cloudflareLabel, false})
 	}
 	out := make([]backbone, 0, len(list))
 	for _, item := range list {
@@ -75,6 +88,13 @@ func backboneOf(ip netip.Addr) (backbone, bool) {
 	return backbone{}, false
 }
 
+// isCloudflare reports an anycast address: whichever site answers depends on
+// the caller, so its registered city says nothing about where traffic goes.
+func isCloudflare(ip netip.Addr) bool {
+	b, ok := backboneOf(ip.Unmap())
+	return ok && b.label == cloudflareLabel
+}
+
 func privateHop(ip netip.Addr) bool {
 	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || netip.MustParsePrefix("100.64.0.0/10").Contains(ip)
 }
@@ -85,6 +105,14 @@ func privateHop(ip netip.Addr) bool {
 func summarizeRoute(hops []RouteHop, reached bool) ForwardRoute {
 	route := ForwardRoute{Known: true, Reached: reached, Hops: hops}
 	n := len(hops)
+	// Silent hops at the end of an unfinished trace were never placed on any
+	// network, so they go to the closing segment rather than the one before them.
+	measured := n
+	if !reached {
+		for measured > 0 && hops[measured-1].MS < 0 {
+			measured--
+		}
+	}
 	labels := make([]backbone, n)
 	known := make([]bool, n)
 	first, last, public := -1, -1, false
@@ -134,7 +162,7 @@ func summarizeRoute(hops []RouteHop, reached bool) ForwardRoute {
 		return "", ""
 	}
 	// Silent and unknown hops in the middle join the segment before them.
-	for i := range hops {
+	for i := range hops[:measured] {
 		label, kind := kindOf(i)
 		if hops[i].MS < 0 || label == "" {
 			if len(route.Segments) > 0 && !(reached && i == n-1) {
@@ -154,42 +182,29 @@ func summarizeRoute(hops []RouteHop, reached bool) ForwardRoute {
 		}
 		route.Segments = append(route.Segments, RouteSegment{Label: label, Kind: kind, Hops: 1, MS: max(hops[i].MS, 0)})
 	}
-	route.Verdict = routeVerdict(route)
+	nameCN2Line(route.Segments)
+	if !reached {
+		label := fmt.Sprintf("第 %d 跳仍未到入口", measured)
+		if measured < n {
+			label = fmt.Sprintf("第 %d 跳后无回应", measured)
+		}
+		route.Segments = append(route.Segments, RouteSegment{Label: label, Kind: "unreached", Hops: n - measured})
+	}
 	return route
 }
 
-func routeVerdict(route ForwardRoute) string {
-	seen := map[string]bool{}
-	for _, s := range route.Segments {
-		seen[s.Label] = true
-	}
-	var line string
-	switch {
-	case seen["CN2"] && seen["电信 163"]:
-		line = "去程走 CN2 GT（先经电信 163）"
-	case seen["CN2"]:
-		line = "去程走 CN2 GIA"
-	case seen["联通 9929"]:
-		line = "去程走联通 9929"
-	case seen["移动 CMI"]:
-		line = "去程走移动 CMI"
-	case seen["电信 163"]:
-		line = "去程走电信 163 普通线路"
-	case seen["联通 4837"]:
-		line = "去程走联通 4837 普通线路"
-	case seen["移动 CMNET"]:
-		line = "去程走移动 CMNET"
-	default:
-		line = "去程未经过国内骨干网"
-	}
-	// Rename CN2 to the line it turned out to be, so the strip and the verdict agree.
-	for i := range route.Segments {
-		if route.Segments[i].Label == "CN2" {
-			route.Segments[i].Label = strings.TrimPrefix(strings.SplitN(line, "（", 2)[0], "去程走 ")
+// nameCN2Line renames CN2 to the line it turned out to be: a path that also
+// crossed 163 is GT, otherwise it is GIA.
+func nameCN2Line(segments []RouteSegment) {
+	line := "CN2 GIA"
+	for _, s := range segments {
+		if s.Label == "电信 163" {
+			line = "CN2 GT"
 		}
 	}
-	if !route.Reached {
-		return fmt.Sprintf("%s；入口不回应探测，只测到第 %d 跳", line, len(route.Hops))
+	for i := range segments {
+		if segments[i].Label == "CN2" {
+			segments[i].Label = line
+		}
 	}
-	return fmt.Sprintf("%s，%d 跳到入口，%d ms", line, len(route.Hops), route.Hops[len(route.Hops)-1].MS)
 }

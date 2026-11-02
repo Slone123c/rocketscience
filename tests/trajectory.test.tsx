@@ -55,4 +55,47 @@ describe("prototype trajectory safety",()=>{
     expect(markup.match(/class="lf-traj__hop"/g)).toHaveLength(1);
     expect(markup.match(/ Q/g)).toHaveLength(2);
   });
+  test("draws the flag of the country each IP was located in",async()=>{
+    const host=globalThis as unknown as {window:Record<string,unknown>};
+    host.window={React,matchMedia:()=>({matches:true})};
+    await import("../design-system/components/bundle.js?flags");
+    const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
+    const markup=renderToStaticMarkup(<DS.Trajectory origin="Guangzhou, CN" originCountry="CN" originGeo={[113.3,23.1]} zoomable={false} nodes={[{
+      name:"日本 01",lon:-118.24,lat:34.05,place:"Los Angeles, US",country:"US",
+      hops:[{at:[103.82,1.35],place:"Singapore, SG",country:"SG"},{at:[-122.42,37.77],place:"San Francisco"}],
+    }]}/>);
+    expect(markup).toContain("🇨🇳 Guangzhou, CN");
+    expect(markup).toContain("🇸🇬 Singapore, SG");
+    expect(markup).toContain("🇺🇸 Los Angeles, US");
+    // The measured country replaces the flag guessed from the name; no code draws no flag.
+    expect(markup).not.toContain("🇯🇵");
+    expect(markup).toContain(">San Francisco<");
+  });
+  test("an unfinished trace ends in a segment saying where it stopped",async()=>{
+    const host=globalThis as unknown as {window:Record<string,unknown>};
+    host.window={React,matchMedia:()=>({matches:true})};
+    await import("../design-system/components/bundle.js?unreached");
+    const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
+    const render=(tail:Record<string,unknown>)=>renderToStaticMarkup(<DS.Trajectory zoomable={false} nodes={[{name:"东京 01",lon:139.69,lat:35.69,route:{segments:[{label:"公网",kind:"carrier",hops:1,ms:10,hopList:[{ip:"203.0.113.1",ms:10}]},tail]}}]}/>);
+    const silent=render({label:"第 1 跳后无回应",kind:"unreached",hops:2,hopList:[{ip:"",ms:-1},{ip:"",ms:-1}]});
+    expect(silent).toContain("is-unreached");
+    expect(silent).toContain("第 1 跳后无回应");
+    expect(silent).toContain("2 跳沉默");
+    expect(silent.match(/lf-traj__hop is-silent/g)).toHaveLength(2);
+    // The hop limit ran out on an answering hop: no invented dot for the closing segment.
+    const capped=render({label:"第 1 跳仍未到入口",kind:"unreached",hops:0,hopList:[]});
+    expect(capped).toContain("第 1 跳仍未到入口");
+    expect(capped).not.toContain("is-silent");
+  });
+  test("route rows carry no summary sentence, only a trace error or progress",async()=>{
+    const host=globalThis as unknown as {window:Record<string,unknown>};
+    host.window={React,matchMedia:()=>({matches:true})};
+    await import("../design-system/components/bundle.js?note");
+    const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
+    const render=(node:Record<string,unknown>)=>renderToStaticMarkup(<DS.Trajectory zoomable={false} nodes={[{name:"东京 01",lon:139.69,lat:35.69,...node}]}/>);
+    const segments=[{label:"电信 163",kind:"carrier",hops:1,ms:9}];
+    expect(render({route:{segments}})).not.toContain("lf-traj__note");
+    expect(render({route:{error:"探测失败"}})).toContain("探测失败");
+    expect(render({tracing:true})).toContain("正在测量去程…");
+  });
 });
