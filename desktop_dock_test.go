@@ -7,9 +7,9 @@ import (
 
 func TestDockShouldShow(t *testing.T) {
 	cases := []struct {
-		name                                          string
+		name                                        string
 		hideWhenClosed, hasMain, visible, minimized bool
-		want                                          bool
+		want                                        bool
 	}{
 		{name: "preference off", hideWhenClosed: false, hasMain: false, want: true},
 		{name: "closed dashboard", hideWhenClosed: true, hasMain: true, visible: false, want: false},

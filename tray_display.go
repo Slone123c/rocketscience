@@ -171,6 +171,7 @@ func (d *Desktop) SetTrayDisplay(value string) error {
 	}
 	return nil
 }
+
 // trayTickInterval is 1s when speeds are shown; icon-only only needs occasional
 // refresh because applyTrayFrame already skips unchanged frames.
 func trayTickInterval(display string) time.Duration {
@@ -209,8 +210,7 @@ func (d *Desktop) startTrayDisplay() {
 			if next == interval {
 				return
 			}
-			tick.Stop()
-			tick = time.NewTicker(next)
+			tick.Reset(next)
 			interval = next
 		}
 		render := func() {
