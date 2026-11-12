@@ -85,6 +85,7 @@ func TestTunDNSDefaultConfigPassesRealCoreValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
+	copyBundledGeoToDir(t, dir)
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)

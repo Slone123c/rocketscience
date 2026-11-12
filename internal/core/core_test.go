@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -25,11 +26,72 @@ func freePort(t *testing.T) int {
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port
 }
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			return wd
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			t.Fatal("go.mod not found")
+		}
+		wd = parent
+	}
+}
+
+// copyBundledGeoToDir seeds mihomo GEO files shipped in resources/ so tests that
+// enable TUN DNS defaults (geosite:cn policy) do not download GeoSite.dat.
+func copyBundledGeoToDir(t *testing.T, dest string) {
+	t.Helper()
+	root := repoRoot(t)
+	for _, name := range []string{"geosite.dat", "geoip.metadb"} {
+		src := filepath.Join(root, "resources", name)
+		in, err := os.Open(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(dest, 0700); err != nil {
+			in.Close()
+			t.Fatal(err)
+		}
+		out, err := os.OpenFile(filepath.Join(dest, name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			in.Close()
+			t.Fatal(err)
+		}
+		if _, err = io.Copy(out, in); err != nil {
+			out.Close()
+			in.Close()
+			t.Fatal(err)
+		}
+		if err := out.Close(); err != nil {
+			in.Close()
+			t.Fatal(err)
+		}
+		if err := in.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func testGeoDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	copyBundledGeoToDir(t, dir)
+	return dir
+}
+
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	s := New()
 	s.proxy = &fakeProxy{}
-	s.geo.dir = t.TempDir()
+	s.geo.dir = testGeoDir(t)
 	if err := s.SetSystemProxy(true); err != nil {
 		t.Fatal(err)
 	}

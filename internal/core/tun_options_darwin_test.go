@@ -13,7 +13,7 @@ func TestTunOptionsDeliveredAtStartup(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
 	s.proxy = &fakeProxy{}
-	s.geo.dir = t.TempDir()
+	s.geo.dir = testGeoDir(t)
 	s.tunReady = func(map[string]bool) bool { return true }
 	defer s.Shutdown()
 	var received map[string]any
