@@ -99,7 +99,7 @@ func applyMihomoEngineConfig(dir, configPath string, data []byte, force bool, wi
 	}
 	cfg, err := executor.ParseWithBytes(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("mihomo：%w", err)
 	}
 	wantTun := cfg.General.Tun.Enable
 	if skipTunListener || attachTun == nil {

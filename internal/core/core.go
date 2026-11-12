@@ -405,7 +405,7 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 	if controller.Secret != "" {
 		s.secret = controller.Secret
 	}
-	data, err := runtimeConfigWithOptions(content, mixedPort, s.port, s.secret, "", lan, s.useTun, options)
+	data, err := runtimeConfigWithOptions(content, mixedPort, s.port, s.secret, s.chosenMode, lan, s.useTun, options)
 	if err != nil {
 		return err
 	}
