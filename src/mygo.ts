@@ -223,6 +223,7 @@ export interface PlatformCapabilities {
   platform: string;
   systemProxy: boolean;
   systemProxyAutomatic: boolean;
+  manualProxyAvailable: boolean;
   manualProxyNote?: string;
   tun: boolean;
   dock: boolean;

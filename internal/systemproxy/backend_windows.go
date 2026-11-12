@@ -42,7 +42,7 @@ func (registryWinINET) Read() (winINETSnapshot, error) {
 	if v, _, err := k.GetStringValue("AutoConfigURL"); err == nil {
 		s.AutoConfigURL = v
 	}
-	if v, _, err := k.GetIntegerValue("ProxySettingsPerUser"); err == nil {
+	if v, _, err := k.GetIntegerValue("AutoDetect"); err == nil {
 		s.AutoDiscovery = v != 0
 	}
 	return s, nil
@@ -61,19 +61,13 @@ func (registryWinINET) Write(s winINETSnapshot) error {
 	if err := k.SetDWordValue("ProxyEnable", enable); err != nil {
 		return err
 	}
-	if s.ProxyEnable {
+	if s.ProxyServer != "" {
 		if err := k.SetStringValue("ProxyServer", s.ProxyServer); err != nil {
 			return err
 		}
-	} else {
-		_ = k.DeleteValue("ProxyServer")
 	}
-	if s.ProxyOverride != "" {
-		if err := k.SetStringValue("ProxyOverride", s.ProxyOverride); err != nil {
-			return err
-		}
-	} else {
-		_ = k.DeleteValue("ProxyOverride")
+	if err := k.SetStringValue("ProxyOverride", s.ProxyOverride); err != nil {
+		return err
 	}
 	if s.AutoConfigURL != "" {
 		if err := k.SetStringValue("AutoConfigURL", s.AutoConfigURL); err != nil {
@@ -81,6 +75,13 @@ func (registryWinINET) Write(s winINETSnapshot) error {
 		}
 	} else {
 		_ = k.DeleteValue("AutoConfigURL")
+	}
+	detect := uint32(0)
+	if s.AutoDiscovery {
+		detect = 1
+	}
+	if err := k.SetDWordValue("AutoDetect", detect); err != nil {
+		return err
 	}
 	return nil
 }
@@ -116,6 +117,10 @@ func (b WindowsBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	current, err := b.access().Read()
+	if err != nil {
+		return nil, err
+	}
 	conflicts, updated := applyChanges(services, changes)
 	if len(conflicts) > 0 {
 		return conflicts, nil
@@ -123,10 +128,7 @@ func (b WindowsBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if len(updated) != 1 || updated[0].ID != winINETServiceID {
 		return nil, fmt.Errorf("Internet 设置状态无效")
 	}
-	next, err := winINETFromSettings(updated[0].Settings)
-	if err != nil {
-		return nil, err
-	}
+	next := applyWinINETChanges(current, updated[0].Settings, changes)
 	if err = b.access().Write(next); err != nil {
 		return nil, err
 	}

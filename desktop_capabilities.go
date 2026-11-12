@@ -11,6 +11,7 @@ type PlatformCapabilities struct {
 	Platform                string `json:"platform"`
 	SystemProxy             bool   `json:"systemProxy"`
 	SystemProxyAutomatic    bool   `json:"systemProxyAutomatic"`
+	ManualProxyAvailable    bool   `json:"manualProxyAvailable"`
 	ManualProxyNote         string `json:"manualProxyNote,omitempty"`
 	Tun                     bool   `json:"tun"`
 	Dock                    bool   `json:"dock"`
@@ -20,12 +21,14 @@ type PlatformCapabilities struct {
 }
 
 func (d *Desktop) Capabilities() PlatformCapabilities {
+	automatic := systemproxy.AutomaticAvailable()
 	cap := PlatformCapabilities{
-		Platform:             runtime.GOOS,
-		SystemProxy:            true,
-		SystemProxyAutomatic:   systemproxy.AutomaticAvailable(),
+		Platform:               runtime.GOOS,
+		SystemProxy:            automatic,
+		SystemProxyAutomatic:   automatic,
 		ManualProxyNote:        systemproxy.ManualFallbackNote(),
 		Tun:                    core.TunTakeoverAvailable(),
+		ManualProxyAvailable:   true,
 		TunFirstReleaseScope:   "macOS",
 	}
 	switch runtime.GOOS {

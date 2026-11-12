@@ -59,6 +59,7 @@ func TestProcessAliveUsesExitCode(t *testing.T) {
 		t.Fatal(err)
 	}
 	pid := cmd.Process.Pid
+	_ = cmd.Wait()
 	deadline := time.Now().Add(5 * time.Second)
 	for processAlive(pid) && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)

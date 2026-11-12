@@ -1,0 +1,24 @@
+name: linux-core
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - advisor/001-publication-preparation
+    paths:
+      - "internal/**"
+      - ".github/workflows/linux-core.yml"
+
+jobs:
+  systemproxy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test system proxy and GEO semantics
+        run: go test ./internal/systemproxy/... ./internal/core/ -count=1 -v
+        env:
+          GOFLAGS: -tags=with_gvisor
+          XDG_CURRENT_DESKTOP: GNOME

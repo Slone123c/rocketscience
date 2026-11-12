@@ -6,18 +6,24 @@ import (
 )
 
 func TestWinINETProxyServerRoundTrip(t *testing.T) {
-	line := proxyServerLine(7890)
-	host, http, https, socks := parseWinINETProxyServer(line)
-	if host != "127.0.0.1" || http != 7890 || https != 7890 || socks != 7890 {
-		t.Fatalf("parse line: %s", line)
+	line := "http=corp:8080;https=secure:8443;socks=socks:1080"
+	ep := parseWinINETEndpointsPortable(line)
+	if ep.HTTPHost != "corp" || ep.HTTPPort != 8080 || ep.HTTPSHost != "secure" || ep.HTTPSPort != 8443 {
+		t.Fatalf("parse endpoints: %+v", ep)
 	}
-	settings := settingsFromWinINET(winINETSnapshot{ProxyEnable: true, ProxyServer: line, ProxyOverride: "localhost;127.0.0.1"})
-	if !parseBool(settings["HTTPEnable"]) || parsePort(settings["HTTPPort"]) != 7890 {
-		t.Fatalf("settings: %v", settings)
-	}
-	next, err := winINETFromSettings(settings)
-	if err != nil || next.ProxyServer != line {
-		t.Fatalf("round trip: %v %v", next, err)
+	built := buildProxyServerFromSettings(Settings{
+		"HTTPEnable":  json.RawMessage("1"),
+		"HTTPProxy":   json.RawMessage(`"corp"`),
+		"HTTPPort":    json.RawMessage("8080"),
+		"HTTPSEnable": json.RawMessage("1"),
+		"HTTPSProxy":  json.RawMessage(`"secure"`),
+		"HTTPSPort":   json.RawMessage("8443"),
+		"SOCKSEnable": json.RawMessage("1"),
+		"SOCKSProxy":  json.RawMessage(`"socks"`),
+		"SOCKSPort":   json.RawMessage("1080"),
+	})
+	if built != line {
+		t.Fatalf("build: %q", built)
 	}
 }
 

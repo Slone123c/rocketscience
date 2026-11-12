@@ -5,11 +5,10 @@ case "${ROCKETSCIENCE_ARCH:-$(uname -m)}" in
   x86_64|amd64) swift_arch=x86_64; go_arch=amd64 ;;
   *) echo "不支持的 macOS 处理器架构" >&2; exit 1 ;;
 esac
-# Match the app's declared minimum and the Go toolchain's macOS requirement.
 export MACOSX_DEPLOYMENT_TARGET=13.0
 swift_target="${swift_arch}-apple-macosx${MACOSX_DEPLOYMENT_TARGET}"
-mkdir -p resources/bin
-xcrun swiftc -target "$swift_target" native/SystemProxy/main.swift -o resources/bin/rs-system-proxy
-# Creates the utun device as root; mihomo itself stays in the app (internal/tunhelper).
-GOOS=darwin GOARCH="$go_arch" go build -trimpath -o resources/bin/rs-tun-helper ./cmd/tun-helper
-xcrun swiftc -target "$swift_target" -emit-library -module-name RocketNetwork -Xlinker -install_name -Xlinker '@rpath/libRocketNetwork.dylib' native/Network/Network.swift -o resources/bin/libRocketNetwork.dylib
+out=resources/darwin/bin
+mkdir -p "$out"
+xcrun swiftc -target "$swift_target" native/SystemProxy/main.swift -o "$out/rs-system-proxy"
+GOOS=darwin GOARCH="$go_arch" go build -trimpath -o "$out/rs-tun-helper" ./cmd/tun-helper
+xcrun swiftc -target "$swift_target" -emit-library -module-name RocketNetwork -Xlinker -install_name -Xlinker '@rpath/libRocketNetwork.dylib' native/Network/Network.swift -o "$out/libRocketNetwork.dylib"

@@ -62,11 +62,10 @@ func normalizedFinalPath(handle windows.Handle) (string, error) {
 		}
 		if int(n) < len(buf) {
 			path := windows.UTF16ToString(buf[:n])
-			if strings.HasPrefix(path, `\\?\`) {
-				path = path[4:]
-			}
 			if strings.HasPrefix(path, `\\?\UNC\`) {
 				path = `\\` + path[8:]
+			} else if strings.HasPrefix(path, `\\?\`) {
+				path = path[4:]
 			}
 			return strings.TrimRight(path, `\`), nil
 		}
@@ -107,6 +106,10 @@ func validatePrivateDirectorySecurity(handle windows.Handle) error {
 	if dacl == nil {
 		return errors.New("GEO 临时目录权限无效")
 	}
+	trustedWriters, err := trustedWriterSIDs()
+	if err != nil {
+		return err
+	}
 	writeMask := windows.ACCESS_MASK(windows.FILE_WRITE_DATA | windows.FILE_APPEND_DATA | windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER | windows.GENERIC_WRITE | windows.GENERIC_ALL)
 	for i := uint32(0); i < uint32(dacl.AceCount); i++ {
 		var ace *windows.ACCESS_ALLOWED_ACE
@@ -120,9 +123,33 @@ func validatePrivateDirectorySecurity(handle windows.Handle) error {
 		if self.Equals(sid) {
 			continue
 		}
+		if trustedContains(trustedWriters, sid) {
+			continue
+		}
 		if ace.Mask&writeMask != 0 {
 			return errors.New("GEO 临时目录权限无效")
 		}
 	}
 	return nil
+}
+
+func trustedWriterSIDs() ([]*windows.SID, error) {
+	var out []*windows.SID
+	for _, spec := range []string{"S-1-5-18", "S-1-5-32-544"} {
+		sid, err := windows.StringToSid(spec)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sid)
+	}
+	return out, nil
+}
+
+func trustedContains(trusted []*windows.SID, sid *windows.SID) bool {
+	for _, t := range trusted {
+		if t.Equals(sid) {
+			return true
+		}
+	}
+	return false
 }

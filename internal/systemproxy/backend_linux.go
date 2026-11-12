@@ -4,11 +4,13 @@ package systemproxy
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // GSettingsRunner runs gsettings without a shell.
@@ -22,7 +24,9 @@ type execGSettings struct {
 }
 
 func (g execGSettings) Get(schema, key string) (string, error) {
-	cmd := exec.Command(g.bin, "get", schema, key)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, g.bin, "get", schema, key)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -31,7 +35,9 @@ func (g execGSettings) Get(schema, key string) (string, error) {
 }
 
 func (g execGSettings) Set(schema, key, value string) error {
-	cmd := exec.Command(g.bin, "set", schema, key, value)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, g.bin, "set", schema, key, value)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -142,34 +148,52 @@ func (g gnomeStore) read() (gnomeSnapshot, error) {
 }
 
 func (g gnomeStore) write(s gnomeSnapshot) error {
-	if err := g.runner.Set("org.gnome.system.proxy", "mode", formatGsettingsString(s.Mode)); err != nil {
+	before, err := g.read()
+	if err != nil {
 		return err
 	}
-	if s.Mode != "manual" {
-		return nil
+	if err := g.writeDirect(s); err != nil {
+		_ = g.writeDirect(before)
+		return err
 	}
-	for _, item := range []struct {
-		schema string
-		host   string
-		port   int
-	}{
-		{"org.gnome.system.proxy.http", s.HTTPHost, s.HTTPPort},
-		{"org.gnome.system.proxy.https", s.HTTPSHost, s.HTTPSPort},
-		{"org.gnome.system.proxy.socks", s.SOCKSHost, s.SOCKSPort},
-	} {
-		if err := g.runner.Set(item.schema, "host", formatGsettingsString(item.host)); err != nil {
-		 return err
-		}
-		if err := g.runner.Set(item.schema, "port", formatGsettingsUInt(item.port)); err != nil {
+	return nil
+}
+
+func (g gnomeStore) writeDirect(s gnomeSnapshot) error {
+	apply := func() error {
+		if err := g.runner.Set("org.gnome.system.proxy", "mode", formatGsettingsString(s.Mode)); err != nil {
 			return err
 		}
-	}
-	if len(s.IgnoreHosts) > 0 {
+		if s.Mode == "auto" && s.AutoURL != "" {
+			if err := g.runner.Set("org.gnome.system.proxy", "autoconfig-url", formatGsettingsString(s.AutoURL)); err != nil {
+				return err
+			}
+		}
+		if s.Mode != "manual" {
+			return nil
+		}
+		for _, item := range []struct {
+			schema string
+			host   string
+			port   int
+		}{
+			{"org.gnome.system.proxy.http", s.HTTPHost, s.HTTPPort},
+			{"org.gnome.system.proxy.https", s.HTTPSHost, s.HTTPSPort},
+			{"org.gnome.system.proxy.socks", s.SOCKSHost, s.SOCKSPort},
+		} {
+			if err := g.runner.Set(item.schema, "host", formatGsettingsString(item.host)); err != nil {
+				return err
+			}
+			if err := g.runner.Set(item.schema, "port", formatGsettingsUInt(item.port)); err != nil {
+				return err
+			}
+		}
 		if err := g.runner.Set("org.gnome.system.proxy", "ignore-hosts", formatGsettingsStringArray(s.IgnoreHosts)); err != nil {
 			return err
 		}
+		return nil
 	}
-	return nil
+	return apply()
 }
 
 func strconvAtoi(value string) (int, error) {
@@ -233,10 +257,11 @@ func (b LinuxBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if len(updated) != 1 || updated[0].ID != gnomeServiceID {
 		return nil, fmt.Errorf("桌面代理状态无效")
 	}
-	next, err := gnomeFromSettings(updated[0].Settings)
+	current, err := store.read()
 	if err != nil {
 		return nil, err
 	}
+	next := applyGnomeChanges(current, updated[0].Settings, changes)
 	if err = store.write(next); err != nil {
 		return nil, err
 	}

@@ -4,7 +4,7 @@ build/
 .mygo/
 bin/
 
-resources/bin/
+resources/darwin/bin/
 .cache/
 
 .DS_Store

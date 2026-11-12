@@ -57,6 +57,20 @@ func parseExceptions(raw json.RawMessage) []string {
 	return items
 }
 
+func buildProxyServerFromSettings(s Settings) string {
+	var parts []string
+	add := func(scheme string, enabled bool, host string, port int) {
+		if !enabled || port < 1 || port > 65535 || host == "" {
+			return
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s:%d", scheme, host, port))
+	}
+	add("http", parseBool(s["HTTPEnable"]), parseString(s["HTTPProxy"]), parsePort(s["HTTPPort"]))
+	add("https", parseBool(s["HTTPSEnable"]), parseString(s["HTTPSProxy"]), parsePort(s["HTTPSPort"]))
+	add("socks", parseBool(s["SOCKSEnable"]), parseString(s["SOCKSProxy"]), parsePort(s["SOCKSPort"]))
+	return strings.Join(parts, ";")
+}
+
 // proxyServerLine builds the WinINET ProxyServer value RocketScience applies.
 func proxyServerLine(port int) string {
 	host := "127.0.0.1"
@@ -88,61 +102,33 @@ func overrideToExceptions(override string) []string {
 }
 
 type winINETSnapshot struct {
-	ProxyEnable    bool
-	ProxyServer    string
-	ProxyOverride  string
-	AutoConfigURL  string
-	AutoDiscovery  bool
-}
-
-func settingsFromWinINET(s winINETSnapshot) Settings {
-	settings := Settings{
-		"__ProtocolEnabled": rawJSON(s.ProxyEnable),
-	}
-	if !s.ProxyEnable {
-		settings["HTTPEnable"] = rawBool(false)
-		settings["HTTPSEnable"] = rawBool(false)
-		settings["SOCKSEnable"] = rawBool(false)
-		settings["ProxyAutoConfigEnable"] = rawBool(s.AutoConfigURL != "")
-		settings["ProxyAutoDiscoveryEnable"] = rawBool(s.AutoDiscovery)
-		if len(s.ProxyOverride) > 0 {
-			settings["ExceptionsList"] = rawJSON(overrideToExceptions(s.ProxyOverride))
-		}
-		return settings
-	}
-	host, httpPort, httpsPort, socksPort := parseWinINETProxyServer(s.ProxyServer)
-	settings["HTTPEnable"] = rawBool(httpPort > 0)
-	settings["HTTPProxy"] = rawString(host)
-	settings["HTTPPort"] = rawJSON(httpPort)
-	settings["HTTPSEnable"] = rawBool(httpsPort > 0)
-	settings["HTTPSProxy"] = rawString(host)
-	settings["HTTPSPort"] = rawJSON(httpsPort)
-	settings["SOCKSEnable"] = rawBool(socksPort > 0)
-	settings["SOCKSProxy"] = rawString(host)
-	settings["SOCKSPort"] = rawJSON(socksPort)
-	settings["ProxyAutoConfigEnable"] = rawBool(s.AutoConfigURL != "")
-	settings["ProxyAutoDiscoveryEnable"] = rawBool(s.AutoDiscovery)
-	if len(s.ProxyOverride) > 0 {
-		settings["ExceptionsList"] = rawJSON(overrideToExceptions(s.ProxyOverride))
-	}
-	return settings
+	ProxyEnable   bool
+	ProxyServer   string
+	ProxyOverride string
+	AutoConfigURL string
+	AutoDiscovery bool
 }
 
 func parseWinINETProxyServer(line string) (host string, httpPort, httpsPort, socksPort int) {
-	host = "127.0.0.1"
+	ep := parseWinINETEndpointsPortable(line)
+	return ep.HTTPHost, ep.HTTPPort, ep.HTTPSPort, ep.SOCKSPort
+}
+
+func parseWinINETEndpointsPortable(line string) winINETEndpoints {
+	var out winINETEndpoints
 	line = strings.TrimSpace(line)
 	if line == "" {
-		return host, 0, 0, 0
+		return out
 	}
 	if !strings.Contains(line, "=") {
 		h, p := splitHostPort(line)
-		return h, p, p, p
+		out.HTTPHost, out.HTTPPort = h, p
+		out.HTTPSHost, out.HTTPSPort = h, p
+		out.SOCKSHost, out.SOCKSPort = h, p
+		return out
 	}
 	for _, segment := range strings.Split(line, ";") {
 		segment = strings.TrimSpace(segment)
-		if segment == "" {
-			continue
-		}
 		kv := strings.SplitN(segment, "=", 2)
 		if len(kv) != 2 {
 			continue
@@ -150,15 +136,23 @@ func parseWinINETProxyServer(line string) (host string, httpPort, httpsPort, soc
 		h, p := splitHostPort(strings.TrimSpace(kv[1]))
 		switch strings.ToLower(strings.TrimSpace(kv[0])) {
 		case "http":
-			httpPort = p
-			host = h
+			out.HTTPHost, out.HTTPPort = h, p
 		case "https":
-			httpsPort = p
+			out.HTTPSHost, out.HTTPSPort = h, p
 		case "socks":
-			socksPort = p
+			out.SOCKSHost, out.SOCKSPort = h, p
 		}
 	}
-	return host, httpPort, httpsPort, socksPort
+	return out
+}
+
+type winINETEndpoints struct {
+	HTTPHost  string
+	HTTPPort  int
+	HTTPSHost string
+	HTTPSPort int
+	SOCKSHost string
+	SOCKSPort int
 }
 
 func splitHostPort(value string) (string, int) {
@@ -183,34 +177,3 @@ func splitHostPort(value string) (string, int) {
 	return value, 0
 }
 
-func winINETFromSettings(settings Settings) (winINETSnapshot, error) {
-	enabled := parseBool(settings["HTTPEnable"]) || parseBool(settings["HTTPSEnable"]) || parseBool(settings["SOCKSEnable"])
-	if v, ok := settings["__ProtocolEnabled"]; ok {
-		enabled = parseBool(v)
-	}
-	s := winINETSnapshot{ProxyEnable: enabled}
-	if enabled {
-		port := parsePort(settings["HTTPPort"])
-		if port == 0 {
-			port = parsePort(settings["HTTPSPort"])
-		}
-		if port == 0 {
-			port = parsePort(settings["SOCKSPort"])
-		}
-		if port < 1 || port > 65535 {
-			return s, fmt.Errorf("代理端口无效")
-		}
-		s.ProxyServer = proxyServerLine(port)
-	}
-	if raw, ok := settings["ExceptionsList"]; ok {
-		s.ProxyOverride = exceptionsToOverride(parseExceptions(raw))
-	}
-	s.AutoDiscovery = parseBool(settings["ProxyAutoDiscoveryEnable"])
-	if parseBool(settings["ProxyAutoConfigEnable"]) {
-		// URL itself is not modeled in Settings; disabling clears any prior URL on write.
-		s.AutoConfigURL = ""
-	} else {
-		s.AutoConfigURL = ""
-	}
-	return s, nil
-}
