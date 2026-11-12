@@ -164,8 +164,13 @@ func (g gnomeStore) writeDirect(s gnomeSnapshot) error {
 		if err := g.runner.Set("org.gnome.system.proxy", "mode", formatGsettingsString(s.Mode)); err != nil {
 			return err
 		}
-		if s.Mode == "auto" && s.AutoURL != "" {
+		switch s.Mode {
+		case "auto":
 			if err := g.runner.Set("org.gnome.system.proxy", "autoconfig-url", formatGsettingsString(s.AutoURL)); err != nil {
+				return err
+			}
+		default:
+			if err := g.runner.Set("org.gnome.system.proxy", "autoconfig-url", formatGsettingsString("")); err != nil {
 				return err
 			}
 		}
