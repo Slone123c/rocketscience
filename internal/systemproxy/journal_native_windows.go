@@ -2,7 +2,7 @@
 
 package systemproxy
 
-func nativeJournalChange(s Service, port int) (Change, bool) {
+func nativeJournalChange(s Service, port int, _ *[]string) (Change, bool) {
 	if s.ID != winINETServiceID {
 		return Change{}, false
 	}

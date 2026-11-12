@@ -2,4 +2,4 @@
 
 package systemproxy
 
-func nativeJournalChange(Service, int) (Change, bool) { return Change{}, false }
+func nativeJournalChange(Service, int, *[]string) (Change, bool) { return Change{}, false }

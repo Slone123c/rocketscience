@@ -24,3 +24,8 @@ jobs:
         env:
           GOFLAGS: -tags=with_gvisor
           XDG_CURRENT_DESKTOP: GNOME
+      - name: GNOME bypass roundtrip (injected gsettings map)
+        run: go test ./internal/systemproxy/ -run 'Bypass|RecoveryRoundTrip' -count=1 -v
+        env:
+          GOFLAGS: -tags=with_gvisor
+          XDG_CURRENT_DESKTOP: GNOME

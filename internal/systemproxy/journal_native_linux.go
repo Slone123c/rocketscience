@@ -4,7 +4,7 @@ package systemproxy
 
 import "encoding/json"
 
-func nativeJournalChange(s Service, port int) (Change, bool) {
+func nativeJournalChange(s Service, port int, bypass *[]string) (Change, bool) {
 	if s.ID != gnomeServiceID {
 		return Change{}, false
 	}
@@ -14,7 +14,13 @@ func nativeJournalChange(s Service, port int) (Change, bool) {
 		gnomeKeyMode:    rawString("manual"),
 		gnomeKeyAutoURL: rawString(""),
 	}
-	if raw, ok := s.Settings[gnomeKeyIgnoreHosts]; ok {
+	if bypass != nil {
+		value, err := json.Marshal(effectiveExceptions(*bypass))
+		if err != nil {
+			return Change{}, false
+		}
+		desired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), value...)
+	} else if raw, ok := s.Settings[gnomeKeyIgnoreHosts]; ok {
 		desired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), raw...)
 	} else {
 		desired[gnomeKeyIgnoreHosts] = rawJSON([]string(nil))

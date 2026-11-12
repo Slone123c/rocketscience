@@ -23,3 +23,7 @@ jobs:
         run: go test ./internal/core/ -run 'Geo|ProcessAlive' -count=1 -v && go test ./internal/systemproxy/... -count=1 -v
         env:
           GOFLAGS: -tags=with_gvisor
+      - name: Live WinINET apply/restore on ephemeral runner
+        run: go test ./internal/systemproxy/ -run LiveWinINET -count=1 -v
+        env:
+          GOFLAGS: -tags=with_gvisor

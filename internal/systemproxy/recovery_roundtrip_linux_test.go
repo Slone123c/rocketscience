@@ -4,6 +4,7 @@ package systemproxy
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,6 +81,38 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
 		if ignore != `['corp.lan']` {
 			t.Fatalf("ignore-hosts=%q", ignore)
+		}
+	})
+
+	t.Run("custom bypass apply and restore", func(t *testing.T) {
+		originalIgnore := `['corp.lan']`
+		runner := &mapGSettings{data: map[string]string{
+			"org.gnome.system.proxy\x00mode":           `'manual'`,
+			"org.gnome.system.proxy.http\x00host":        `'127.0.0.1'`,
+			"org.gnome.system.proxy.http\x00port":        `uint32 1`,
+			"org.gnome.system.proxy.https\x00host":       `'127.0.0.1'`,
+			"org.gnome.system.proxy.https\x00port":       `uint32 1`,
+			"org.gnome.system.proxy.socks\x00host":       `'127.0.0.1'`,
+			"org.gnome.system.proxy.socks\x00port":       `uint32 1`,
+			"org.gnome.system.proxy\x00ignore-hosts":     originalIgnore,
+			"org.gnome.system.proxy\x00autoconfig-url":   `''`,
+		}}
+		j := filepath.Join(t.TempDir(), "proxy-recovery.json")
+		backend := LinuxBackend{Runner: runner}
+		bypass := []string{"corp.lan", "extra.bypass.test"}
+		if err := New(backend, j).ApplyWithBypass(7890, &bypass); err != nil {
+			t.Fatal(err)
+		}
+		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
+		if !strings.Contains(ignore, "extra.bypass.test") || !strings.Contains(ignore, "localhost") {
+			t.Fatalf("applied ignore-hosts=%q", ignore)
+		}
+		if _, err := New(LinuxBackend{Runner: runner}, j).Restore(); err != nil {
+			t.Fatal(err)
+		}
+		ignore, _ = runner.Get("org.gnome.system.proxy", "ignore-hosts")
+		if ignore != originalIgnore {
+			t.Fatalf("restored ignore-hosts=%q want %q", ignore, originalIgnore)
 		}
 	})
 

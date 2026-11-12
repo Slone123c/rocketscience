@@ -145,7 +145,7 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 			j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, group), Desired: pickKeys(desired, group), Keys: append([]string(nil), group...)})
 		}
 		j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, guardKeys), Desired: desired, Keys: []string{"__ProtocolEnabled"}, GuardKeys: guardKeys})
-		if native, ok := platformNativeJournalChange(s, port); ok {
+		if native, ok := platformNativeJournalChange(s, port, bypass); ok {
 			j.Changes = append(j.Changes, native)
 		}
 	}

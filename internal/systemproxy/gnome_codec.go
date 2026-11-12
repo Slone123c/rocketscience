@@ -87,8 +87,11 @@ func applyGnomeChanges(current gnomeSnapshot, merged Settings, changes []Change)
 			applyGnomeManual()
 		}
 	}
-	if touched["ExceptionsList"] {
+	switch {
+	case touched["ExceptionsList"]:
 		next.IgnoreHosts = parseExceptions(merged["ExceptionsList"])
+	case touched[gnomeKeyIgnoreHosts]:
+		next.IgnoreHosts = parseExceptions(merged[gnomeKeyIgnoreHosts])
 	}
 	return next
 }
