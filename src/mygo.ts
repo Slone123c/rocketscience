@@ -219,6 +219,15 @@ export interface OverrideState {
   origins: string[];
 }
 
+export interface PlatformCapabilities {
+  platform: string;
+  systemProxy: boolean;
+  tun: boolean;
+  dock: boolean;
+  trustedWiFi: boolean;
+  routeDiagnosis: boolean;
+}
+
 /** Profile is a locally stored configuration. Subscription URLs can contain credentials. */
 export interface Profile {
   id: string;
@@ -534,6 +543,9 @@ export const Desktop = {
    */
   apps(paths: string[]): Promise<Record<string, App>> {
     return call("Desktop.Apps", paths);
+  },
+  capabilities(): Promise<PlatformCapabilities> {
+    return call("Desktop.Capabilities");
   },
   clearQuitError(): Promise<void> {
     return call("Desktop.ClearQuitError");

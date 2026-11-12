@@ -51,6 +51,13 @@ func (p *Profiles) Initialize() error {
 	if err != nil {
 		return err
 	}
+	previous := d.Tun
+	normalizePersistedTakeover(&d)
+	if previous != d.Tun {
+		if err = p.write(d); err != nil {
+			return fmt.Errorf("无法更新不支持的 TUN 设置：%w", err)
+		}
+	}
 	if err = p.service.SetSystemProxy(d.SystemProxy); err != nil {
 		return fmt.Errorf("无法加载系统代理设置：%w", err)
 	}

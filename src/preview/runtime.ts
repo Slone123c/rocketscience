@@ -342,6 +342,7 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Desktop.SetTrayDisplay": (args) => { state.tray = String(args[0] || "both"); },
   "Desktop.HideDockWhenClosed": () => state.hideDockWhenClosed,
   "Desktop.SetHideDockWhenClosed": (args) => { state.hideDockWhenClosed = Boolean(args[0]); },
+  "Desktop.Capabilities": () => ({ platform: "darwin", systemProxy: true, tun: true, dock: true, trustedWiFi: true, routeDiagnosis: true }),
   "Desktop.OpenDashboard": () => undefined,
   "Desktop.ClosePanel": () => undefined,
   "Desktop.TrayReady": () => undefined,
