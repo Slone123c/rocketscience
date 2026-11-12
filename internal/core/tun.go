@@ -10,6 +10,9 @@ import (
 // SetTun changes the selected takeover. When running, it restarts the core so
 // authorization applies only to TUN sessions; an unsuccessful restart rolls back.
 func (s *Service) SetTun(enabled bool) error {
+	if enabled && !TunTakeoverAvailable() {
+		return errors.New("TUN 增强模式仅在 macOS 上提供（首版）")
+	}
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
 	s.mu.Lock()
@@ -79,6 +82,9 @@ func (p *Profiles) TunEnabled() (bool, error) {
 
 // ChangeTun applies the selection before committing it, rolling back on save failure.
 func (p *Profiles) ChangeTun(enabled bool) error {
+	if enabled && !TunTakeoverAvailable() {
+		return errors.New("TUN 增强模式仅在 macOS 上提供（首版）")
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.service == nil {

@@ -67,7 +67,7 @@ func (p *Profiles) Initialize() error {
 	if !d.AutoConnect {
 		return nil
 	}
-	if !d.SystemProxy && !d.Tun {
+	if takeoverRequiredBeforeStart() && !d.SystemProxy && !d.Tun {
 		return errors.New("自动连接未启动：请先选择一种接管方式")
 	}
 	if err = p.startActiveLocked(d); err != nil {

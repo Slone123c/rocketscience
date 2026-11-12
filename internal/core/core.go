@@ -308,8 +308,11 @@ func (s *Service) startLocked(content string, mixedPort int, bypass *[]string, l
 			s.mu.Lock()
 		}
 	}
-	if !s.useSystemProxy && !s.useTun {
+	if takeoverRequiredBeforeStart() && !s.useSystemProxy && !s.useTun {
 		return errors.New("请先开启系统代理或 TUN 增强模式")
+	}
+	if s.useSystemProxy && !systemproxy.AutomaticAvailable() {
+		return errors.New(systemproxy.ManualFallbackNote())
 	}
 	if s.proxy != nil {
 		pending, err := s.proxy.Pending()

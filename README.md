@@ -1,10 +1,10 @@
 # RocketScience · 开发验证版
 
-macOS 桌面 Clash 客户端开发验证版。使用 MyGo、React 和独立 mihomo 进程，复用 `design-system` 原型组件。当前进度与待验证项目见 [DEVELOPMENT.md](DEVELOPMENT.md)。首次使用需先导入并保存配置。
+跨平台桌面 Clash 客户端开发验证版（macOS / Windows / Linux）。使用 MyGo、React 和独立 mihomo 进程；界面运行时资源位于 `src/ui/`。当前进度与待验证项目见 [DEVELOPMENT.md](DEVELOPMENT.md)。首次使用需先导入并保存配置。
 
 ## 运行
 
-需要 Go 1.27.3、Bun 和 macOS 命令行开发工具。最低目标系统为 macOS 13；应用与 Swift 辅助模块统一此声明，旧系统实机运行尚待验证。项目固定 MyGo 0.7.1，`bun.lock` 固定前端依赖。构建脚本下载并校验官方 mihomo v1.19.33，并将内核及许可证放入应用包。默认构建当前 Mac 的处理器架构。
+需要 Go 1.27.3、Bun。macOS 打包另需命令行开发工具；最低目标系统为 macOS 13。Windows 需要 WebView2 运行时；Linux 桌面构建需要 GTK3 与 WebKitGTK。项目固定 MyGo 0.7.1，`bun.lock` 固定前端依赖。构建脚本下载并校验官方 mihomo v1.19.33，并将内核及许可证放入应用包。`bun run build:release` 可交叉编译多平台产物（macOS DMG 仍需在本机构建）。
 
 ```sh
 bun install

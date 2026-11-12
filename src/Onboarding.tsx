@@ -52,10 +52,13 @@ export function Onboarding({ design: DS, running, open, onView, onClose, onCheck
 }
 
 // Shown when start is pressed with no takeover on. Turning a switch on continues that start.
-export function TakeoverGuide({ design: DS, open, onClose }: { design: typeof Design; open: boolean; onClose: () => void }) {
+export function TakeoverGuide({ design: DS, open, onClose, platform = "darwin" }: { design: typeof Design; open: boolean; onClose: () => void; platform?: string }) {
+  const body = platform === "darwin"
+    ? <>打开一个开关后继续启动。不确定就选系统代理；TUN 首次需要管理员密码。</>
+    : <>在 Windows/Linux 上，首版请使用系统代理开关，或直接启动内核后复制终端代理命令。</>;
   return <DS.Tour open={open} doneLabel="稍后再选" onClose={onClose} steps={[{
     title: "选择代理方式",
-    body: <>打开一个开关后继续启动。不确定就选系统代理；TUN 首次需要管理员密码。</>,
+    body,
     target: "#tour-takeover",
     padding: 0,
   }]}/>;

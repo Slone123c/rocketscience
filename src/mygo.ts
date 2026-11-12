@@ -222,10 +222,13 @@ export interface OverrideState {
 export interface PlatformCapabilities {
   platform: string;
   systemProxy: boolean;
+  systemProxyAutomatic: boolean;
+  manualProxyNote?: string;
   tun: boolean;
   dock: boolean;
   trustedWiFi: boolean;
   routeDiagnosis: boolean;
+  tunFirstReleaseScope?: string;
 }
 
 /** Profile is a locally stored configuration. Subscription URLs can contain credentials. */

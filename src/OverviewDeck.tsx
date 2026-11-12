@@ -52,7 +52,7 @@ export function takeoverNote(phase: Phase, on: boolean, detail?: string) {
 
 const switchDescription = (scope: string, note: string) => note ? `${scope} · ${note}` : scope;
 
-export function OverviewDeck({design: DS, status, groups = [], delays, busy, starting = false, initialized, portText, streamsMemory, history, telemetry, connections, showFirstRun, onStartTour, onDismissFirstRun, onToggle, onMode, onSystemProxy, onTun, onCopyCommand, onSpeedTest}: {
+export function OverviewDeck({design: DS, status, groups = [], delays, busy, starting = false, initialized, portText, streamsMemory, history, telemetry, connections, showFirstRun, onStartTour, onDismissFirstRun, onToggle, onMode, onSystemProxy, onTun, onCopyCommand, onSpeedTest, tunAvailable = true, systemProxyAutomatic = true, manualProxyNote = ""}: {
   design: typeof Design;
   status: Status | null;
   groups?: Proxy[];
@@ -74,6 +74,9 @@ export function OverviewDeck({design: DS, status, groups = [], delays, busy, sta
   onTun: (enabled: boolean) => void;
   onCopyCommand: () => Promise<void>;
   onSpeedTest: () => void;
+  tunAvailable?: boolean;
+  systemProxyAutomatic?: boolean;
+  manualProxyNote?: string;
 }) {
   const running = !!status?.running;
   const stopping = busy && running && !starting;
@@ -119,8 +122,8 @@ export function OverviewDeck({design: DS, status, groups = [], delays, busy, sta
         <div className="quick">
           <div className="cap" style={{display: "flex", justifyContent: "space-between", paddingTop: 12}}>接管方式{phase !== "orbit" && <span style={{textTransform: "none", letterSpacing: 0}}>启动后生效</span>}</div>
           <div className="quick__switches" id="tour-takeover">
-          <DS.Switch label="系统代理" icon="globe" description={switchDescription("浏览器等大多数应用", takeoverNote(phase, !!status?.systemProxy, portText))} aria-label="系统代理" checked={!!status?.systemProxy} disabled={busy || !initialized} onChange={onSystemProxy}/>
-          <DS.Switch label="TUN 增强模式" icon="shield" description={switchDescription("所有应用，包括命令行", takeoverNote(phase, !!status?.tun))} aria-label="TUN 增强模式" checked={!!status?.tun} disabled={busy || !initialized} onChange={onTun}/>
+          <DS.Switch label="系统代理" icon="globe" description={systemProxyAutomatic?switchDescription("浏览器等大多数应用", takeoverNote(phase, !!status?.systemProxy, portText)):manualProxyNote||"当前环境请使用下方终端代理命令"} aria-label="系统代理" checked={!!status?.systemProxy} disabled={busy || !initialized || !systemProxyAutomatic} onChange={onSystemProxy}/>
+          {tunAvailable ? <DS.Switch label="TUN 增强模式" icon="shield" description={switchDescription("所有应用，包括命令行（仅 macOS 首版）", takeoverNote(phase, !!status?.tun))} aria-label="TUN 增强模式" checked={!!status?.tun} disabled={busy || !initialized} onChange={onTun}/> : <DS.Switch label="TUN 增强模式" icon="shield" description="首版仅在 macOS 提供" aria-label="TUN 增强模式（不可用）" checked={false} disabled onChange={()=>undefined}/>}
           </div>
         </div>
         <div className="flight-actions">
