@@ -184,13 +184,10 @@ func (m *Manager) Restore() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("恢复系统代理失败，保留恢复记录：%w", err)
 	}
-	if len(conflicts) > 0 {
-		return conflicts, nil
-	}
 	if err = os.Remove(m.path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
-	return nil, nil
+	return conflicts, nil
 }
 func (m *Manager) Pending() (bool, error) {
 	m.mu.Lock()

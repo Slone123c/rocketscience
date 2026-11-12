@@ -79,8 +79,11 @@ func TestExternalChangeIsNotOverwritten(t *testing.T) {
 	if _, ok := b.services[0].Settings["HTTPSProxy"]; ok {
 		t.Fatal("partial restore should revert unconflicted owned proxy groups")
 	}
-	if _, err := os.Stat(m.path); err != nil {
-		t.Fatal("journal must remain until all owned groups restore without conflict")
+	if _, err := os.Stat(m.path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("journal removed after successful partial restore (conflicts returned)")
+	}
+	if err := New(b, m.path).Apply(7890); err != nil {
+		t.Fatal("fresh takeover after partial restore with conflicts")
 	}
 }
 func TestFailedApplyKeepsRecoveryRecord(t *testing.T) {

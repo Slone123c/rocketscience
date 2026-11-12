@@ -4,6 +4,7 @@ package systemproxy
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -59,8 +60,11 @@ func TestWindowsPartialRestoreExternalPACOnly(t *testing.T) {
 	if mem.snap.AutoConfigURL != "http://user-edited.pac" {
 		t.Fatalf("external PAC kept: %q", mem.snap.AutoConfigURL)
 	}
-	if _, err := os.Stat(journal); err != nil {
-		t.Fatal("journal must remain after partial restore")
+	if _, err := os.Stat(journal); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("journal removed after successful partial restore")
+	}
+	if err := New(WindowsBackend{Access: mem}, journal).Apply(7890); err != nil {
+		t.Fatal("fresh takeover after partial restore")
 	}
 }
 

@@ -76,4 +76,8 @@ func TestJournalAcceptsAbsentOriginalFieldsAndNativeTypes(t *testing.T) {
 	if err := validateJournalChanges(changes); err != nil {
 		t.Fatal(err)
 	}
+	changes = []Change{{ID: "gnome", Keys: []string{"__Gnome.IgnoreHosts"}, Expected: Settings{"__Gnome.IgnoreHosts": json.RawMessage(`["corp.lan"]`)}, Desired: Settings{"__Gnome.IgnoreHosts": json.RawMessage(`[]`)}}}
+	if err := validateJournalChanges(changes); err != nil {
+		t.Fatalf("gnome ignore hosts: %v", err)
+	}
 }

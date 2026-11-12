@@ -3,6 +3,7 @@
 package systemproxy
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,9 +16,9 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 
 	t.Run("PAC auto", func(t *testing.T) {
 		runner := &mapGSettings{data: map[string]string{
-			"org.gnome.system.proxy\x00mode":            `'auto'`,
-			"org.gnome.system.proxy\x00autoconfig-url":  `'http://pac.corp/proxy.pac'`,
-			"org.gnome.system.proxy\x00ignore-hosts":   `@as []`,
+			"org.gnome.system.proxy\x00mode":           `'auto'`,
+			"org.gnome.system.proxy\x00autoconfig-url": `'http://pac.corp/proxy.pac'`,
+			"org.gnome.system.proxy\x00ignore-hosts":  `@as []`,
 		}}
 		wantMode, _ := runner.Get("org.gnome.system.proxy", "mode")
 		wantURL, _ := runner.Get("org.gnome.system.proxy", "autoconfig-url")
@@ -26,9 +27,7 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 			t.Fatal(err)
 		}
 		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
-		if mode != `'manual'` {
-			t.Fatalf("after apply mode=%q", mode)
-		}
+		assertGsettingsString(t, mode, `'manual'`)
 		if conflicts, err := New(LinuxBackend{Runner: runner}, journal).Restore(); err != nil {
 			t.Fatalf("restore: %v", err)
 		} else if len(conflicts) > 0 {
@@ -36,9 +35,8 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		}
 		mode, _ = runner.Get("org.gnome.system.proxy", "mode")
 		url, _ := runner.Get("org.gnome.system.proxy", "autoconfig-url")
-		if mode != wantMode || url != wantURL {
-			t.Fatalf("restored mode=%q url=%q want %q %q", mode, url, wantMode, wantURL)
-		}
+		assertGsettingsString(t, mode, wantMode)
+		assertGsettingsString(t, url, wantURL)
 		services, err := backend.Snapshot()
 		if err != nil {
 			t.Fatal(err)
@@ -53,15 +51,15 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 
 	t.Run("manual disabled endpoints", func(t *testing.T) {
 		runner := &mapGSettings{data: map[string]string{
-			"org.gnome.system.proxy\x00mode":                  `'manual'`,
-			"org.gnome.system.proxy.http\x00host":             `'corp.example'`,
-			"org.gnome.system.proxy.http\x00port":             `uint32 8080`,
-			"org.gnome.system.proxy.https\x00host":            `'secure.corp'`,
-			"org.gnome.system.proxy.https\x00port":            `uint32 8443`,
-			"org.gnome.system.proxy.socks\x00host":            `'socks.corp'`,
-			"org.gnome.system.proxy.socks\x00port":            `uint32 1080`,
-			"org.gnome.system.proxy\x00ignore-hosts":          `['corp.lan']`,
-			"org.gnome.system.proxy\x00autoconfig-url":        `''`,
+			"org.gnome.system.proxy\x00mode":           `'manual'`,
+			"org.gnome.system.proxy.http\x00host":        `'corp.example'`,
+			"org.gnome.system.proxy.http\x00port":        `uint32 8080`,
+			"org.gnome.system.proxy.https\x00host":       `'secure.corp'`,
+			"org.gnome.system.proxy.https\x00port":       `uint32 8443`,
+			"org.gnome.system.proxy.socks\x00host":       `'socks.corp'`,
+			"org.gnome.system.proxy.socks\x00port":       `uint32 1080`,
+			"org.gnome.system.proxy\x00ignore-hosts":     `['corp.lan']`,
+			"org.gnome.system.proxy\x00autoconfig-url":   `''`,
 		}}
 		backend := LinuxBackend{Runner: runner}
 		j := filepath.Join(t.TempDir(), "proxy-recovery.json")
@@ -72,31 +70,25 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 			t.Fatal(err)
 		}
 		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
-		if mode != `'manual'` {
-			t.Fatalf("mode=%q", mode)
-		}
+		assertGsettingsString(t, mode, `'manual'`)
 		host, _ := runner.Get("org.gnome.system.proxy.http", "host")
-		if host != `'corp.example'` {
-			t.Fatalf("http host=%q", host)
-		}
+		assertGsettingsString(t, host, `'corp.example'`)
 		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
-		if ignore != `['corp.lan']` {
-			t.Fatalf("ignore-hosts=%q", ignore)
-		}
+		assertGsettingsStringArray(t, ignore, `['corp.lan']`)
 	})
 
 	t.Run("external bypass edit partial restore", func(t *testing.T) {
 		originalIgnore := `['corp.lan']`
 		runner := &mapGSettings{data: map[string]string{
-			"org.gnome.system.proxy\x00mode":           `'manual'`,
-			"org.gnome.system.proxy.http\x00host":        `'127.0.0.1'`,
-			"org.gnome.system.proxy.http\x00port":        `uint32 1`,
-			"org.gnome.system.proxy.https\x00host":       `'127.0.0.1'`,
-			"org.gnome.system.proxy.https\x00port":       `uint32 1`,
-			"org.gnome.system.proxy.socks\x00host":       `'127.0.0.1'`,
-			"org.gnome.system.proxy.socks\x00port":       `uint32 1`,
-			"org.gnome.system.proxy\x00ignore-hosts":     originalIgnore,
-			"org.gnome.system.proxy\x00autoconfig-url":   `''`,
+			"org.gnome.system.proxy\x00mode":         `'manual'`,
+			"org.gnome.system.proxy.http\x00host":      `'corp.example'`,
+			"org.gnome.system.proxy.http\x00port":      `uint32 8080`,
+			"org.gnome.system.proxy.https\x00host":     `'secure.corp'`,
+			"org.gnome.system.proxy.https\x00port":     `uint32 8443`,
+			"org.gnome.system.proxy.socks\x00host":    `'socks.corp'`,
+			"org.gnome.system.proxy.socks\x00port":    `uint32 1080`,
+			"org.gnome.system.proxy\x00ignore-hosts":   originalIgnore,
+			"org.gnome.system.proxy\x00autoconfig-url": `''`,
 		}}
 		j := filepath.Join(t.TempDir(), "proxy-recovery.json")
 		backend := LinuxBackend{Runner: runner}
@@ -112,15 +104,20 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 			t.Fatal("expected ignore-hosts group conflict")
 		}
 		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
-		if mode != `'none'` {
-			t.Fatalf("loopback groups restored mode=%q", mode)
+		assertGsettingsString(t, mode, `'manual'`)
+		host, _ := runner.Get("org.gnome.system.proxy.http", "host")
+		assertGsettingsString(t, host, `'corp.example'`)
+		port, _ := runner.Get("org.gnome.system.proxy.http", "port")
+		if port != `8080` {
+			t.Fatalf("http port=%q", port)
 		}
 		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
-		if ignore != `['user-edited']` {
-			t.Fatalf("external bypass kept: %q", ignore)
+		assertGsettingsStringArray(t, ignore, `['user-edited']`)
+		if _, err := os.Stat(j); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("journal removed after successful partial restore")
 		}
-		if _, err := os.Stat(j); err != nil {
-			t.Fatal("journal must remain after partial restore")
+		if err := New(backend, j).Apply(7890); err != nil {
+			t.Fatal("fresh takeover after partial restore")
 		}
 	})
 
@@ -128,14 +125,14 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		originalIgnore := `['corp.lan']`
 		runner := &mapGSettings{data: map[string]string{
 			"org.gnome.system.proxy\x00mode":           `'manual'`,
-			"org.gnome.system.proxy.http\x00host":        `'127.0.0.1'`,
-			"org.gnome.system.proxy.http\x00port":        `uint32 1`,
-			"org.gnome.system.proxy.https\x00host":       `'127.0.0.1'`,
-			"org.gnome.system.proxy.https\x00port":       `uint32 1`,
-			"org.gnome.system.proxy.socks\x00host":       `'127.0.0.1'`,
-			"org.gnome.system.proxy.socks\x00port":       `uint32 1`,
-			"org.gnome.system.proxy\x00ignore-hosts":     originalIgnore,
-			"org.gnome.system.proxy\x00autoconfig-url":   `''`,
+			"org.gnome.system.proxy.http\x00host":      `'127.0.0.1'`,
+			"org.gnome.system.proxy.http\x00port":      `uint32 1`,
+			"org.gnome.system.proxy.https\x00host":     `'127.0.0.1'`,
+			"org.gnome.system.proxy.https\x00port":     `uint32 1`,
+			"org.gnome.system.proxy.socks\x00host":     `'127.0.0.1'`,
+			"org.gnome.system.proxy.socks\x00port":     `uint32 1`,
+			"org.gnome.system.proxy\x00ignore-hosts":   originalIgnore,
+			"org.gnome.system.proxy\x00autoconfig-url": `''`,
 		}}
 		j := filepath.Join(t.TempDir(), "proxy-recovery.json")
 		backend := LinuxBackend{Runner: runner}
@@ -151,9 +148,7 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 			t.Fatal(err)
 		}
 		ignore, _ = runner.Get("org.gnome.system.proxy", "ignore-hosts")
-		if ignore != originalIgnore {
-			t.Fatalf("restored ignore-hosts=%q want %q", ignore, originalIgnore)
-		}
+		assertGsettingsStringArray(t, ignore, originalIgnore)
 	})
 
 	t.Run("none", func(t *testing.T) {
@@ -168,8 +163,6 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 			t.Fatal(err)
 		}
 		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
-		if mode != `'none'` {
-			t.Fatalf("mode=%q", mode)
-		}
+		assertGsettingsString(t, mode, `'none'`)
 	})
 }

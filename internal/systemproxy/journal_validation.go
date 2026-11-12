@@ -64,7 +64,7 @@ func validateJournalValue(key string, raw json.RawMessage) error {
 		if number, ok := value.(float64); ok {
 			valid = number >= 0 && number <= 65535 && math.Trunc(number) == number
 		}
-	case key == "ExceptionsList":
+	case key == "ExceptionsList", key == "__Gnome.IgnoreHosts":
 		if entries, ok := value.([]any); ok {
 			valid = true
 			for _, entry := range entries {
