@@ -111,7 +111,16 @@ func session(conn *net.UnixConn, uid uint32) error {
 		log.Printf("创建失败：%v；请求 %s", err, line)
 		return reply(conn, tunhelper.Response{Error: err.Error()}, -1)
 	}
-	defer device.Close()
+	// release removes the session's routes and the device. It holds opening so
+	// a session that starts meanwhile adds its routes only after ours are gone.
+	release := func() {
+		opening.Lock()
+		defer opening.Unlock()
+		if err := device.Close(); err != nil {
+			log.Printf("释放 %s 时出错：%v", name, err)
+		}
+	}
+	defer release()
 	if err := reply(conn, tunhelper.Response{Name: name}, fd); err != nil {
 		log.Printf("交付 %s 失败：%v", name, err)
 		return err

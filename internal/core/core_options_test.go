@@ -156,6 +156,7 @@ func TestConcurrentMultiSettingsPreserveAllFields(t *testing.T) {
 			return err
 		},
 		func() error { return p.SetTrayDisplay("speed") },
+		func() error { return p.SetHideDockWhenClosed(true) },
 	}
 	errs := make(chan error, len(fns))
 	for _, fn := range fns {
@@ -215,5 +216,9 @@ func TestConcurrentMultiSettingsPreserveAllFields(t *testing.T) {
 	trayMode, err := reloaded.TrayDisplay()
 	if err != nil || trayMode != "speed" {
 		t.Fatalf("TrayDisplay lost: %s %v", trayMode, err)
+	}
+	hideDock, err := reloaded.HideDockWhenClosed()
+	if err != nil || !hideDock {
+		t.Fatalf("HideDockWhenClosed lost: %v %v", hideDock, err)
 	}
 }

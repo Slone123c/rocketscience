@@ -2,9 +2,9 @@ package core
 
 import "errors"
 
-// TUN's DNS hijack must have an enabled resolver, matching the TUN/DNS
-// switch linkage. Preserve supplied upstreams and policies; fill only absent or
-// empty upstream lists using controlled-config defaults.
+// TUN hijacks port 53, so the resolver has to be enabled. Upstreams and
+// policies already in the configuration are kept. Empty lists get the defaults
+// in fillDNSDefaults.
 func ensureTunDNS(cfg map[string]any) error {
 	dns, ok := cfg["dns"].(map[string]any)
 	if !ok && cfg["dns"] != nil {
@@ -19,12 +19,28 @@ func ensureTunDNS(cfg map[string]any) error {
 	return nil
 }
 
+// fillDNSDefaults separates domestic and other lookups when the configuration
+// did not choose upstreams. Domestic names stay on domestic resolvers. Every
+// other name uses a resolver selected by the same rules as the connection, so
+// a proxied exit is not paired with a domestic lookup. Proxy hostnames
+// themselves use the direct bootstrap resolver and do not depend on the proxy.
 func fillDNSDefaults(dns map[string]any) {
 	if emptyDNSList(dns["nameserver"]) {
-		dns["nameserver"] = []string{"https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"}
+		dns["nameserver"] = []string{"https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"}
 	}
 	if emptyDNSList(dns["default-nameserver"]) {
 		dns["default-nameserver"] = []string{"tls://223.5.5.5"}
+	}
+	if dns["nameserver-policy"] == nil {
+		dns["nameserver-policy"] = map[string]any{
+			"geosite:cn": []string{"https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"},
+		}
+	}
+	if _, exists := dns["respect-rules"]; !exists {
+		dns["respect-rules"] = true
+		if emptyDNSList(dns["proxy-server-nameserver"]) {
+			dns["proxy-server-nameserver"] = []string{"tls://223.5.5.5"}
+		}
 	}
 }
 

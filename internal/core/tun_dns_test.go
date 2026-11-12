@@ -53,6 +53,31 @@ func TestTunDNSEnablesResolverAndPreservesUpstreams(t *testing.T) {
 	}
 }
 
+func TestTunDNSDefaultSendsNonDomesticLookupsWithTrafficRules(t *testing.T) {
+	data, err := runtimeConfigWithOptions(direct, 17890, 19090, "test", "", LANSettings{}, true, CoreOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg map[string]any
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	dns := cfg["dns"].(map[string]any)
+	if !reflect.DeepEqual(dns["nameserver"], []any{"https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"}) {
+		t.Fatalf("nameserver = %#v", dns["nameserver"])
+	}
+	policy := dns["nameserver-policy"].(map[string]any)
+	if !reflect.DeepEqual(policy["geosite:cn"], []any{"https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"}) {
+		t.Fatalf("domestic policy = %#v", policy)
+	}
+	if dns["respect-rules"] != true {
+		t.Fatalf("respect-rules = %#v", dns["respect-rules"])
+	}
+	if !reflect.DeepEqual(dns["proxy-server-nameserver"], []any{"tls://223.5.5.5"}) {
+		t.Fatalf("proxy-server-nameserver = %#v", dns["proxy-server-nameserver"])
+	}
+}
+
 func TestTunDNSDefaultConfigPassesRealCoreValidation(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
 	data, err := runtimeConfigWithOptions(direct, 17890, 19090, "test", "", LANSettings{}, true, CoreOptions{})

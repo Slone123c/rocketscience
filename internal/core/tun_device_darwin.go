@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -290,6 +291,18 @@ func (d *tunDevice) dup() (int, error) {
 	return fd, nil
 }
 
+// waitHelperTeardown hangs up the app's side of conn and waits until the helper
+// closes its side, which it does only after removing its routes and closing
+// the device. Without the wait a TUN switch asks for the next device while the
+// previous session's auto-routes are still in the table.
+func waitHelperTeardown(conn *net.UnixConn, wait time.Duration) {
+	if conn.CloseWrite() != nil {
+		return
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(wait))
+	_, _ = io.Copy(io.Discard, conn)
+}
+
 // Close releases the device and lets the helper exit. Call it after mihomo's
 // TUN listener has stopped.
 func (d *tunDevice) Close() {
@@ -300,6 +313,7 @@ func (d *tunDevice) Close() {
 		_ = d.file.Close()
 	}
 	if d.conn != nil {
+		waitHelperTeardown(d.conn, 5*time.Second)
 		_ = d.conn.Close()
 	}
 	if d.cmd == nil {

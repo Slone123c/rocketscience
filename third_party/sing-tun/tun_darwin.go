@@ -29,16 +29,19 @@ var _ DarwinTUN = (*NativeTun)(nil)
 const PacketOffset = 4
 
 type NativeTun struct {
-	tunFd           int
-	tunFile         *os.File
-	batchSize       int
-	iovecs          []iovecBuffer
-	iovecsOutput    []iovecBuffer
-	msgHdrs         []rawfile.MsgHdrX
-	msgHdrsOutput   []rawfile.MsgHdrX
-	buffers         []*buf.Buffer
-	stopFd          stopfd.StopFD
-	options         Options
+	tunFd         int
+	tunFile       *os.File
+	batchSize     int
+	iovecs        []iovecBuffer
+	iovecsOutput  []iovecBuffer
+	msgHdrs       []rawfile.MsgHdrX
+	msgHdrsOutput []rawfile.MsgHdrX
+	buffers       []*buf.Buffer
+	stopFd        stopfd.StopFD
+	options       Options
+	// routes are the auto-routes create added, removed again on Close so the
+	// next session can add them without EEXIST.
+	routes          []routeEntry
 	inet4Address    [4]byte
 	inet6Address    [16]byte
 	routeSet        bool
@@ -101,6 +104,7 @@ func (b *iovecBuffer) nextIovecsOutput(buffer *buf.Buffer) []unix.Iovec {
 
 func New(options Options) (Tun, error) {
 	var tunFd int
+	var routes []routeEntry
 	batchSize := ((512 * 1024) / int(options.MTU)) + 1
 	if options.FileDescriptor == 0 {
 		ifIndex := -1
@@ -114,13 +118,14 @@ func New(options Options) (Tun, error) {
 			return nil, err
 		}
 
-		err = create(tunFd, ifIndex, options.Name, options)
+		routes, err = create(tunFd, ifIndex, options.Name, options)
 		if err != nil {
 			unix.Close(tunFd)
 			return nil, err
 		}
 		err = configure(tunFd, options.EXP_RecvMsgX, int(options.MTU))
 		if err != nil {
+			_ = deleteRoutes(routes)
 			unix.Close(tunFd)
 			return nil, err
 		}
@@ -142,6 +147,7 @@ func New(options Options) (Tun, error) {
 		msgHdrsOutput: make([]rawfile.MsgHdrX, batchSize),
 		stopFd:        common.Must1(stopfd.New()),
 		writeMsgX:     options.EXP_SendMsgX,
+		routes:        routes,
 	}
 	for i := 0; i < batchSize; i++ {
 		nativeTun.iovecs[i] = newIovecBuffer(int(options.MTU))
@@ -186,9 +192,13 @@ func (t *NativeTun) Close() error {
 	defer flushDNSCache()
 	dnsErr := common.Close(t.dnsRegistration)
 	t.stopFd.Stop()
+	// Delete the routes before the interface goes: another process may still
+	// hold a duplicate of the descriptor, which keeps utun and its routes alive.
+	routeErr := deleteRoutes(t.routes)
+	t.routes = nil
 	err := t.tunFile.Close()
 	t.stopFd.Close()
-	return E.Errors(dnsErr, err)
+	return E.Errors(dnsErr, routeErr, err)
 }
 
 const utunControlName = "com.apple.net.utun_control"
@@ -223,12 +233,12 @@ type addrLifetime6 struct {
 	Pltime    uint32
 }
 
-func create(tunFd int, ifIndex int, name string, options Options) error {
+func create(tunFd int, ifIndex int, name string, options Options) ([]routeEntry, error) {
 	ctlInfo := &unix.CtlInfo{}
 	copy(ctlInfo.Name[:], utunControlName)
 	err := unix.IoctlCtlInfo(tunFd, ctlInfo)
 	if err != nil {
-		return os.NewSyscallError("IoctlCtlInfo", err)
+		return nil, os.NewSyscallError("IoctlCtlInfo", err)
 	}
 
 	err = unix.Connect(tunFd, &unix.SockaddrCtl{
@@ -236,7 +246,7 @@ func create(tunFd int, ifIndex int, name string, options Options) error {
 		Unit: uint32(ifIndex) + 1,
 	})
 	if err != nil {
-		return os.NewSyscallError("Connect", err)
+		return nil, os.NewSyscallError("Connect", err)
 	}
 
 	err = useSocket(unix.AF_INET, unix.SOCK_DGRAM, 0, func(socketFd int) error {
@@ -246,7 +256,7 @@ func create(tunFd int, ifIndex int, name string, options Options) error {
 		return unix.IoctlSetIfreqMTU(socketFd, &ifr)
 	})
 	if err != nil {
-		return os.NewSyscallError("IoctlSetIfreqMTU", err)
+		return nil, os.NewSyscallError("IoctlSetIfreqMTU", err)
 	}
 	if len(options.Inet4Address) > 0 {
 		for _, address := range options.Inet4Address {
@@ -280,7 +290,7 @@ func create(tunFd int, ifIndex int, name string, options Options) error {
 				return nil
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -323,7 +333,7 @@ func create(tunFd int, ifIndex int, name string, options Options) error {
 				return nil
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -331,22 +341,68 @@ func create(tunFd int, ifIndex int, name string, options Options) error {
 		var routeRanges []netip.Prefix
 		routeRanges, err = options.BuildAutoRouteRanges(false)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		gateway4, gateway6 := options.Inet4GatewayAddr(), options.Inet6GatewayAddr()
+		routes := make([]routeEntry, 0, len(routeRanges))
 		for _, routeRange := range routeRanges {
-			if routeRange.Addr().Is4() {
-				err = addRoute(routeRange, gateway4)
-			} else {
-				err = addRoute(routeRange, gateway6)
+			entry := routeEntry{destination: routeRange, gateway: gateway4}
+			if !routeRange.Addr().Is4() {
+				entry.gateway = gateway6
 			}
+			err = addOwnRoute(entry)
 			if err != nil {
-				return E.Cause(err, "add route: ", routeRange)
+				_ = deleteRoutes(routes)
+				return nil, E.Cause(err, "add route: ", routeRange)
 			}
+			routes = append(routes, entry)
 		}
 		flushDNSCache()
+		return routes, nil
 	}
-	return nil
+	return nil, nil
+}
+
+type routeEntry struct {
+	destination netip.Prefix
+	gateway     netip.Addr
+}
+
+// Route table access, replaced in tests.
+var (
+	routeAdd     = addRoute
+	routeDelete  = deleteRoute
+	routeGateway = gatewayOf
+)
+
+// addOwnRoute adds entry. A route already present for the same destination
+// through the same gateway is one a previous session of ours left behind (its
+// utun not yet gone), so it is replaced; a route through any other gateway
+// belongs to someone else and the EEXIST is returned untouched.
+func addOwnRoute(entry routeEntry) error {
+	err := routeAdd(entry.destination, entry.gateway)
+	if !errors.Is(err, unix.EEXIST) {
+		return err
+	}
+	existing, getErr := routeGateway(entry.destination)
+	if getErr != nil || existing != entry.gateway {
+		return err
+	}
+	if delErr := routeDelete(entry.destination, entry.gateway); delErr != nil && !errors.Is(delErr, unix.ESRCH) {
+		// The route is ours, so do not report it as another VPN's (EEXIST).
+		return E.Cause(delErr, "replace leftover route of a previous session")
+	}
+	return routeAdd(entry.destination, entry.gateway)
+}
+
+func deleteRoutes(routes []routeEntry) error {
+	var errs []error
+	for _, entry := range routes {
+		if err := routeDelete(entry.destination, entry.gateway); err != nil && !errors.Is(err, unix.ESRCH) {
+			errs = append(errs, E.Cause(err, "delete route: ", entry.destination))
+		}
+	}
+	return E.Errors(errs...)
 }
 
 const (
@@ -515,11 +571,90 @@ func useSocket(domain, typ, proto int, block func(socketFd int) error) error {
 }
 
 func addRoute(destination netip.Prefix, gateway netip.Addr) error {
+	return writeRoute(unix.RTM_ADD, destination, gateway)
+}
+
+func deleteRoute(destination netip.Prefix, gateway netip.Addr) error {
+	return writeRoute(unix.RTM_DELETE, destination, gateway)
+}
+
+// gatewayOf returns the gateway of the route the table holds for exactly
+// destination.
+func gatewayOf(destination netip.Prefix) (netip.Addr, error) {
+	request, err := routeMessage(unix.RTM_GET, destination, netip.Addr{}).Marshal()
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	var gateway netip.Addr
+	err = useSocket(unix.AF_ROUTE, unix.SOCK_RAW, 0, func(socketFd int) error {
+		if _, err := unix.Write(socketFd, request); err != nil {
+			return err
+		}
+		buffer := make([]byte, 2048)
+		for {
+			n, err := unix.Read(socketFd, buffer)
+			if err != nil {
+				return err
+			}
+			messages, err := route.ParseRIB(route.RIBTypeRoute, buffer[:n])
+			if err != nil {
+				return err
+			}
+			for _, message := range messages {
+				reply, ok := message.(*route.RouteMessage)
+				if !ok || reply.Type != unix.RTM_GET || reply.ID != uintptr(os.Getpid()) || reply.Seq != 1 {
+					continue
+				}
+				if reply.Err != nil {
+					return reply.Err
+				}
+				if len(reply.Addrs) > syscall.RTAX_GATEWAY {
+					switch addr := reply.Addrs[syscall.RTAX_GATEWAY].(type) {
+					case *route.Inet4Addr:
+						gateway = netip.AddrFrom4(addr.IP)
+					case *route.Inet6Addr:
+						gateway = netip.AddrFrom16(addr.IP)
+					}
+				}
+				return nil
+			}
+		}
+	})
+	return gateway, err
+}
+
+func writeRoute(typ int, destination netip.Prefix, gateway netip.Addr) error {
+	request, err := routeMessage(typ, destination, gateway).Marshal()
+	if err != nil {
+		return err
+	}
+	return useSocket(unix.AF_ROUTE, unix.SOCK_RAW, 0, func(socketFd int) error {
+		return common.Error(unix.Write(socketFd, request))
+	})
+}
+
+func routeMessage(typ int, destination netip.Prefix, gateway netip.Addr) *route.RouteMessage {
 	routeMessage := route.RouteMessage{
-		Type:    unix.RTM_ADD,
+		Type:    typ,
 		Flags:   unix.RTF_UP | unix.RTF_STATIC | unix.RTF_GATEWAY,
 		Version: unix.RTM_VERSION,
 		Seq:     1,
+		ID:      uintptr(os.Getpid()),
+	}
+	if !gateway.IsValid() {
+		routeMessage.Flags = unix.RTF_UP | unix.RTF_STATIC
+		if destination.Addr().Is4() {
+			routeMessage.Addrs = []route.Addr{
+				syscall.RTAX_DST:     &route.Inet4Addr{IP: destination.Addr().As4()},
+				syscall.RTAX_NETMASK: &route.Inet4Addr{IP: netip.MustParseAddr(net.IP(net.CIDRMask(destination.Bits(), 32)).String()).As4()},
+			}
+		} else {
+			routeMessage.Addrs = []route.Addr{
+				syscall.RTAX_DST:     &route.Inet6Addr{IP: destination.Addr().As16()},
+				syscall.RTAX_NETMASK: &route.Inet6Addr{IP: netip.MustParseAddr(net.IP(net.CIDRMask(destination.Bits(), 128)).String()).As16()},
+			}
+		}
+		return &routeMessage
 	}
 	if gateway.Is4() {
 		routeMessage.Addrs = []route.Addr{
@@ -534,15 +669,11 @@ func addRoute(destination netip.Prefix, gateway netip.Addr) error {
 			syscall.RTAX_GATEWAY: &route.Inet6Addr{IP: gateway.As16()},
 		}
 	}
-	request, err := routeMessage.Marshal()
-	if err != nil {
-		return err
-	}
-	return useSocket(unix.AF_ROUTE, unix.SOCK_RAW, 0, func(socketFd int) error {
-		return common.Error(unix.Write(socketFd, request))
-	})
+	return &routeMessage
 }
 
 func flushDNSCache() {
-	shell.Exec("dscacheutil", "-flushcache").Start()
+	// Wait in a goroutine: Start without Wait left defunct dscacheutil children
+	// under long-lived hosts that embed this package.
+	go func() { _ = shell.Exec("dscacheutil", "-flushcache").Run() }()
 }

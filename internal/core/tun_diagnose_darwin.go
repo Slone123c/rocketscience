@@ -58,17 +58,23 @@ func (s *Service) diagnoseTun(device string, done <-chan struct{}) {
 		}
 	}
 	dns := systemDNSServer()
-	bypassed := ""
-	for _, target := range []string{"1.1.1.1", "8.8.8.8", dns} {
-		if target == "" {
-			continue
-		}
+	routes := map[string]string{}
+	for _, target := range []string{"1.1.1.1", "8.8.8.8"} {
 		via := routeInterface(target)
+		routes[target] = via
 		tunDebugf("自检：%s 的路由出口是 %s", target, via)
-		if via != device && bypassed == "" && !isLocalOrPrivateIP(target) {
-			bypassed = via
+	}
+	if dns != "" {
+		via := routeInterface(dns)
+		routes[dns] = via
+		tunDebugf("自检：%s 的路由出口是 %s", dns, via)
+		if via != device && !dnsRouteIsExpectedElsewhere(dns) && !isLocalOrPrivateIP(dns) {
+			// Non-CGNAT system DNS that skips our TUN is unusual; still do not
+			// warn from DNS alone when public probes enter the device.
+			tunDebugf("自检：系统 DNS %s 未走本机 TUN（出口 %s），公网探测结果另计", dns, via)
 		}
 	}
+	bypassed := probeBypassesTUN(device, routes)
 	conf := listener.GetTunConf()
 	tunDebugf("自检：mihomo TUN enable=%v stack=%s fd=%d dns-hijack=%v auto-detect-interface=%v；出站网卡=%q；模式=%s；系统 DNS=%s",
 		conf.Enable, conf.Stack, conf.FileDescriptor, conf.DNSHijack, conf.AutoDetectInterface, dialer.DefaultInterface.Load(), tunnel.Mode(), dns)
