@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"rocketscience/internal/systemproxy"
 )
 
 // Profile is a locally stored configuration. Subscription URLs can contain credentials.
@@ -102,6 +104,7 @@ func (p *Profiles) load() (profileData, error) {
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "profiles.json"))
 	if errors.Is(err, os.ErrNotExist) {
+		normalizePersistedTakeover(&d)
 		return d, nil
 	}
 	if err != nil {
@@ -110,6 +113,7 @@ func (p *Profiles) load() (profileData, error) {
 	if err = json.Unmarshal(b, &d); err != nil {
 		return d, fmt.Errorf("读取配置索引失败：%w", err)
 	}
+	normalizePersistedTakeover(&d)
 	if d.Profiles == nil {
 		d.Profiles = []Profile{}
 	}
@@ -363,6 +367,9 @@ func (p *Profiles) SetPort(port int) error {
 func (p *Profiles) SetSystemProxy(enabled bool) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if enabled && !systemproxy.AutomaticAvailable() {
+		return errors.New(systemproxy.ManualFallbackNote())
+	}
 	d, err := p.load()
 	if err != nil {
 		return err

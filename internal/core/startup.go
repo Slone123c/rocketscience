@@ -51,11 +51,11 @@ func (p *Profiles) Initialize() error {
 	if err != nil {
 		return err
 	}
-	previous := d.Tun
+	beforeTun, beforeProxy := d.Tun, d.SystemProxy
 	normalizePersistedTakeover(&d)
-	if previous != d.Tun {
+	if beforeTun != d.Tun || beforeProxy != d.SystemProxy {
 		if err = p.write(d); err != nil {
-			return fmt.Errorf("无法更新不支持的 TUN 设置：%w", err)
+			return fmt.Errorf("无法更新不支持环境的接管设置：%w", err)
 		}
 	}
 	if err = p.service.SetSystemProxy(d.SystemProxy); err != nil {

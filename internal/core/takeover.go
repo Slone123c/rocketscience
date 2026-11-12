@@ -21,6 +21,9 @@ func (s *Service) SetSystemProxy(enabled bool) error {
 	if enabled && s.proxy == nil {
 		return errors.New("系统代理在当前平台不可用")
 	}
+	if enabled && !systemproxy.AutomaticAvailable() {
+		return errors.New(systemproxy.ManualFallbackNote())
+	}
 	if s.useSystemProxy == enabled {
 		return nil
 	}

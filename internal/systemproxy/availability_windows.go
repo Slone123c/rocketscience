@@ -2,6 +2,6 @@
 
 package systemproxy
 
-func automaticAvailable() bool { return true }
+func automaticAvailablePlatform() bool { return true }
 
 func manualFallbackNote() string { return "" }

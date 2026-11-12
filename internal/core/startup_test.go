@@ -9,6 +9,7 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 	s := New()
 	s.proxy = &fakeProxy{}
 	p := NewProfilesWithService(t.TempDir(), s)
+	withAutomaticSystemProxy(t)
 	if err := p.SetSystemProxy(false); err != nil {
 		t.Fatal(err)
 	}
@@ -18,10 +19,14 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 	if enabled, err := NewProfiles(p.dir).AutoConnect(); err != nil || !enabled {
 		t.Fatalf("saved: %v %v", enabled, err)
 	}
-	if err := p.Initialize(); err == nil || !strings.Contains(err.Error(), "接管方式") {
+	if err := p.Initialize(); err == nil {
+		if takeoverRequiredBeforeStart() {
+			t.Fatalf("missing takeover: %v", err)
+		}
+	} else if takeoverRequiredBeforeStart() && !strings.Contains(err.Error(), "接管方式") {
 		t.Fatalf("missing takeover: %v", err)
 	}
-	if s.Status().Running {
+	if takeoverRequiredBeforeStart() && s.Status().Running {
 		t.Fatal("started without takeover")
 	}
 	if err := p.SetAutoConnect(false); err != nil {
@@ -34,15 +39,23 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := s.Status()
+	if !takeoverRequiredBeforeStart() {
+		if st.SystemProxy {
+			t.Fatalf("non-macOS saved choice without desktop API should stay manual: %+v", st)
+		}
+		return
+	}
 	if st.Running || !st.SystemProxy {
 		t.Fatalf("saved choice: %+v", st)
 	}
 }
 func TestNewInstallDefaultsToSystemProxyAndKeepsSavedChoice(t *testing.T) {
+	withAutomaticSystemProxy(t)
 	p := NewProfiles(t.TempDir())
 	summary, err := p.Summary()
-	if err != nil || !summary.SystemProxy {
-		t.Fatalf("new install: %+v %v", summary, err)
+	wantDefault := takeoverRequiredBeforeStart()
+	if err != nil || summary.SystemProxy != wantDefault {
+		t.Fatalf("new install: %+v %v want %v", summary, err, wantDefault)
 	}
 	if err = p.SetSystemProxy(false); err != nil {
 		t.Fatal(err)
@@ -53,6 +66,7 @@ func TestNewInstallDefaultsToSystemProxyAndKeepsSavedChoice(t *testing.T) {
 	}
 }
 func TestStartupAutomaticConnectAndRecoveryGuard(t *testing.T) {
+	withAutomaticSystemProxy(t)
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
 	proxy := &fakeProxy{}
@@ -91,6 +105,7 @@ func TestStartupAutomaticConnectAndRecoveryGuard(t *testing.T) {
 	}
 }
 func TestStartupAutomaticRequiresSavedProfile(t *testing.T) {
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = &fakeProxy{}
 	p := NewProfilesWithService(t.TempDir(), s)
