@@ -50,10 +50,11 @@ type profileData struct {
 	ProxyBypass      *[]string       `json:"proxyBypass,omitempty"`
 	LAN              *LANSettings    `json:"lan,omitempty"`
 	Tun              bool            `json:"tun"`
-	AutoConnect      bool            `json:"autoConnect"`
-	TrayDisplay      string          `json:"trayDisplay,omitempty"`
-	WiFi             *WiFiSettings   `json:"wifi,omitempty"`
-	CoreOptions      *CoreOptions    `json:"coreOptions,omitempty"`
+	AutoConnect         bool          `json:"autoConnect"`
+	TrayDisplay         string        `json:"trayDisplay,omitempty"`
+	HideDockWhenClosed  bool          `json:"hideDockWhenClosed,omitempty"`
+	WiFi                *WiFiSettings `json:"wifi,omitempty"`
+	CoreOptions         *CoreOptions  `json:"coreOptions,omitempty"`
 }
 type ProfileState struct {
 	Profiles    []Profile `json:"profiles"`

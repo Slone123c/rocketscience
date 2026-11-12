@@ -22,6 +22,23 @@ func (p *Profiles) SetAutoConnect(value bool) error {
 	return p.write(d)
 }
 
+func (p *Profiles) HideDockWhenClosed() (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	d, err := p.load()
+	return d.HideDockWhenClosed, err
+}
+func (p *Profiles) SetHideDockWhenClosed(value bool) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	d, err := p.load()
+	if err != nil {
+		return err
+	}
+	d.HideDockWhenClosed = value
+	return p.write(d)
+}
+
 // Initialize applies the persisted takeover choices before any automatic start.
 // It is called once by the desktop host before controls become interactive.
 func (p *Profiles) Initialize() error {

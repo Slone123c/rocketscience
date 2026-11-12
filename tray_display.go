@@ -171,6 +171,15 @@ func (d *Desktop) SetTrayDisplay(value string) error {
 	}
 	return nil
 }
+// trayTickInterval is 1s when speeds are shown; icon-only only needs occasional
+// refresh because applyTrayFrame already skips unchanged frames.
+func trayTickInterval(display string) time.Duration {
+	if display == "icon" {
+		return 5 * time.Second
+	}
+	return time.Second
+}
+
 func (d *Desktop) startTrayDisplay() {
 	mode := "both"
 	if d.profiles != nil {
@@ -189,15 +198,26 @@ func (d *Desktop) startTrayDisplay() {
 		return
 	}
 	go func() {
-		tick := time.NewTicker(time.Second)
+		interval := trayTickInterval(mode)
+		tick := time.NewTicker(interval)
 		defer tick.Stop()
 		previous := trayFrame{}
 		first := true
 		empty := transparentTrayIcon()
+		syncTicker := func(display string) {
+			next := trayTickInterval(display)
+			if next == interval {
+				return
+			}
+			tick.Stop()
+			tick = time.NewTicker(next)
+			interval = next
+		}
 		render := func() {
 			d.mu.Lock()
 			display := d.display
 			d.mu.Unlock()
+			syncTicker(display)
 			running := false
 			data := core.Telemetry{}
 			if d.service != nil {
@@ -207,6 +227,9 @@ func (d *Desktop) startTrayDisplay() {
 				}
 			}
 			frame := makeTrayFrame(display, running, data)
+			if !first && frame.icon == previous.icon && frame.title == previous.title && frame.up == previous.up && frame.down == previous.down {
+				return
+			}
 			drawn, err := applyTrayFrame(tray, frame, previous, first, icon, empty)
 			frame.drawn = drawn
 			d.mu.Lock()

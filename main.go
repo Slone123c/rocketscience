@@ -26,7 +26,7 @@ func hasBundledIcon() bool {
 func main() {
 	// A proxy mostly allocates short-lived buffers; collect them earlier to keep the heap small.
 	debug.SetGCPercent(50)
-	mygo.App.SetName("RocketScience")
+	mygo.App.SetName("Rocket Science")
 	keepWebKitRenderingInProcess()
 	if !mygo.App.RequestSingleInstanceLock() {
 		return

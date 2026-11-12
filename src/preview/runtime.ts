@@ -119,6 +119,7 @@ interface PreviewState {
   openAtLogin: boolean;
   autoConnect: boolean;
   tray: string;
+  hideDockWhenClosed: boolean;
   desktop: DesktopState;
   profiles: Profile[];
   activeId: string;
@@ -155,6 +156,7 @@ const state: PreviewState = {
   openAtLogin: false,
   autoConnect: false,
   tray: "both",
+  hideDockWhenClosed: false,
   desktop: { quitError: "", startupReady: true, startupError: "", trayError: "" },
   profiles: [profile("demo", "示例订阅", "url")] as Profile[],
   activeId: "demo",
@@ -338,6 +340,8 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "Desktop.SetOpenAtLogin": (args) => { state.openAtLogin = Boolean(args[0]); },
   "Desktop.TrayDisplay": () => state.tray,
   "Desktop.SetTrayDisplay": (args) => { state.tray = String(args[0] || "both"); },
+  "Desktop.HideDockWhenClosed": () => state.hideDockWhenClosed,
+  "Desktop.SetHideDockWhenClosed": (args) => { state.hideDockWhenClosed = Boolean(args[0]); },
   "Desktop.OpenDashboard": () => undefined,
   "Desktop.ClosePanel": () => undefined,
   "Desktop.TrayReady": () => undefined,

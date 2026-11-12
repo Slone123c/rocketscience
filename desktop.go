@@ -39,6 +39,8 @@ type Desktop struct {
 	loginRead      func() bool
 	loginWrite     func(bool) error
 	clipboardWrite func(string) error
+	dockShow       func()
+	dockHide       func()
 	displayMu      sync.Mutex
 	display        string
 	trayStop       chan struct{}
@@ -46,6 +48,7 @@ type Desktop struct {
 	trayIcon       []byte
 	appsMu         sync.Mutex
 	apps           map[string]*App
+	appsOrder      []string
 }
 type DesktopState struct {
 	QuitError    string `json:"quitError"`
@@ -111,6 +114,7 @@ func (d *Desktop) OpenDashboard() {
 		w.Restore()
 		w.Focus()
 	}
+	d.syncDockVisibility()
 }
 func (d *Desktop) CopyTerminalProxy(port int) error {
 	if port < 1 || port > 65535 {
@@ -150,13 +154,16 @@ func (d *Desktop) openMain() *mygo.Window {
 	if bounds != nil {
 		url = "/?restore=1"
 	}
-	w := mygo.NewWindow(mygo.WindowOptions{Title: "RocketScience", Width: 1200, Height: 780, MinWidth: 760, MinHeight: 560, URL: url})
+	// TitleBarHiddenInset keeps traffic lights only: the sidebar brand is the
+	// sole "Rocket Science" label, so the system title bar does not repeat it.
+	w := mygo.NewWindow(mygo.WindowOptions{Title: "Rocket Science", Width: 1200, Height: 780, MinWidth: 760, MinHeight: 560, TitleBarStyle: mygo.TitleBarHiddenInset, URL: url})
 	if bounds != nil {
 		w.SetBounds(*bounds)
 	}
 	d.mu.Lock()
 	d.main = w
 	d.mu.Unlock()
+	w.Page().OnPageTitleUpdated(func(e *mygo.TitleEvent) { e.PreventDefault() })
 	w.OnClosed(func() {
 		d.mu.Lock()
 		if d.main == w {
@@ -164,7 +171,10 @@ func (d *Desktop) openMain() *mygo.Window {
 			d.pageBusy = false
 		}
 		d.mu.Unlock()
+		d.syncDockVisibility()
 	})
+	w.OnShow(func() { d.syncDockVisibility() })
+	w.OnHide(func() { d.syncDockVisibility() })
 	w.OnClose(func(e *mygo.CloseEvent) {
 		d.mu.Lock()
 		quitting := d.quitting
@@ -181,12 +191,13 @@ func (d *Desktop) openMain() *mygo.Window {
 func (d *Desktop) ready() {
 	d.openMain()
 	d.watchIdlePages()
+	d.syncDockVisibility()
 	icon, err := trayAsset.ReadFile("assets/tray.png")
 	if err != nil {
 		log.Printf("tray icon: %v", err)
 		return
 	}
-	tray, err := mygo.NewTray(mygo.TrayOptions{ID: "rocket", Icon: icon, IconIsTemplate: true, ToolTip: "RocketScience"})
+	tray, err := mygo.NewTray(mygo.TrayOptions{ID: "rocket", Icon: icon, IconIsTemplate: true, ToolTip: "Rocket Science"})
 	if err != nil {
 		log.Printf("tray: %v", err)
 		return

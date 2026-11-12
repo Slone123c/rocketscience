@@ -547,6 +547,9 @@ export const Desktop = {
   copyText(text: string): Promise<void> {
     return call("Desktop.CopyText", text);
   },
+  hideDockWhenClosed(): Promise<boolean> {
+    return call("Desktop.HideDockWhenClosed");
+  },
   openAtLogin(): Promise<boolean> {
     return call("Desktop.OpenAtLogin");
   },
@@ -565,6 +568,9 @@ export const Desktop = {
   },
   requestWiFiAccess(): Promise<void> {
     return call("Desktop.RequestWiFiAccess");
+  },
+  setHideDockWhenClosed(enabled: boolean): Promise<void> {
+    return call("Desktop.SetHideDockWhenClosed", enabled);
   },
   setOpenAtLogin(enabled: boolean): Promise<void> {
     return call("Desktop.SetOpenAtLogin", enabled);
@@ -614,6 +620,9 @@ export const Profiles = {
   },
   geoSettings(): Promise<GeoOptions> {
     return call("Profiles.GeoSettings");
+  },
+  hideDockWhenClosed(): Promise<boolean> {
+    return call("Profiles.HideDockWhenClosed");
   },
   inboundSettings(): Promise<InboundOptions> {
     return call("Profiles.InboundSettings");
@@ -669,6 +678,9 @@ export const Profiles = {
   },
   setGeoSettings(value: GeoOptions): Promise<GeoOptions> {
     return call("Profiles.SetGeoSettings", value);
+  },
+  setHideDockWhenClosed(value: boolean): Promise<void> {
+    return call("Profiles.SetHideDockWhenClosed", value);
   },
   setInboundSettings(value: InboundOptions): Promise<InboundOptions> {
     return call("Profiles.SetInboundSettings", value);

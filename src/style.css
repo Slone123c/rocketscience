@@ -32,9 +32,22 @@ fieldset.profile-list{border:0;padding:0;min-width:0;margin-inline:0}
 
 /* ControlCenter shell. These follow the prototype and override the feasibility palette. */
 body{background:var(--ground);color:var(--ink)}
-.win{height:100vh;display:flex;min-width:700px;background:var(--ground);color:var(--ink)}
+.win{
+  height:100vh;display:flex;min-width:700px;background:var(--ground);color:var(--ink);
+  --lf-app-chrome:var(--mygo-titlebar-height,36px);
+  --lf-app-header-gutter:var(--space-1,4px);
+}
+/* Hidden title bar: drag strip only; brand on the next row, same top inset as the page title. */
+.win>.lf-sidebar{gap:0}
+.win>.lf-sidebar>.lf-sidebar__chrome{--app-region:drag;height:var(--lf-app-chrome)}
+.win>.lf-sidebar>.lf-sidebar__brand{padding-top:var(--lf-app-header-gutter);padding-bottom:var(--space-2,8px)}
 main.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:0;background:var(--ground)}
-.bar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3,12px);padding:var(--space-6,24px) var(--space-8,32px) var(--space-4,16px);flex:none}
+.bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3,12px);
+  padding:calc(var(--lf-app-chrome) + var(--lf-app-header-gutter)) var(--space-8,32px) var(--space-4,16px);
+  flex:none;--app-region:drag;box-sizing:border-box
+}
+.bar>*{--app-region:no-drag}
 .bar h1{margin:0;flex:none;font:600 22px/28px var(--font-sans),"PingFang SC",sans-serif;letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
 .bar .sp{flex:1 1 12px}
 .bar .lf-seg{flex:none;white-space:nowrap}

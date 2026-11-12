@@ -32,7 +32,7 @@ export function Onboarding({ design: DS, running, open, onView, onClose, onCheck
   const [step, setStep] = useState(0);
   const previousRunning = useRef(running);
   const steps: Design.TourStep[] = [
-    { title: "先认识代理", body: <>已停止 RocketScience 的代理并恢复原有网络设置。连接后，流量会按照配置选择的路径访问网站。</>, media: <RouteDiagram design={DS}/>, view: "总览" },
+    { title: "先认识代理", body: <>已停止 Rocket Science 的代理并恢复原有网络设置。连接后，流量会按照配置选择的路径访问网站。</>, media: <RouteDiagram design={DS}/>, view: "总览" },
     { title: "导入并保存配置", body: <>导入本地配置或填写订阅链接，保存后选择要使用的配置。编辑窗口关闭后可继续引导。</>, target: "#page-tools .lf-btn--primary", placement: "bottom", view: "配置" },
     { title: "启动", body: <>点击启动，大多数应用就会走代理。遇到网络问题时，再点停止即可恢复之前的网络设置。</>, target: "#tour-launch .lf-ignite__core", padding: 12, view: "总览", hint: "启动成功后会自动进入下一步" },
     { title: "测速并选择节点", body: <>在策略组中测速，再选择可用的节点；如果连接有问题，可返回总览停止代理。</>, target: "#tour-nodes .lf-group", placement: "bottom", view: "代理" },
