@@ -65,8 +65,8 @@ func TestExternalChangeIsNotOverwritten(t *testing.T) {
 	if err != nil || len(conflicts) == 0 || string(b.services[0].Settings["HTTPPort"]) != "9999" {
 		t.Fatalf("external change lost: %v %v", conflicts, err)
 	}
-	if _, ok := b.services[0].Settings["HTTPSProxy"]; ok {
-		t.Fatal("unrelated owned proxy was not restored")
+	if parseString(b.services[0].Settings["HTTPSProxy"]) != "127.0.0.1" {
+		t.Fatal("conflicted restore must not write: other owned fields stay at takeover values")
 	}
 	if string(b.services[0].Settings["__ProtocolEnabled"]) != "true" {
 		t.Fatal("external proxy change was disabled")

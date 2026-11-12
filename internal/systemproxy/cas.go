@@ -70,9 +70,5 @@ func applyChanges(services []Service, changes []Change) ([]string, []Service) {
 			}
 		}
 	}
-	for id := range conflicted {
-		i := byID[id]
-		out[i].Settings = cloneSettingsMap(baseline[id])
-	}
 	return conflicts, out
 }
