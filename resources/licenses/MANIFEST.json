@@ -1,0 +1,19 @@
+{
+  "generated": "2026-11-12T15:21:13.937Z",
+  "npm": [
+    "react@19.3.1",
+    "react-dom@19.3.1",
+    "scheduler@0.28.0",
+    "mygo-runtime@0.7.1"
+  ],
+  "go": [
+    "github.com/egoist/mygo@v0.7.1",
+    "github.com/metacubex/mihomo@v1.19.33",
+    "github.com/metacubex/bbolt@v0.0.0-20260706163408-d4ec34ad7c48",
+    "github.com/ebitengine/purego@v0.11.1",
+    "github.com/oschwald/maxminddb-golang@v1.12.0",
+    "golang.org/x/net@v0.59.0",
+    "golang.org/x/sys@v0.48.0",
+    "gopkg.in/yaml.v3@v3.0.1"
+  ]
+}

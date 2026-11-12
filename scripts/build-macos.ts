@@ -34,6 +34,7 @@ try {
     symlinkSync(join(root,"node_modules"),join(stage,"node_modules"),"dir");
     project=stage;
   }
+  run("bun",["scripts/collect-licenses.ts"],project);
   run("sh",["scripts/build-helper.sh"],project);
   run("bun",["x","mygo","build","-platform",`darwin/${target}`,"-o",join(root,"build.noindex")],project);
   run("bun",["scripts/verify-bundle.ts",`--arch=${target}`,join(root,"build.noindex",`darwin-${target}`,"RocketScience.app")],root);

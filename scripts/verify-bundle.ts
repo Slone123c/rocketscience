@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {cpSync,existsSync,mkdtempSync, readFileSync,rmSync,statSync,writeFileSync} from "node:fs";
+import {cpSync,existsSync,mkdtempSync,readFileSync,readdirSync,rmSync,statSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import {gunzipSync} from "node:zlib";
@@ -80,12 +80,31 @@ try {
   for(const symbol of ["rs_wifi_snapshot","rs_wifi_free","rs_wifi_request_access","rs_app_icon","rs_tray_speeds"])
     requireCondition(new RegExp(`\\b_${symbol}\\b`).test(symbols),`网络模块缺少接口：${symbol}`);
   requireCondition(run("otool",["-D",library]).includes("@rpath/libRocketNetwork.dylib"),"网络模块保留了开发路径");
-  const license=join(resources,"licenses","mihomo-GPL-3.0.txt");
+  const licenses=join(resources,"licenses");
+  const manifestPath=join(licenses,"MANIFEST.json");
+  requireCondition(existsSync(manifestPath),"应用缺少 licenses/MANIFEST.json");
+  const manifest=JSON.parse(readFileSync(manifestPath,"utf8")) as {npm?:string[];go?:string[]};
+  const requiredBasenames=[
+    "mihomo-GPL-3.0.txt","rocketscience-GPL-3.0.txt","THIRD_PARTY_NOTICES.md",
+    "npm-react-19.3.1.txt","npm-react-dom-19.3.1.txt","npm-mygo-runtime-0.7.1.txt",
+    "go-egoist-mygo-v0.7.1.txt","go-metacubex-sing-tun-v0.4.28.txt",
+  ];
+  for(const name of requiredBasenames){
+    const file=join(licenses,name);
+    requireCondition(existsSync(file)&&statSync(file).isFile()&&statSync(file).size>32,`应用缺少许可证文件：${name}`);
+  }
+  requireCondition(readdirSync(licenses).some(n=>/^npm-scheduler-/.test(n)),"应用缺少 scheduler 许可证");
+  requireCondition((manifest.npm?.length||0)>=4&& (manifest.go?.length||0)>=8,"许可证清单不完整");
+  const mihomo=join(licenses,"mihomo-GPL-3.0.txt");
+  const firstParty=join(licenses,"rocketscience-GPL-3.0.txt");
+  requireCondition(readFileSync(mihomo,"utf8").includes("GNU GENERAL PUBLIC LICENSE"),"mihomo 许可证无效");
+  const rocketText=readFileSync(firstParty,"utf8");
+  requireCondition(rocketText.includes("GNU GENERAL PUBLIC LICENSE"),"缺少 Rocket Science GPL 许可证");
+  requireCondition(rocketText.includes("version 3 is the applicable license"),"Rocket Science 许可证须为 GPL-3.0-only");
   const geo=join(resources,"geoip.metadb");
   const geosite=join(resources,"geosite.dat");
   requireCondition(existsSync(geo)&&statSync(geo).size>1024*1024,"应用缺少 geoip.metadb");
   requireCondition(existsSync(geosite)&&statSync(geosite).size>1024*1024,"应用缺少 geosite.dat");
-  requireCondition(existsSync(license)&&readFileSync(license,"utf8").includes("GNU GENERAL PUBLIC LICENSE"),"缺少 mihomo 许可证");
   run("codesign",["--verify","--deep","--strict",app]);
   const dmg=join(app,"..",`rocketscience-${plist.CFBundleShortVersionString}-${target==="arm64"?"arm64":"amd64"}.dmg`);
   requireCondition(existsSync(dmg),"缺少 DMG 安装镜像");

@@ -1,8 +1,8 @@
 # Third-party notices
 
-**Rocket Science** (source in this repository) is licensed under the **GNU General Public License v3.0 or later**. The full license text is in [LICENSE](LICENSE).
+**Rocket Science** first-party source in this repository is licensed under the **GNU General Public License version 3 only**. The full license text is in [LICENSE](LICENSE).
 
-When you distribute binaries built from this project, you must preserve license and attribution materials in the application bundle (see `bun run verify:bundle`) and comply with the licenses of bundled and linked components below.
+When you distribute binaries built from this project, you must preserve license and attribution materials in the application bundle. Before each macOS build, `scripts/collect-licenses.ts` copies pinned npm and Go module licenses into `resources/licenses/` (see `MANIFEST.json`); `bun run verify:bundle` checks they are present in `RocketScience.app/Contents/Resources/licenses/`.
 
 ## Bundled inside release `.app` artifacts
 

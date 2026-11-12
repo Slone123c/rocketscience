@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"gopkg.in/yaml.v3"
 )
@@ -30,36 +29,6 @@ func (c *geoCache) journalPath(runtime string) (string, error) {
 		return "", errors.New("无效的内核目录")
 	}
 	return filepath.Join(base, "sessions", name+".json"), nil
-}
-func validGeoRuntime(runtime string) error {
-	original, err := os.Lstat(runtime)
-	if err != nil {
-		return err
-	}
-	if !original.IsDir() || original.Mode()&os.ModeSymlink != 0 {
-		return errors.New("GEO 临时目录不能为符号链接")
-	}
-	root, err := filepath.EvalSymlinks(os.TempDir())
-	if err != nil {
-		return err
-	}
-	actual, err := filepath.EvalSymlinks(runtime)
-	if err != nil {
-		return err
-	}
-	rel, err := filepath.Rel(root, actual)
-	if err != nil || filepath.Dir(rel) != "." || !strings.HasPrefix(filepath.Base(rel), "rocketscience-core-") {
-		return errors.New("GEO 临时目录不在预期位置")
-	}
-	info, err := os.Lstat(actual)
-	if err != nil {
-		return err
-	}
-	st, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || int(st.Uid) != os.Getuid() || !info.IsDir() || info.Mode().Perm() != 0700 {
-		return errors.New("GEO 临时目录权限无效")
-	}
-	return nil
 }
 func (c *geoCache) writeSession(session geoSession) error {
 	c.mu.Lock()
@@ -108,14 +77,6 @@ func (c *geoCache) removeSession(runtime string) error {
 	}
 	return err
 }
-func processAlive(pid int) bool {
-	if pid <= 1 {
-		return true
-	}
-	err := syscall.Kill(pid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
-}
-
 // Once automatic updates have been enabled during a run, recovery must treat
 // an unexpected app exit as potentially interrupting an update.
 func (s *Service) markGeoAuto(config []byte) error {

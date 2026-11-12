@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 )
 
 // Only files owned by mihomo's GEO database subsystem are copied. Configuration,
@@ -57,11 +56,10 @@ func copyGeoFiles(source, destination string) error {
 			continue
 		}
 		sourcePath := filepath.Join(source, entry.Name())
-		fd, err := syscall.Open(sourcePath, syscall.O_RDONLY|syscall.O_NOFOLLOW, 0)
+		input, err := openGeoSourceFile(sourcePath)
 		if err != nil {
-			return fmt.Errorf("读取 GEO 数据失败：%w", err)
+			return err
 		}
-		input := os.NewFile(uintptr(fd), sourcePath)
 		info, err := input.Stat()
 		if err != nil || !info.Mode().IsRegular() {
 			input.Close()
