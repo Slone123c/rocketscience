@@ -19,52 +19,12 @@ func (b *fakeBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if b.fail {
 		return nil, errors.New("write failed")
 	}
-	var conflicts []string
-	baseline := map[string]Settings{}
-	for _, service := range b.services {
-		clone := Settings{}
-		for k, v := range service.Settings {
-			clone[k] = append(json.RawMessage(nil), v...)
-		}
-		baseline[service.ID] = clone
+	conflicts, updated := applyChanges(b.services, changes)
+	if len(conflicts) > 0 {
+		return conflicts, nil
 	}
-	for _, c := range changes {
-		var s *Service
-		for i := range b.services {
-			if b.services[i].ID == c.ID {
-				s = &b.services[i]
-				break
-			}
-		}
-		if s == nil {
-			conflicts = append(conflicts, c.ID)
-			continue
-		}
-		matches := true
-		checkKeys := c.Keys
-		if len(c.GuardKeys) > 0 {
-			checkKeys = c.GuardKeys
-		}
-		for _, k := range checkKeys {
-			a, aok := baseline[c.ID][k]
-			v, vok := c.Expected[k]
-			if aok != vok || string(a) != string(v) {
-				matches = false
-			}
-		}
-		if !matches {
-			conflicts = append(conflicts, c.ID)
-			continue
-		}
-		for _, k := range c.Keys {
-			if v, ok := c.Desired[k]; ok {
-				s.Settings[k] = append(json.RawMessage(nil), v...)
-			} else {
-				delete(s.Settings, k)
-			}
-		}
-	}
-	return conflicts, nil
+	b.services = updated
+	return nil, nil
 }
 func TestRoundTripPreservesOriginalAndUnrelatedFields(t *testing.T) {
 	b := &fakeBackend{services: []Service{{ID: "wifi", Settings: Settings{"__ProtocolEnabled": json.RawMessage("false"), "HTTPEnable": json.RawMessage("1"), "HTTPProxy": json.RawMessage(`"old"`), "HTTPPort": json.RawMessage("8080"), "ExceptionsList": json.RawMessage(`["localhost"]`)}}}}
