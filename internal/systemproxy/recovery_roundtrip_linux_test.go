@@ -12,9 +12,9 @@ import (
 
 func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 	t.Setenv("XDG_CURRENT_DESKTOP", "GNOME")
-	journal := filepath.Join(t.TempDir(), "proxy-recovery.json")
 
 	t.Run("PAC auto", func(t *testing.T) {
+		journal := filepath.Join(t.TempDir(), "proxy-recovery.json")
 		runner := &mapGSettings{data: map[string]string{
 			"org.gnome.system.proxy\x00mode":           `'auto'`,
 			"org.gnome.system.proxy\x00autoconfig-url": `'http://pac.corp/proxy.pac'`,
@@ -25,6 +25,13 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		backend := LinuxBackend{Runner: runner}
 		if err := New(backend, journal).Apply(7890); err != nil {
 			t.Fatal(err)
+		}
+		services, err := backend.Snapshot()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if parseBool(services[0].Settings["ProxyAutoConfigEnable"]) {
+			t.Fatalf("after apply ProxyAutoConfigEnable should be off when mode manual: %+v", services[0].Settings)
 		}
 		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
 		assertGsettingsString(t, mode, `'manual'`)
@@ -37,7 +44,7 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		url, _ := runner.Get("org.gnome.system.proxy", "autoconfig-url")
 		assertGsettingsString(t, mode, wantMode)
 		assertGsettingsString(t, url, wantURL)
-		services, err := backend.Snapshot()
+		services, err = backend.Snapshot()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,7 +115,7 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		host, _ := runner.Get("org.gnome.system.proxy.http", "host")
 		assertGsettingsString(t, host, `'corp.example'`)
 		port, _ := runner.Get("org.gnome.system.proxy.http", "port")
-		if port != `8080` {
+		if parseGsettingsUInt(port) != 8080 {
 			t.Fatalf("http port=%q", port)
 		}
 		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")

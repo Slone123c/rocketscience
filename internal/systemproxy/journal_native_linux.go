@@ -15,10 +15,18 @@ func nativeJournalChanges(s Service, port int, bypass *[]string) []Change {
 			return nil
 		}
 		ignoreDesired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), value...)
-	} else if raw, ok := s.Settings[gnomeKeyIgnoreHosts]; ok {
-		ignoreDesired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), raw...)
 	} else {
-		ignoreDesired[gnomeKeyIgnoreHosts] = rawJSON([]string(nil))
+		entries := parseExceptions(s.Settings["ExceptionsList"])
+		if len(entries) == 0 {
+			if raw, ok := s.Settings[gnomeKeyIgnoreHosts]; ok {
+				entries = parseExceptions(raw)
+			}
+		}
+		value, err := json.Marshal(effectiveExceptions(entries))
+		if err != nil {
+			return nil
+		}
+		ignoreDesired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), value...)
 	}
 	return []Change{
 		{

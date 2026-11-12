@@ -10,11 +10,15 @@ const (
 
 func settingsFromGnome(s gnomeSnapshot) Settings {
 	enabled := s.Mode == "manual" && (s.HTTPPort > 0 || s.HTTPSPort > 0 || s.SOCKSPort > 0)
+	ignoreHosts := s.IgnoreHosts
+	if ignoreHosts == nil {
+		ignoreHosts = []string{}
+	}
 	settings := Settings{
 		"__ProtocolEnabled":        rawJSON(enabled),
 		gnomeKeyMode:               rawString(s.Mode),
 		gnomeKeyAutoURL:            rawString(s.AutoURL),
-		gnomeKeyIgnoreHosts:        rawJSON(s.IgnoreHosts),
+		gnomeKeyIgnoreHosts:        rawJSON(ignoreHosts),
 		"HTTPEnable":               rawBool(enabled && s.HTTPPort > 0),
 		"HTTPProxy":                rawString(s.HTTPHost),
 		"HTTPPort":                 rawJSON(s.HTTPPort),
@@ -24,7 +28,7 @@ func settingsFromGnome(s gnomeSnapshot) Settings {
 		"SOCKSEnable":              rawBool(enabled && s.SOCKSPort > 0),
 		"SOCKSProxy":               rawString(s.SOCKSHost),
 		"SOCKSPort":                rawJSON(s.SOCKSPort),
-		"ProxyAutoConfigEnable":    rawBool(s.Mode == "auto" || s.AutoURL != ""),
+		"ProxyAutoConfigEnable":    rawBool(s.Mode == "auto"),
 		"ProxyAutoDiscoveryEnable": rawBool(false),
 	}
 	if len(s.IgnoreHosts) > 0 {
@@ -92,6 +96,9 @@ func applyGnomeChanges(current gnomeSnapshot, merged Settings, changes []Change)
 		next.IgnoreHosts = parseExceptions(merged["ExceptionsList"])
 	case touched[gnomeKeyIgnoreHosts]:
 		next.IgnoreHosts = parseExceptions(merged[gnomeKeyIgnoreHosts])
+	}
+	if next.Mode == "manual" {
+		next.AutoURL = ""
 	}
 	return next
 }

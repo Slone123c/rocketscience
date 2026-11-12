@@ -75,3 +75,13 @@ func formatGsettingsStringArray(items []string) string {
 func formatGsettingsUInt(value int) string {
 	return strconv.Itoa(value)
 }
+
+func parseGsettingsUInt(raw string) int {
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "uint32 ")
+	if raw == "" {
+		return 0
+	}
+	n, _ := strconv.Atoi(raw)
+	return n
+}

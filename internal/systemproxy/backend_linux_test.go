@@ -3,7 +3,6 @@
 package systemproxy
 
 import (
-	"strings"
 	"sync"
 	"testing"
 )
@@ -47,7 +46,8 @@ func canonicalGsettingsRaw(key, value string) string {
 		}
 		return formatGsettingsStringArray(items)
 	case "port":
-		return strings.TrimSpace(value)
+		n := parseGsettingsUInt(value)
+		return formatGsettingsUInt(n)
 	default:
 		return value
 	}

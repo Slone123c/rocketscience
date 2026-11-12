@@ -102,7 +102,7 @@ func (g gnomeStore) read() (gnomeSnapshot, error) {
 		return s, err
 	}
 	if portRaw != "" {
-		s.HTTPPort, _ = strconvAtoi(strings.TrimSpace(portRaw))
+		s.HTTPPort = parseGsettingsUInt(portRaw)
 	}
 	httpsHost, err := g.runner.Get("org.gnome.system.proxy.https", "host")
 	if err != nil {
@@ -117,7 +117,7 @@ func (g gnomeStore) read() (gnomeSnapshot, error) {
 		return s, err
 	}
 	if portRaw != "" {
-		s.HTTPSPort, _ = strconvAtoi(strings.TrimSpace(portRaw))
+		s.HTTPSPort = parseGsettingsUInt(portRaw)
 	}
 	socksHost, err := g.runner.Get("org.gnome.system.proxy.socks", "host")
 	if err != nil {
@@ -132,7 +132,7 @@ func (g gnomeStore) read() (gnomeSnapshot, error) {
 		return s, err
 	}
 	if portRaw != "" {
-		s.SOCKSPort, _ = strconvAtoi(strings.TrimSpace(portRaw))
+		s.SOCKSPort = parseGsettingsUInt(portRaw)
 	}
 	ignore, err := g.runner.Get("org.gnome.system.proxy", "ignore-hosts")
 	if err != nil {
