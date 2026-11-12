@@ -5,6 +5,9 @@ build/
 bin/
 
 resources/darwin/bin/
+/resources/libRocketNetwork.dylib
+/resources/rs-*
+/resources/bin/
 .cache/
 
 .DS_Store

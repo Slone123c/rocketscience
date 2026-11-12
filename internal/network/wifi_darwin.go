@@ -27,7 +27,11 @@ func load() error {
 			loadErr = err
 			return
 		}
-		candidates := []string{filepath.Join(filepath.Dir(exe), "..", "Resources", "bin", "libRocketNetwork.dylib"), "resources/bin/libRocketNetwork.dylib", "../../resources/bin/libRocketNetwork.dylib"}
+		candidates := []string{
+			filepath.Join(filepath.Dir(exe), "..", "Resources", "bin", "libRocketNetwork.dylib"),
+			"resources/darwin/bin/libRocketNetwork.dylib",
+			"../../resources/darwin/bin/libRocketNetwork.dylib",
+		}
 		for _, candidate := range candidates {
 			if _, err := os.Stat(candidate); err != nil {
 				continue

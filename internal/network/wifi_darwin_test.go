@@ -8,7 +8,7 @@ import (
 )
 
 func TestWiFiNativeModuleSymbols(t *testing.T) {
-	if _, err := os.Stat("../../resources/bin/libRocketNetwork.dylib"); err != nil {
+	if _, err := os.Stat("../../resources/darwin/bin/libRocketNetwork.dylib"); err != nil {
 		t.Skip("build the native helpers first")
 	}
 	if err := load(); err != nil {
@@ -20,7 +20,7 @@ func TestWiFiNativeModuleSymbols(t *testing.T) {
 }
 
 func TestAppForFindsEnclosingApp(t *testing.T) {
-	if _, err := os.Stat("../../resources/bin/libRocketNetwork.dylib"); err != nil {
+	if _, err := os.Stat("../../resources/darwin/bin/libRocketNetwork.dylib"); err != nil {
 		t.Skip("build the native helpers first")
 	}
 	app, ok := AppFor("/System/Applications/Calculator.app/Contents/MacOS/Calculator")

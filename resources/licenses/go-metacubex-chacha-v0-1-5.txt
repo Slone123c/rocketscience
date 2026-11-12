@@ -1,0 +1,13 @@
+Component: github.com/metacubex/chacha
+Version: v0.1.5
+License: See file
+Origin: go (chacha)
+---
+No LICENSE/COPYING file was found in this module revision.
+See the upstream module repository for license terms.
+---
+module github.com/metacubex/chacha
+
+go 1.18
+
+require golang.org/x/sys v0.22.0

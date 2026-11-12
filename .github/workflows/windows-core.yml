@@ -4,20 +4,22 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - advisor/001-publication-preparation
     paths:
       - "internal/core/**"
+      - "internal/systemproxy/**"
       - ".github/workflows/windows-core.yml"
 
 jobs:
-  geo-security:
+  core-systemproxy:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Test GEO/journal Windows semantics
-        run: go test ./internal/core/ -run 'Geo|ProcessAlive' -count=1 -v
+      - name: Test GEO/journal and WinINET proxy semantics
+        run: go test ./internal/core/ -run 'Geo|ProcessAlive' -count=1 -v && go test ./internal/systemproxy/... -count=1 -v
         env:
           GOFLAGS: -tags=with_gvisor

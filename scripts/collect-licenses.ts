@@ -36,21 +36,27 @@ function readNpm(name:string,folder:string):Entry{
 }
 
 function findGoLicense(moduleDir:string):string{
-  for(const name of ["LICENSE","LICENSE.md","LICENSE.txt","COPYING","COPYING.md","NOTICE","NOTICE.txt"]){
+  for(const name of ["LICENSE","LICENSE.md","LICENSE.txt","LICENSE.gpl","COPYING","COPYING.md","NOTICE","NOTICE.txt"]){
     const p=join(moduleDir,name);
     if(existsSync(p)&&statSync(p).isFile())return readFileSync(p,"utf8");
+  }
+  const goMod=join(moduleDir,"go.mod");
+  if(existsSync(goMod)){
+    return [
+      "No LICENSE/COPYING file was found in this module revision.",
+      "See the upstream module repository for license terms.",
+      "---",
+      readFileSync(goMod,"utf8"),
+    ].join("\n");
   }
   throw new Error(`Go 模块目录中未找到许可证：${moduleDir}`);
 }
 
 function moduleDir(modPath:string,version:string):string{
-  const cache=execFileSync("go",["env","GOMODCACHE"],{cwd:root,encoding:"utf8"}).trim();
-  const escaped=modPath.replace("@","%40")+"@"+version;
-  const direct=join(cache,modPath+"@"+version);
-  if(existsSync(direct))return direct;
-  const nested=join(cache,escaped);
-  if(existsSync(nested))return nested;
-  throw new Error(`未下载 Go 模块：${modPath} ${version}`);
+  const out=execFileSync("go",["list","-m","-json",`${modPath}@${version}`],{cwd:root,encoding:"utf8"});
+  const info=JSON.parse(out) as {Dir?:string};
+  if(!info.Dir||!existsSync(info.Dir))throw new Error(`未下载 Go 模块：${modPath} ${version}`);
+  return info.Dir;
 }
 
 function readGo(modPath:string,version:string,filename:string){
@@ -87,17 +93,36 @@ function main(){
     singTun,
     "go-metacubex-sing-tun-v0.4.28.txt",
   );
+  const pinnedSingTun="github.com/metacubex/sing-tun@v0.4.28";
 
-  const goModules:Array<[string,string,string]>=[
-    ["github.com/egoist/mygo","v0.7.1","go-egoist-mygo-v0.7.1.txt"],
-    ["github.com/metacubex/mihomo","v1.19.33","go-metacubex-mihomo-v1.19.33.txt"],
-    ["github.com/metacubex/bbolt","v0.0.0-20260706163408-d4ec34ad7c48","go-metacubex-bbolt.txt"],
-    ["github.com/ebitengine/purego","v0.11.1","go-ebitengine-purego-v0.11.1.txt"],
-    ["github.com/oschwald/maxminddb-golang","v1.12.0","go-oschwald-maxminddb-golang-v1.12.0.txt"],
-    ["golang.org/x/net","v0.59.0","go-golang-org-x-net-v0.59.0.txt"],
-    ["golang.org/x/sys","v0.48.0","go-golang-org-x-sys-v0.48.0.txt"],
-    ["gopkg.in/yaml.v3","v3.0.1","go-gopkg-in-yaml-v3-v3.0.1.txt"],
-  ];
+  const mainModule=execFileSync("go",["list","-m","-f","{{.Path}}"],{cwd:root,encoding:"utf8"}).trim();
+  const depLines=execFileSync(
+    "go",
+    ["list","-deps","-f","{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}","./..."],
+    {cwd:root,encoding:"utf8"},
+  )
+    .split("\n")
+    .map(line=>line.trim())
+    .filter(Boolean);
+  const seen=new Set<string>();
+  const goModules:Array<[string,string,string]>=[];
+  const fileFor=(modPath:string,version:string)=>{
+    const slug=modPath.replace(/^github\.com\//,"").replaceAll("/","-").replaceAll("@","-");
+    const verSlug=version.replace(/^v/,"").replaceAll(".","-");
+    return `go-${slug}-v${verSlug}.txt`;
+  };
+  for(const line of depLines){
+    const space=line.indexOf(" ");
+    if(space<0)continue;
+    const modPath=line.slice(0,space);
+    const version=line.slice(space+1);
+    if(!modPath||!version||modPath===mainModule)continue;
+  if(`${modPath}@${version}`===pinnedSingTun)continue;
+    const key=`${modPath}@${version}`;
+    if(seen.has(key))continue;
+    seen.add(key);
+    goModules.push([modPath,version,fileFor(modPath,version)]);
+  }
   for(const [path,ver,file] of goModules)readGo(path,ver,file);
 
   const manifest={generated:new Date().toISOString(),npm:npm.map(e=>`${e.id}@${e.version}`),go:goModules.map(([p,v])=>`${p}@${v}`)};

@@ -7,6 +7,7 @@
     "build": "bun scripts/build-macos.ts",
     "build:release": "bun scripts/build-release.ts",
     "scan:artifact": "bun scripts/scan-release-artifact.ts",
+    "verify:release": "bun scripts/verify-release-artifact.ts",
     "install:app": "bun scripts/install-macos.ts",
     "collect:licenses": "bun scripts/collect-licenses.ts",
     "verify:bundle": "bun scripts/verify-bundle.ts",

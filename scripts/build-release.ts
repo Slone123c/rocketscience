@@ -29,6 +29,7 @@ try {
     const artifactDir=join(buildRoot,platform.replace("/","-"));
     if(existsSync(artifactDir)){
       run("bun",["scripts/scan-release-artifact.ts",artifactDir]);
+      run("bun",["scripts/verify-release-artifact.ts",artifactDir]);
     }
   }
 }catch(error){

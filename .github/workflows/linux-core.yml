@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - advisor/001-publication-preparation
     paths:
       - "internal/**"
+      - "scripts/**"
       - ".github/workflows/linux-core.yml"
 
 jobs:
