@@ -1,0 +1,191 @@
+{
+  "spacing": {
+    "tokens": [
+      {
+        "name": "space-1",
+        "value": "4px"
+      },
+      {
+        "name": "space-2",
+        "value": "8px"
+      },
+      {
+        "name": "space-3",
+        "value": "12px"
+      },
+      {
+        "name": "space-4",
+        "value": "16px"
+      },
+      {
+        "name": "space-6",
+        "value": "24px"
+      },
+      {
+        "name": "space-8",
+        "value": "32px"
+      },
+      {
+        "name": "space-12",
+        "value": "48px"
+      }
+    ]
+  },
+  "radius": {
+    "tokens": [
+      {
+        "name": "radius-xs",
+        "value": "4px"
+      },
+      {
+        "name": "radius-sm",
+        "value": "6px"
+      },
+      {
+        "name": "radius-md",
+        "value": "10px"
+      },
+      {
+        "name": "radius-lg",
+        "value": "14px"
+      },
+      {
+        "name": "radius-full",
+        "value": "999px"
+      }
+    ]
+  },
+  "type": {
+    "families": {
+      "sans": "\"Instrument Sans\", \"PingFang SC\", \"Noto Sans SC\", \"Microsoft YaHei\", ui-sans-serif, system-ui, sans-serif",
+      "mono": "\"JetBrains Mono\", ui-monospace, \"SF Mono\", Menlo, \"PingFang SC\", \"Noto Sans SC\", monospace"
+    }
+  },
+  "color": {
+    "tokens": [
+      {
+        "name": "ground",
+        "value": {
+          "void": "#000000",
+          "paper": "#ffffff"
+        }
+      },
+      {
+        "name": "surface",
+        "value": {
+          "void": "#0a0a0a",
+          "paper": "#fafafa"
+        }
+      },
+      {
+        "name": "surface-raised",
+        "value": {
+          "void": "#141414",
+          "paper": "#f2f2f2"
+        }
+      },
+      {
+        "name": "line",
+        "value": {
+          "void": "#262626",
+          "paper": "#e5e5e5"
+        }
+      },
+      {
+        "name": "line-strong",
+        "value": {
+          "void": "#6b6b6b",
+          "paper": "#8a8a8a"
+        }
+      },
+      {
+        "name": "ink",
+        "value": {
+          "void": "#ffffff",
+          "paper": "#000000"
+        }
+      },
+      {
+        "name": "ink-muted",
+        "value": {
+          "void": "#b3b3b3",
+          "paper": "#4d4d4d"
+        }
+      },
+      {
+        "name": "ink-faint",
+        "value": {
+          "void": "#808080",
+          "paper": "#6b6b6b"
+        }
+      },
+      {
+        "name": "on-ink",
+        "value": {
+          "void": "#000000",
+          "paper": "#ffffff"
+        }
+      },
+      {
+        "name": "ignition",
+        "value": {
+          "void": "#ff5a1f",
+          "paper": "#c73800"
+        }
+      },
+      {
+        "name": "ignition-wash",
+        "value": {
+          "void": "#2a0f05",
+          "paper": "#fff0ea"
+        }
+      },
+      {
+        "name": "launch",
+        "value": {
+          "void": "#d9363e",
+          "paper": "#b3202a"
+        }
+      },
+      {
+        "name": "on-launch",
+        "value": {
+          "void": "#ffffff",
+          "paper": "#ffffff"
+        }
+      },
+      {
+        "name": "nominal",
+        "value": {
+          "void": "#34d399",
+          "paper": "#137333"
+        }
+      },
+      {
+        "name": "caution",
+        "value": {
+          "void": "#f5b400",
+          "paper": "#a16207"
+        }
+      },
+      {
+        "name": "scrim",
+        "value": {
+          "void": "rgba(0, 0, 0, 0.72)",
+          "paper": "rgba(255, 255, 255, 0.76)"
+        }
+      }
+    ]
+  },
+  "shadow": {
+    "tokens": [
+      {
+        "name": "shadow-float",
+        "value": {
+          "void": "0 0 0 1px #262626, 0 16px 40px rgba(0, 0, 0, 0.6)",
+          "paper": "0 0 0 1px #e5e5e5, 0 16px 40px rgba(0, 0, 0, 0.12)"
+        }
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import React from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import type {ProxyRouteSummary as Summary} from "./proxyRouteSummary";
 
 export function ProxyRouteSummary({design:DS,summary,running,onConnections}:{design:typeof Design;summary:Summary;running:boolean;onConnections?:()=>void}) {

@@ -4,7 +4,7 @@ import {saveEditorProfile} from "./profileEditorSave";
 import {commitProfileChange,subscriptionFailureMessage} from "./profileOperations";
 import {readDroppedProfile} from "./profileFileImport";
 import {PageTools} from "./pageTools";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 interface Props {design:typeof Design;state:ProfileState|null;running:boolean;busy:boolean;onState:(state:ProfileState)=>void;onChanged:()=>Promise<void>;onGoOverrides:()=>void;onEditorOpen:(open:boolean)=>void}
 function errorText(e:unknown){return e instanceof Error?e.message:String(e)}

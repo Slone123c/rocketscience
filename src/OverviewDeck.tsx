@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import type {ConnectionSnapshot, Proxy, Status} from "./mygo";
 import type {DelayMeasurement} from "./proxyNodes";
 import {resolveOverviewExit} from "./overviewExit";

@@ -1,6 +1,6 @@
 import React, {useEffect,useState} from "react";
 import {Profiles,Service,type GeoOptions} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 const selectValue=(v:boolean|null)=>v==null?"inherit":v?"on":"off";
 const boolValue=(v:string)=>v==="inherit"?null:v==="on";

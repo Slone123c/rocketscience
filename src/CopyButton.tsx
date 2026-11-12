@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function CopyButton({design:DS,copy,label="复制",disabled=false,variant="ghost"}:{design:typeof Design;copy:()=>Promise<void>;label?:string;disabled?:boolean;variant?:Design.ButtonProps["variant"]}) {
   const [busy,setBusy]=useState(false),[copied,setCopied]=useState(false),[error,setError]=useState("");

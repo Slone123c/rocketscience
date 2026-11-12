@@ -2,7 +2,7 @@ import {expect,test} from "bun:test";
 import {readFileSync} from "node:fs";
 import {runInNewContext} from "node:vm";
 
-const source=readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8");
+const source=readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8");
 type Node={type:unknown;props:Record<string,any>;children:unknown[]};
 
 // Exercise the shipped component's callbacks/effect lifetimes without a browser.

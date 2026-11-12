@@ -1,5 +1,5 @@
 import type {Proxy} from "./mygo";
-import type {ProxyGroupProps} from "../design-system/components/index";
+import type {ProxyGroupProps} from "./ui/index";
 
 export interface DelayMeasurement {values:Record<string,number>;completedAt:number}
 const DELAY_STORAGE_KEY="rs-shared-delays",SYNC_STORAGE_KEY="rs-sync-tick";

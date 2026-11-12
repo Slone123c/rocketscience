@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { shouldAdvanceAfterLaunch } from "./onboardingFlow";
 import { LAUNCH_VISUAL_MS } from "./OverviewDeck";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 interface Props {
   design: typeof Design;

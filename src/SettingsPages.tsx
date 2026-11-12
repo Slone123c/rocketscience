@@ -1,5 +1,5 @@
 import React from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import {Desktop, Profiles, type Status, type MemoryUsage} from "./mygo";
 import {CopyButton} from "./CopyButton";
 import {StartupSettings} from "./StartupSettings";

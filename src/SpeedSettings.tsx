@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Profiles, type SpeedSettings as Values } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 type Field = "url" | "timeoutMs";
 export function SpeedSettings({design:DS}:{design:typeof Design}) {

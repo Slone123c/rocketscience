@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Profiles, type DNSOptions } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 type ListField = "defaultNameservers" | "nameservers" | "fallback";
 const lists: Array<{key:ListField;label:string;keyName:string;hint:string}> = [

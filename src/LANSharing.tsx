@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {CopyButton} from "./CopyButton";
 import { Desktop, Profiles, type LANInterface, type LANSettings } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function LANSharing({ design: DS, running, port }: { design: typeof Design; running: boolean; port: number }) {
   const [settings, setSettings] = useState<LANSettings | null>(null);

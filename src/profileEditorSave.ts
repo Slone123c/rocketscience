@@ -1,5 +1,5 @@
 import type {Profile,ProfileState,SubscriptionDownload} from "./mygo";
-import type {Profile as EditorProfile} from "../design-system/components/index";
+import type {Profile as EditorProfile} from "./ui/index";
 
 interface ProfileWriter {fetch:(url:string)=>Promise<SubscriptionDownload>;save:(profile:Profile,expected:string)=>Promise<ProfileState>}
 const zeroTime="0001-01-01T00:00:00Z";

@@ -1,5 +1,5 @@
 import React,{useState} from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import type {Proxy,ConnectionSnapshot} from "./mygo";
 import {proxyNodes,type DelayMeasurement} from "./proxyNodes";
 import {filterProxyGroups} from "./listFilters";

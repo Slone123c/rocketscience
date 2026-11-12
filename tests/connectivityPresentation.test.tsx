@@ -4,7 +4,7 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {readFileSync} from "node:fs";
 import {runInNewContext} from "node:vm";
 const window:any={React,matchMedia:()=>({matches:true})};
-runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window});
+runInNewContext(readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8"),{window});
 const DS=window.RocketScience;
 
 test("recovery remains available while diagnostics are still running",()=>{

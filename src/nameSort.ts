@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import type {NameSort} from "../design-system/components/index";
+import type {NameSort} from "./ui/index";
 
 const STORAGE_KEY="rs-node-sort";
 

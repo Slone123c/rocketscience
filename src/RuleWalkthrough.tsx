@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function RuleWalkthrough({design:DS,open,onClose,onStep}:{design:typeof Design;open:boolean;onClose:()=>void;onStep?:(index:number)=>void}) {
   const [step,setStep]=useState(0);

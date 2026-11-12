@@ -2,7 +2,7 @@ import {expect,test} from "bun:test";
 import {readFileSync} from "node:fs";
 import {runInNewContext} from "node:vm";
 
-const source=readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8");
+const source=readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8");
 type Tree={props:Record<string,any>;children:unknown[]};
 function tourHarness() {
   const slots:any[]=[],effects:Array<()=>void>=[],events=new Map<string,Set<(e:any)=>void>>();

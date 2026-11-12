@@ -5,7 +5,7 @@ import {readNameSort} from "../src/nameSort";
 
 const noop=()=>{};
 const window:any={React:{createElement:noop,useState:noop,useRef:noop,useEffect:noop,useLayoutEffect:noop,useMemo:noop,memo:(c:unknown)=>c},matchMedia:()=>({matches:false}),addEventListener:noop,removeEventListener:noop};
-runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,Intl});
+runInNewContext(readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8"),{window,Intl});
 const {compareNames,sortByName,sortNodes}=window.RocketScience;
 
 test("Chinese names file under their pinyin initial among Latin names",()=>{

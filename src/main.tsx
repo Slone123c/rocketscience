@@ -21,7 +21,7 @@ import {ProfilesWorkspace} from "./ProfilesWorkspace";
 import {SettingsPages} from "./SettingsPages";
 import {settingsTopics,settingsTopic,navigateSettings,type SettingsTopic} from "./settingsNavigation";
 import {prepareOnboarding,takeoverGuideAction} from "./onboardingFlow";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 let DS: typeof Design;
 installErrorDisplay();
 

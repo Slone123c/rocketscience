@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import {Profiles,type ControllerOptions} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 export function ControllerSettings({design:DS,running,effective}:{design:typeof Design;running:boolean;effective:string}){
   const [saved,setSaved]=useState<ControllerOptions|null>(null),[address,setAddress]=useState("127.0.0.1"),[port,setPort]=useState("0"),[secret,setSecret]=useState("");
   const [busy,setBusy]=useState(false),[message,setMessage]=useState("");

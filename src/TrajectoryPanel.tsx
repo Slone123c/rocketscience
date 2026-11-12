@@ -1,5 +1,5 @@
 import React, {useEffect,useRef,useState} from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import {Service,type ConnectionSnapshot,type ForwardRoute,type IPLocation,type NodeLocation} from "./mygo";
 import {aggregateRoutes,emptyRouteState,type RouteNode} from "./trajectoryData";
 import {localOrigin} from "./localOrigin";

@@ -1,6 +1,6 @@
 import React, {useEffect,useState} from "react";
 import { Desktop, Profiles } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function StartupSettings({design:DS}:{design:typeof Design}) {
   const [login,setLogin]=useState<boolean|null>(null),[connect,setConnect]=useState<boolean|null>(null);

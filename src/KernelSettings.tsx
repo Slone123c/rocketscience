@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Service, type KernelInfo, type MemoryUsage} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function KernelSettings({design:DS,running, memory, busy, onRestart}:{design:typeof Design;running:boolean;memory:MemoryUsage|null;busy:boolean;onRestart:()=>Promise<void>}) {
   const [info,setInfo]=useState<KernelInfo|null>(null);

@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import {Profiles,type InboundOptions} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 export function InboundSettings({design:DS,running}:{design:typeof Design;running:boolean}){
   const [saved,setSaved]=useState<InboundOptions|null>(null),[http,setHTTP]=useState("0"),[socks,setSOCKS]=useState("0"),[custom,setCustom]=useState(false);
   const [accounts,setAccounts]=useState<Array<{username:string;password:string}>>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState("");

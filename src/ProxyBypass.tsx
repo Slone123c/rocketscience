@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Profiles, type ProxyBypassSettings } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function ProxyBypass({ design: DS, running }: { design: typeof Design; running: boolean }) {
   const [saved, setSaved] = useState<ProxyBypassSettings | null>(null);

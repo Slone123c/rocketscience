@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from "react";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 import type {App,ConnectionSnapshot} from "./mygo";
 import {filterConnections} from "./listFilters";
 import {PageTools} from "./pageTools";

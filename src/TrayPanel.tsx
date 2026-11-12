@@ -6,7 +6,7 @@ import { proxyLayout } from "./proxyLayout";
 import { useNameSort } from "./nameSort";
 import {createRefreshQueue} from "./viewRefresh";
 import {createTrayTasks} from "./trayTasks";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 export function TrayPanel({ design: DS }: { design: typeof Design }) {
   useAppearance();

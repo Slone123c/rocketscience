@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from "react";
 import {WiFi,Desktop,type WiFiSettings as Values,type WiFiStatus} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 export function WiFiSettings({design:DS}:{design:typeof Design}){
   const [saved,setSaved]=useState<Values|null>(null),[state,setState]=useState<WiFiStatus|null>(null),[names,setNames]=useState("");
   const namesRef=useRef(names);

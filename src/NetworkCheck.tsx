@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Service, events, type Connectivity, type Status } from "./mygo";
 import {confirmProxyCloseMessage,createNetworkCheckFlow,initialCheckState} from "./networkCheckFlow";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 interface Props {
   design: typeof Design;

@@ -1,11 +1,11 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import css from "../design-system/components/bundle.css?raw";
-import tokens from "../design-system/tokens.json";
-import type * as Design from "../design-system/components/index";
+import css from "./ui/bundle.css?raw";
+import tokens from "./ui/theme-tokens.json";
+import type * as Design from "./ui/index";
 import { readAppearance, themeName } from "./appearance";
 
-// The prototype ships as a browser bundle. Load it once against this apps React.
+// Runtime UI bundle (application-owned). Load once against this app's React.
 export async function loadDesign(): Promise<typeof Design> {
   const host = window as unknown as { React: typeof React; ReactDOM: typeof ReactDOM; RocketScience: typeof Design };
   host.React = React;
@@ -22,10 +22,9 @@ export async function loadDesign(): Promise<typeof Design> {
   const stored = readAppearance(localStorage.getItem("rs-appearance"));
   document.documentElement.setAttribute("data-theme", themeName(stored, window.matchMedia("(prefers-color-scheme: dark)").matches));
   const style = document.createElement("style");
-  // Use system font fallbacks offline; do not fetch web fonts during startup.
   style.textContent = `:root{${shared.join(";")}}\n:root,[data-theme="void"]{${themeVars("void")}}\n[data-theme="paper"]{${themeVars("paper")}}\n` + css.replace(/^@import[^\n]*\n/, "");
   document.head.appendChild(style);
-  await import("../design-system/components/bundle.js");
+  await import("./ui/bundle.js");
   if (!host.RocketScience) throw new Error("无法加载设计组件");
   return host.RocketScience;
 }

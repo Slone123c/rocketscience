@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Profiles, type CoreOptions } from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 type BoolField = "ipv6" | "tcpConcurrent" | "unifiedDelay" | "sniffer";
 const switches: Array<{ field:BoolField; title:string; keyName:string; description:string }> = [

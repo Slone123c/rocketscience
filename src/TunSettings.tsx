@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from "react";
 import {Desktop,Profiles,Service,type TunOptions} from "./mygo";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 const fields:Array<{key:"autoRoute"|"autoDetectInterface"|"strictRoute";label:string;hint:string}>=[
   {key:"autoRoute",label:"自动路由",hint:"auto-route · 关闭后需自行配置流量进入虚拟网卡的路由。"},
   {key:"autoDetectInterface",label:"自动检测出口网卡",hint:"auto-detect-interface"},

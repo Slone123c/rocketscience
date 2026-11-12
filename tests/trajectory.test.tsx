@@ -29,7 +29,7 @@ describe("prototype trajectory safety",()=>{
   test("unknown origin is hidden and unlocated nodes do not get invented coordinates",async()=>{
     const target=globalThis as unknown as {window:Record<string,unknown>};
     target.window={React,matchMedia:()=>({matches:true})};
-    await import("../design-system/components/bundle.js");
+    await import("../src/ui/bundle.js");
     const DS=target.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const markup=renderToStaticMarkup(<DS.Trajectory originGeo={null} zoomable={false} nodes={[{name:"东京 01",estimated:true},{name:"no-location-xyz"}]}/>);
     // Labels show only the node; the caption says positions are guessed.
@@ -44,7 +44,7 @@ describe("prototype trajectory safety",()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
     // bundle.js is a browser IIFE, not an ES module, so a static import cannot load it.
-    await import("../design-system/components/bundle.js?hop");
+    await import("../src/ui/bundle.js?hop");
     const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const markup=renderToStaticMarkup(<DS.Trajectory origin="" originGeo={[113.3,23.1]} zoomable={false} nodes={[{
       name:"CN2-1-备",active:true,lon:-118.24,lat:34.05,place:"Los Angeles, US",
@@ -58,7 +58,7 @@ describe("prototype trajectory safety",()=>{
   test("the CN2 line name is not read as China",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
-    await import("../design-system/components/bundle.js?cn2");
+    await import("../src/ui/bundle.js?cn2");
     const DS=host.window.RocketScience as {flagOf:(name:string)=>{code:string}|null;geoOf:(name:string)=>unknown};
     for(const name of ["CN2-1-备-2","CN2 GIA 01","CN2GIA"]){
       expect(DS.flagOf(name)).toBeNull();
@@ -74,7 +74,7 @@ describe("prototype trajectory safety",()=>{
   test("draws the flag of the country each IP was located in",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
-    await import("../design-system/components/bundle.js?flags");
+    await import("../src/ui/bundle.js?flags");
     const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const markup=renderToStaticMarkup(<DS.Trajectory origin="Guangzhou, CN" originCountry="CN" originGeo={[113.3,23.1]} zoomable={false} nodes={[{
       name:"日本 01",lon:-118.24,lat:34.05,place:"Los Angeles, US",country:"US",
@@ -90,7 +90,7 @@ describe("prototype trajectory safety",()=>{
   test("an unfinished trace ends in a segment saying where it stopped",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
-    await import("../design-system/components/bundle.js?unreached");
+    await import("../src/ui/bundle.js?unreached");
     const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const render=(tail:Record<string,unknown>)=>renderToStaticMarkup(<DS.Trajectory zoomable={false} nodes={[{name:"东京 01",lon:139.69,lat:35.69,route:{segments:[{label:"公网",kind:"carrier",hops:1,ms:10,hopList:[{ip:"203.0.113.1",ms:10}]},tail]}}]}/>);
     const silent=render({label:"第 1 跳后无回应",kind:"unreached",hops:2,hopList:[{ip:"",ms:-1},{ip:"",ms:-1}]});
@@ -106,7 +106,7 @@ describe("prototype trajectory safety",()=>{
   test("route rows carry no summary sentence, only a trace error or progress",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};
     host.window={React,matchMedia:()=>({matches:true})};
-    await import("../design-system/components/bundle.js?note");
+    await import("../src/ui/bundle.js?note");
     const DS=host.window.RocketScience as {Trajectory:React.ComponentType<Record<string,unknown>>};
     const render=(node:Record<string,unknown>)=>renderToStaticMarkup(<DS.Trajectory zoomable={false} nodes={[{name:"东京 01",lon:139.69,lat:35.69,...node}]}/>);
     const segments=[{label:"电信 163",kind:"carrier",hops:1,ms:9}];

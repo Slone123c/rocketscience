@@ -4,11 +4,11 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {readFileSync} from "node:fs";
 import {runInNewContext} from "node:vm";
 import {ProxyList} from "../src/ProxyList";
-import type * as Design from "../design-system/components/index";
+import type * as Design from "./ui/index";
 
 test("stopped preview lets people choose and test the node in use",()=>{
   const window:any={React,matchMedia:()=>({matches:true})};
-  runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
+  runInNewContext(readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8"),{window,console});
   const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running={false} groups={[{name:"选择",type:"Selector",now:"东京",all:["东京"],nodes:[{name:"东京",type:"ss",udp:true,delay:null,delayAt:""}]}]} delays={{}} testing={Object.create(null)} onTest={()=>{throw Error("preview test")}} onSelect={()=>{throw Error("preview select")}}/>);
   expect(markup).toContain("下次启动时生效");
   expect(markup).toContain("东京");
@@ -26,7 +26,7 @@ test("stopped preview lets people choose and test the node in use",()=>{
 
 test("running groups show explicit selected labels while the summary names observed usage separately",()=>{
   const window:any={React,matchMedia:()=>({matches:true})};
-  runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
+  runInNewContext(readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8"),{window,console});
   const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running mode="global" groups={[{name:"GLOBAL",type:"Selector",now:"Tokyo",all:["Tokyo"],nodes:[]}]} snapshot={{connections:[{chains:["London","GLOBAL"]} as any],uploadTotal:0,downloadTotal:0}} delays={{}} testing={Object.create(null)} onTest={()=>{}} onSelect={()=>{}} onConnections={()=>{}}/>);
   expect(markup).toContain("全局出站：Tokyo");
   expect(markup).toContain("GLOBAL → Tokyo");
@@ -40,7 +40,7 @@ test("running groups show explicit selected labels while the summary names obser
 
 test("rule mode shows one main exit and collapses branch groups to their final node",()=>{
   const window:any={React,matchMedia:()=>({matches:true})};
-  runInNewContext(readFileSync(new URL("../design-system/components/bundle.js",import.meta.url),"utf8"),{window,console});
+  runInNewContext(readFileSync(new URL("../src/ui/bundle.js",import.meta.url),"utf8"),{window,console});
   const g=(name:string,now:string,all:string[],rules=0,fallback=false)=>({name,type:"Selector",now,all,nodes:[],rules,fallback});
   const groups=[g("节点选择","香港 01",["香港 01","日本 01"],40),g("国外媒体","节点选择",["节点选择","日本 01"],12),g("漏网之鱼","节点选择",["节点选择","DIRECT"],1,true),g("GLOBAL","DIRECT",["节点选择","DIRECT"])];
   const markup=renderToStaticMarkup(<ProxyList design={window.RocketScience as typeof Design} running mode="rule" groups={groups} delays={{}} testing={Object.create(null)} onTest={()=>{}} onSelect={()=>{}}/>);
