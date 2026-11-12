@@ -87,7 +87,7 @@ try {
   const requiredBasenames=[
     "mihomo-GPL-3.0.txt","rocketscience-GPL-3.0.txt","THIRD_PARTY_NOTICES.md",
     "npm-react-19.3.1.txt","npm-react-dom-19.3.1.txt","npm-mygo-runtime-0.7.1.txt",
-    "go-egoist-mygo-v0.7.1.txt","go-metacubex-sing-tun-v0.4.28.txt",
+    "go-egoist-mygo-v0-7-1.txt","go-metacubex-sing-tun-v0.4.28.txt",
   ];
   for(const name of requiredBasenames){
     const file=join(licenses,name);

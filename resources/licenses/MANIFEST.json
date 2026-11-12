@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-12T15:39:23.330Z",
+  "generated": "2026-11-12T15:40:12.266Z",
   "npm": [
     "react@19.3.1",
     "react-dom@19.3.1",
@@ -95,23 +95,8 @@
     "github.com/metacubex/sing-quic@v0.0.0-20260904234848-1c242664697a",
     "github.com/metacubex/sing-shadowsocks2@v0.2.8",
     "github.com/metacubex/sing-vmess@v0.2.5",
-    "github.com/metacubex/gvisor@v0.0.0-20260922041103-e2cbcd6e7400",
     "github.com/metacubex/sing-wireguard@v0.0.0-20261002050126-e5fa1a607406",
     "github.com/metacubex/ssh@v0.1.0",
-    "github.com/metacubex/tailscale@v0.0.0-20260821153257-ff0ecd818181",
-    "github.com/metacubex/jsonv2@v0.0.0-20260721082349-16b4998c8f89",
-    "go4.org/mem@v0.0.0-20240501181205-ae6ca9944745",
-    "github.com/x448/float16@v0.8.4",
-    "github.com/fxamacker/cbor/v2@v2.9.0",
-    "github.com/metacubex/tailscale-wireguard-go@v0.0.0-20260725073821-e61ab99cede2",
-    "github.com/mitchellh/go-ps@v1.0.0",
-    "github.com/golang/groupcache@v0.0.0-20241129210726-2c02b8208cf8",
-    "github.com/tailscale/certstore@v0.1.1-0.20260409135935-3638fb84b77d",
-    "github.com/tailscale/peercred@v0.0.0-20250107143737-35a0c7bd7edc",
-    "github.com/tailscale/hujson@v0.0.0-20221223112325-20486734a56a",
-    "github.com/pires/go-proxyproto@v0.8.0",
-    "github.com/google/pprof@v0.0.0-20240727154555-813a5fbdbec8",
-    "golang.org/x/term@v0.46.0",
     "github.com/metacubex/zerotier-go@v0.0.0-20260813124750-13fa6f45da5f",
     "github.com/dlclark/regexp2@v1.12.0",
     "go.yaml.in/yaml/v3@v3.0.5",
@@ -125,6 +110,7 @@
     "github.com/hashicorp/golang-lru/v2@v2.0.7",
     "github.com/ulikunitz/xz@v0.5.15",
     "github.com/stangelandcl/ppmd@v0.1.1",
+    "github.com/google/pprof@v0.0.0-20240727154555-813a5fbdbec8",
     "github.com/ajg/form@v1.7.1",
     "gopkg.in/yaml.v3@v3.0.1"
   ]

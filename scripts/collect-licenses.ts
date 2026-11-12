@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {copyFileSync,existsSync,mkdirSync,readFileSync,readdirSync,statSync,writeFileSync} from "node:fs";
+import {copyFileSync,existsSync,mkdirSync,readFileSync,readdirSync,rmSync,statSync,writeFileSync} from "node:fs";
 import {basename,join,resolve} from "node:path";
 
 const root=resolve(import.meta.dir,"..");
@@ -127,6 +127,16 @@ function main(){
 
   const manifest={generated:new Date().toISOString(),npm:npm.map(e=>`${e.id}@${e.version}`),go:goModules.map(([p,v])=>`${p}@${v}`)};
   writeFileSync(join(outDir,"MANIFEST.json"),JSON.stringify(manifest,null,2)+"\n","utf8");
+  const keep=new Set([
+    "MANIFEST.json","THIRD_PARTY_NOTICES.md","mihomo-GPL-3.0.txt","rocketscience-GPL-3.0.txt",
+    "go-metacubex-sing-tun-v0.4.28.txt",
+    ...npm.map(e=>`npm-${e.id.replace(/[@/]/g,"-")}-${e.version}.txt`),
+    ...goModules.map(([, , file])=>file),
+  ]);
+  for(const name of readdirSync(outDir)){
+    if(keep.has(name))continue;
+    if(/^(go-|npm-)/.test(name))rmSync(join(outDir,name),{force:true});
+  }
   console.log(`Collected ${readdirSync(outDir).length} license files into resources/licenses/`);
 }
 
