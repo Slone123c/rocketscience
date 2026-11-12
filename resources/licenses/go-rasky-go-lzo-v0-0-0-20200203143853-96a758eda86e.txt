@@ -3,6 +3,8 @@ Version: v0.0.0-20200203143853-96a758eda86e
 License: GPL-3.0
 Origin: go (go-lzo)
 ---
+# LICENSE.gpl
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
 

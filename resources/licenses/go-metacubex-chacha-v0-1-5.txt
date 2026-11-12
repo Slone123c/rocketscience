@@ -1,13 +1,13 @@
 Component: github.com/metacubex/chacha
 Version: v0.1.5
-License: See file
+License: See supplement (GPL-3.0 via mihomo)
 Origin: go (chacha)
 ---
-No LICENSE/COPYING file was found in this module revision.
-See the upstream module repository for license terms.
----
-module github.com/metacubex/chacha
+# github.com/metacubex/chacha v0.1.5 — license supplement
 
-go 1.18
+The Go module tag v0.1.5 ships without LICENSE/COPYING/NOTICE in the module cache.
 
-require golang.org/x/sys v0.22.0
+Rocket Science distributes this code only as a transitive dependency of Metacubex Mihomo (GPL-3.0-only).
+For redistribution, treat it under the same obligations as `mihomo-GPL-3.0.txt` and `go-metacubex-mihomo-v1-19-33.txt` in this directory until upstream publishes a standalone license file in the module root.
+
+Upstream: https://github.com/metacubex/chacha

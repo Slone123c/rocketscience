@@ -3,6 +3,8 @@ Version: v1.4.0
 License: MIT
 Origin: go (ws)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2017-2021 Sergey Kamardin <gobwas@gmail.com>

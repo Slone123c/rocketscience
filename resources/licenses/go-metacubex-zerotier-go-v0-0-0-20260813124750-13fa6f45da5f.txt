@@ -3,6 +3,8 @@ Version: v0.0.0-20260813124750-13fa6f45da5f
 License: See file
 Origin: go (zerotier-go)
 ---
+# LICENSE
+
 Mozilla Public License Version 2.0
 ==================================
 
@@ -376,3 +378,16 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
+
+---
+
+# NOTICE
+
+This project contains a clean Go translation of portions of the ZeroTierOne
+network virtualization engine.
+
+ZeroTierOne node engine copyright (c) ZeroTier, Inc.
+Reference source: https://github.com/zerotier/ZeroTierOne
+
+Translated files retain the Mozilla Public License 2.0 notices required by the
+upstream project. See LICENSE for the applicable license.

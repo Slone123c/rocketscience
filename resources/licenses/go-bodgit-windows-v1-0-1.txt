@@ -3,6 +3,8 @@ Version: v1.0.1
 License: See file
 Origin: go (windows)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2020, Matt Dainty

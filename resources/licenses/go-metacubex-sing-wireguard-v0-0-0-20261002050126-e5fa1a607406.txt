@@ -3,6 +3,8 @@ Version: v0.0.0-20261002050126-e5fa1a607406
 License: GPL-3.0
 Origin: go (sing-wireguard)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

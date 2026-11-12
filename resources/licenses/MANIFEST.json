@@ -1,5 +1,10 @@
 {
-  "generated": "2026-11-12T15:40:12.266Z",
+  "generated": "2026-11-12T15:49:42.488Z",
+  "goTargets": [
+    "darwin/amd64",
+    "windows/amd64",
+    "linux/amd64"
+  ],
   "npm": [
     "react@19.3.1",
     "react-dom@19.3.1",
@@ -112,6 +117,14 @@
     "github.com/stangelandcl/ppmd@v0.1.1",
     "github.com/google/pprof@v0.0.0-20240727154555-813a5fbdbec8",
     "github.com/ajg/form@v1.7.1",
-    "gopkg.in/yaml.v3@v3.0.1"
+    "gopkg.in/yaml.v3@v3.0.1",
+    "github.com/go-ole/go-ole@v1.3.0",
+    "github.com/mdlayher/netlink@v1.7.2",
+    "github.com/mdlayher/socket@v0.5.1",
+    "github.com/coreos/go-iptables@v0.8.0",
+    "github.com/metacubex/gopacket@v1.1.20-0.20230608035415-7e2f98a3e759",
+    "github.com/metacubex/nftables@v0.0.0-20260426003805-208c2c1ba2cb",
+    "github.com/vishvananda/netns@v0.0.5",
+    "github.com/sagernet/netlink@v0.0.0-20240612041022-b9a21c07ac6a"
   ]
 }

@@ -3,6 +3,8 @@ Version: v0.0.0-20260105040817-550693377604
 License: MIT
 Origin: go (kcp-go)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2015 xtaci

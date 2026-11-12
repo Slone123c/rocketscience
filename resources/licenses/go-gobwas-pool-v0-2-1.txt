@@ -3,6 +3,8 @@ Version: v0.2.1
 License: MIT
 Origin: go (pool)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2017-2019 Sergey Kamardin <gobwas@gmail.com>

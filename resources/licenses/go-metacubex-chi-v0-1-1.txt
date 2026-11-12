@@ -3,6 +3,8 @@ Version: v0.1.1
 License: MIT
 Origin: go (chi)
 ---
+# LICENSE
+
 Copyright (c) 2015-present Peter Kieltyka (https://github.com/pkieltyka), Google Inc.
 
 MIT License

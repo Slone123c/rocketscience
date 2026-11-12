@@ -3,6 +3,8 @@ Version: v0.0.0-20250325060835-cd0defd64358
 License: See file
 Origin: go (aegis)
 ---
+# LICENSE
+
 BSD 2-Clause License
 
 Copyright (c) 2021, Eric Lagergren

@@ -3,6 +3,8 @@ Version: v2.2.6
 License: MIT
 Origin: go (v2)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2015 Klaus Post

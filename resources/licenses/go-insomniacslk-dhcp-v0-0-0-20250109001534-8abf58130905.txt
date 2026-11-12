@@ -3,6 +3,8 @@ Version: v0.0.0-20250109001534-8abf58130905
 License: See file
 Origin: go (dhcp)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2018, Andrea Barberio

@@ -1,4 +1,4 @@
-import {readFileSync} from "node:fs";
+import {existsSync,readFileSync} from "node:fs";
 import {basename, join, resolve} from "node:path";
 import {assertUnderBuildOutput, safeWalk} from "./fs-safe";
 
@@ -7,7 +7,8 @@ const buildRoot = join(root, "build.noindex");
 const args = process.argv.slice(2);
 const target = resolve(args.find(arg => !arg.startsWith("--")) || buildRoot);
 
-const privatePathFragments = [
+/** Paths that must not appear in public release trees (product-agnostic). */
+const defaultPathFragments = [
   "design-system/",
   ".agents/",
   ".personal-explanation/",
@@ -15,15 +16,57 @@ const privatePathFragments = [
   "preview-telemetry",
 ];
 
-const privateContentPatterns = [
+/** Generic content heuristics; identity-specific strings belong in private config (see plans/002-scan-private-patterns.json). */
+const defaultContentPatterns = [
   /design-system\/components\/bundle\.js/i,
-  /rocket-science/i,
-  /rocketscience/i,
-  /00000000\+rocket-science@users\.noreply\.github\.com/,
+  /\.personal-explanation\//i,
+  /preview-telemetry\.html/i,
 ];
+
+type ScanPrivateConfig = {
+  pathFragments?: string[];
+  contentPatterns?: string[];
+};
+
+function loadPrivateScanConfig(): ScanPrivateConfig {
+  const candidates = [
+    process.env.ROCKETSCIENCE_SCAN_PRIVATE_CONFIG,
+    join(root, ".scan-private-patterns.json"),
+  ].filter((p): p is string => typeof p === "string" && p.length > 0);
+  for (const file of candidates) {
+    if (!existsSync(file)) {
+      continue;
+    }
+    try {
+      return JSON.parse(readFileSync(file, "utf8")) as ScanPrivateConfig;
+    } catch {
+      console.warn(`忽略无效的扫描私密配置：${file}`);
+    }
+  }
+  return {};
+}
+
+function compilePatterns(strings: string[]): RegExp[] {
+  const out: RegExp[] = [];
+  for (const raw of strings) {
+    try {
+      out.push(new RegExp(raw, "i"));
+    } catch {
+      console.warn(`忽略无效的正则：${raw}`);
+    }
+  }
+  return out;
+}
 
 try {
   assertUnderBuildOutput(target, buildRoot);
+  const extra = loadPrivateScanConfig();
+  const privatePathFragments = [...defaultPathFragments, ...(extra.pathFragments ?? [])];
+  const privateContentPatterns = [
+    ...defaultContentPatterns,
+    ...compilePatterns(extra.contentPatterns ?? []),
+  ];
+
   let files = 0;
   let bytes = 0;
   const hits: string[] = [];

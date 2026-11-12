@@ -3,6 +3,8 @@ Version: v0.43.0
 License: See file
 Origin: go (text)
 ---
+# LICENSE
+
 Copyright 2009 The Go Authors.
 
 Redistribution and use in source and binary forms, with or without

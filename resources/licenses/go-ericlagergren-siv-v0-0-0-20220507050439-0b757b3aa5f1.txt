@@ -3,6 +3,8 @@ Version: v0.0.0-20220507050439-0b757b3aa5f1
 License: See file
 Origin: go (siv)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2022, Eric Lagergren

@@ -3,6 +3,8 @@ Version: v3.38.1
 License: GPL-3.0
 Origin: go (v3)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

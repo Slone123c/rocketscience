@@ -3,6 +3,8 @@ Version: v0.61.1-0.20260727080200-2548683b76f4
 License: MIT
 Origin: go (quic-go)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2016 the quic-go authors & Google, Inc.

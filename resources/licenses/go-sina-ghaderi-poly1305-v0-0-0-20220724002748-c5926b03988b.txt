@@ -3,6 +3,8 @@ Version: v0.0.0-20220724002748-c5926b03988b
 License: GPL-3.0
 Origin: go (poly1305)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

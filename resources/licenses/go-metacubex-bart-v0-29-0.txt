@@ -3,6 +3,8 @@ Version: v0.29.0
 License: MIT
 Origin: go (bart)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2026 Karl Gaissmaier

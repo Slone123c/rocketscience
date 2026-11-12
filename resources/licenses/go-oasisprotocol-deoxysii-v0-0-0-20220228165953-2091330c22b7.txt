@@ -3,6 +3,8 @@ Version: v0.0.0-20220228165953-2091330c22b7
 License: See file
 Origin: go (deoxysii)
 ---
+# LICENSE
+
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
 Copyright (c) 2019 Oasis Labs Inc. <info@oasislabs.com>

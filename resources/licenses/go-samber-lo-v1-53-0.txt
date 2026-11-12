@@ -3,6 +3,8 @@ Version: v1.53.0
 License: MIT
 Origin: go (lo)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2022-2025 Samuel Berthe

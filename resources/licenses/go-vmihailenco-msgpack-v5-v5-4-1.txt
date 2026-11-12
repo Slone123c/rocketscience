@@ -3,6 +3,8 @@ Version: v5.4.1
 License: See file
 Origin: go (v5)
 ---
+# LICENSE
+
 Copyright (c) 2013 The github.com/vmihailenco/msgpack Authors.
 All rights reserved.
 

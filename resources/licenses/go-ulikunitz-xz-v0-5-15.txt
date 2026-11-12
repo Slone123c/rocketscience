@@ -3,6 +3,8 @@ Version: v0.5.15
 License: See file
 Origin: go (xz)
 ---
+# LICENSE
+
 Copyright (c) 2014-2022  Ulrich Kunitz
 All rights reserved.
 

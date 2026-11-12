@@ -3,6 +3,8 @@ Version: v1.12.0
 License: See file
 Origin: go (maxminddb-golang)
 ---
+# LICENSE
+
 ISC License
 
 Copyright (c) 2015, Gregory J. Oschwald <oschwald@gmail.com>

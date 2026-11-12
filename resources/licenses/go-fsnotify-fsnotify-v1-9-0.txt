@@ -3,6 +3,8 @@ Version: v1.9.0
 License: See file
 Origin: go (fsnotify)
 ---
+# LICENSE
+
 Copyright © 2012 The Go Authors. All rights reserved.
 Copyright © fsnotify Authors. All rights reserved.
 

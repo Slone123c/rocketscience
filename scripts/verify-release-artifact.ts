@@ -71,7 +71,7 @@ try{
     console.error(`发布包平台校验失败（${basename(target)}）：\n`+hits.join("\n"));
     process.exitCode=1;
   }else{
-    console.log(`发布包平台校验通过：${basename(target)}（${kind} 产物未含 macOS 专用二进制）`);
+    console.log(`发布包平台校验通过：${basename(target)}（${kind} 产物未含 macOS 专用二进制；仅检查路径/归档名单，不验证 PE/ELF 魔数）`);
   }
 }catch(error){
   console.error(error instanceof Error?error.message:String(error));

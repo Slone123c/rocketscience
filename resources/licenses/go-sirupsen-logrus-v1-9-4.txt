@@ -3,6 +3,8 @@ Version: v1.9.4
 License: MIT
 Origin: go (logrus)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Simon Eskildsen

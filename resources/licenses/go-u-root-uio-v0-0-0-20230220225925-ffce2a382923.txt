@@ -3,6 +3,8 @@ Version: v0.0.0-20230220225925-ffce2a382923
 License: See file
 Origin: go (uio)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2012-2021, u-root Authors

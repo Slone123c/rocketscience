@@ -3,6 +3,8 @@ Version: v1.0.0
 License: See file
 Origin: go (snappy)
 ---
+# LICENSE
+
 Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

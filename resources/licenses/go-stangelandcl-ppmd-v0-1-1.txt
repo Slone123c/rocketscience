@@ -3,6 +3,8 @@ Version: v0.1.1
 License: MIT
 Origin: go (ppmd)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2022 Clayton Stangeland

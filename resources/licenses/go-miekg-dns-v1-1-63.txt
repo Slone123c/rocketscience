@@ -3,6 +3,8 @@ Version: v1.1.63
 License: See file
 Origin: go (dns)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2009, The Go Authors. Extensions copyright (c) 2011, Miek Gieben. 

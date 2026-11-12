@@ -3,6 +3,8 @@ Version: v0.0.0-20240904232852-e7e105dedf7e
 License: See file
 Origin: go (exp)
 ---
+# LICENSE
+
 Copyright 2009 The Go Authors.
 
 Redistribution and use in source and binary forms, with or without

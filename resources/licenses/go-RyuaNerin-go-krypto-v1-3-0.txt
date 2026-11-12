@@ -3,6 +3,8 @@ Version: v1.3.0
 License: MIT
 Origin: go (go-krypto)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2020-2024 RyuaNerin

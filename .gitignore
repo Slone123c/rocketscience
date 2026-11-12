@@ -11,6 +11,7 @@ resources/darwin/bin/
 .cache/
 
 .DS_Store
+.scan-private-patterns.json
 .env
 .env.*
 !.env.example

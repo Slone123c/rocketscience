@@ -3,6 +3,8 @@ Version: v0.0.0-20260105030934-d0c8756d3141
 License: MIT
 Origin: go (smux)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2016-2017 xtaci

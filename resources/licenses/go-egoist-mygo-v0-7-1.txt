@@ -3,6 +3,8 @@ Version: v0.7.1
 License: MIT
 Origin: go (mygo)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2026 MyGo contributors

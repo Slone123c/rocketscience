@@ -3,6 +3,8 @@ Version: v1.34.2
 License: See file
 Origin: go (protobuf)
 ---
+# LICENSE
+
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

@@ -3,6 +3,8 @@ Version: v0.0.0-20260727080412-732f2fc9a34d
 License: MIT
 Origin: go (jls-quic-go)
 ---
+# LICENSE
+
 MIT License
 
 Copyright (c) 2016 the quic-go authors & Google, Inc.

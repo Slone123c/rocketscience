@@ -3,6 +3,8 @@ Version: v0.0.0-20220411101811-e25bc10ba391
 License: See file
 Origin: go (polyval)
 ---
+# LICENSE
+
 BSD 2-Clause License
 
 Copyright (c) 2022, Eric Lagergren

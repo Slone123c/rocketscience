@@ -3,6 +3,8 @@ Version: v0.5.8
 License: See file
 Origin: go (sing)
 ---
+# LICENSE
+
 Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
 
 This program is free software: you can redistribute it and/or modify

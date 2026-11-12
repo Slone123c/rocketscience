@@ -3,6 +3,8 @@ Version: v0.0.0-20260706163408-d4ec34ad7c48
 License: MIT
 Origin: go (bbolt)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2013 Ben Johnson

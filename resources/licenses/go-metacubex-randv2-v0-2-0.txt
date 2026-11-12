@@ -3,6 +3,8 @@ Version: v0.2.0
 License: GPL-3.0
 Origin: go (randv2)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

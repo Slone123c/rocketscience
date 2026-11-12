@@ -3,6 +3,8 @@ Version: v0.0.0-20250918083631-dd5f17c0be49
 License: See file
 Origin: go (yamux)
 ---
+# LICENSE
+
 Mozilla Public License, version 2.0
 
 1. Definitions

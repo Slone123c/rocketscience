@@ -3,6 +3,8 @@ Version: v0.0.0-20260910071355-3d0c9c3ca5e2
 License: See file
 Origin: go (easytier-go)
 ---
+# LICENSE
+
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

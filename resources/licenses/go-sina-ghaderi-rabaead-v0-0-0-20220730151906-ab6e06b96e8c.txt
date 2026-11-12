@@ -3,6 +3,8 @@ Version: v0.0.0-20220730151906-ab6e06b96e8c
 License: GPL-3.0
 Origin: go (rabaead)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

@@ -3,6 +3,8 @@ Version: v0.0.0-20190805113838-0a714cd429ec
 License: See file
 Origin: go (bsaes.git)
 ---
+# LICENSE.txt
+
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
 

@@ -3,6 +3,8 @@ Version: v1.3.0
 License: See file
 Origin: go (plumbing)
 ---
+# LICENSE
+
 BSD 3-Clause License
 
 Copyright (c) 2019, Matt Dainty

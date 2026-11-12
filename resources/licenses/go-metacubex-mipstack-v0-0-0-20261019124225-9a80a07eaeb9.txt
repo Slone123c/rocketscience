@@ -3,6 +3,8 @@ Version: v0.0.0-20261019124225-9a80a07eaeb9
 License: See file
 Origin: go (mipstack)
 ---
+# LICENSE
+
 Mozilla Public License Version 2.0
 ==================================
 

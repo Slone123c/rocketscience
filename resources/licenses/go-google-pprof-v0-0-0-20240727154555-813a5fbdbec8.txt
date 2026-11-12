@@ -1,8 +1,10 @@
 Component: github.com/google/pprof
 Version: v0.0.0-20240727154555-813a5fbdbec8
-License: See file
+License: Apache-2.0
 Origin: go (pprof)
 ---
+# LICENSE
+
 
                                  Apache License
                            Version 2.0, January 2004

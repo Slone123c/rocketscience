@@ -4,8 +4,18 @@ import {basename,join,resolve} from "node:path";
 
 const root=resolve(import.meta.dir,"..");
 const outDir=join(root,"resources","licenses");
+const supplementsDir=join(outDir,"supplements");
+const supplementsManifest=join(outDir,"supplements.json");
+
+const releaseGoTargets=[{goos:"darwin",goarch:"amd64"},{goos:"windows",goarch:"amd64"},{goos:"linux",goarch:"amd64"}] as const;
+
+const licenseFileNames=[
+  "LICENSE","LICENSE.md","LICENSE.txt","LICENSE.gpl","LICENSE-MIT","LICENSE.APACHE","COPYING","COPYING.md",
+  "NOTICE","NOTICE.txt","UNLICENSE","LICENCE","LICENCE.txt",
+];
 
 type Entry={id:string;version:string;licenseHint:string;source:"npm"|"go"|"repo";path:string};
+type MissingLicense={module:string;dir:string;searched:string[]};
 
 function header(entry:Entry,body:string):string {
   return [
@@ -35,21 +45,29 @@ function readNpm(name:string,folder:string):Entry{
   return {id:name,version:pkg.version,licenseHint:hint,source:"npm",path:folder};
 }
 
-function findGoLicense(moduleDir:string):string{
-  for(const name of ["LICENSE","LICENSE.md","LICENSE.txt","LICENSE.gpl","COPYING","COPYING.md","NOTICE","NOTICE.txt"]){
+function collectGoLicenseTexts(moduleDir:string):{body:string;files:string[];hint:string}{
+  const parts:string[]=[];
+  const found:string[]=[];
+  for(const name of licenseFileNames){
     const p=join(moduleDir,name);
-    if(existsSync(p)&&statSync(p).isFile())return readFileSync(p,"utf8");
+    if(existsSync(p)&&statSync(p).isFile()){
+      parts.push(`# ${name}\n\n${readFileSync(p,"utf8").trimEnd()}`);
+      found.push(name);
+    }
   }
-  const goMod=join(moduleDir,"go.mod");
-  if(existsSync(goMod)){
-    return [
-      "No LICENSE/COPYING file was found in this module revision.",
-      "See the upstream module repository for license terms.",
-      "---",
-      readFileSync(goMod,"utf8"),
-    ].join("\n");
+  if(parts.length===0){
+    const err=new Error(`未找到许可证文件：${moduleDir}`) as Error&MissingLicense;
+    err.module=moduleDir;
+    err.dir=moduleDir;
+    err.searched=[...licenseFileNames];
+    throw err;
   }
-  throw new Error(`Go 模块目录中未找到许可证：${moduleDir}`);
+  const body=parts.join("\n\n---\n\n");
+  let hint="See file";
+  if(body.includes("GNU GENERAL PUBLIC LICENSE"))hint="GPL-3.0";
+  else if(/MIT License/i.test(body))hint="MIT";
+  else if(/Apache License/i.test(body))hint="Apache-2.0";
+  return {body,files:found,hint};
 }
 
 function moduleDir(modPath:string,version:string):string{
@@ -59,17 +77,55 @@ function moduleDir(modPath:string,version:string):string{
   return info.Dir;
 }
 
-function readGo(modPath:string,version:string,filename:string){
+function loadSupplements():Record<string,string>{
+  if(!existsSync(supplementsManifest))return {};
+  const raw=JSON.parse(readFileSync(supplementsManifest,"utf8")) as Record<string,string>;
+  return raw;
+}
+
+function readGo(modPath:string,version:string,filename:string,supplements:Record<string,string>){
   execFileSync("go",["mod","download",`${modPath}@${version}`],{cwd:root,stdio:"ignore"});
   const dir=moduleDir(modPath,version);
-  const body=findGoLicense(dir);
-  const hint=body.includes("GNU GENERAL PUBLIC LICENSE")?"GPL-3.0":body.includes("MIT License")?"MIT":"See file";
+  const key=`${modPath}@${version}`;
+  let body:string;
+  let hint:string;
+  try{
+    ({body,hint}=collectGoLicenseTexts(dir));
+  }catch(err){
+    const rel=supplements[key];
+    if(!rel){
+      throw err;
+    }
+    const supPath=join(supplementsDir,rel);
+    if(!existsSync(supPath)){
+      throw new Error(`许可证补充文件缺失：${supPath}（${key}）`);
+    }
+    body=readFileSync(supPath,"utf8");
+    hint="See supplement (GPL-3.0 via mihomo)";
+  }
   writeEntry({id:modPath,version,licenseHint:hint,source:"go",path:modPath},body,filename);
+}
+
+function listGoModulesForTarget(goos:string,goarch:string):Array<[string,string]>{
+  const lines=execFileSync(
+    "go",
+    ["list","-deps","-f","{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}","./..."],
+    {cwd:root,encoding:"utf8",env:{...process.env,GOOS:goos,GOARCH:goarch}},
+  )
+    .split("\n")
+    .map(line=>line.trim())
+    .filter(Boolean);
+  const out:Array<[string,string]>=[];
+  for(const line of lines){
+    const space=line.indexOf(" ");
+    if(space<0)continue;
+    out.push([line.slice(0,space),line.slice(space+1)]);
+  }
+  return out;
 }
 
 function main(){
   mkdirSync(outDir,{recursive:true});
-  // First-party
   writeEntry(
     {id:"rocketscience",version:"0.1.0",licenseHint:"GPL-3.0",source:"repo",path:"LICENSE"},
     readFileSync(join(root,"LICENSE"),"utf8"),
@@ -96,36 +152,50 @@ function main(){
   const pinnedSingTun="github.com/metacubex/sing-tun@v0.4.28";
 
   const mainModule=execFileSync("go",["list","-m","-f","{{.Path}}"],{cwd:root,encoding:"utf8"}).trim();
-  const depLines=execFileSync(
-    "go",
-    ["list","-deps","-f","{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}","./..."],
-    {cwd:root,encoding:"utf8"},
-  )
-    .split("\n")
-    .map(line=>line.trim())
-    .filter(Boolean);
   const seen=new Set<string>();
   const goModules:Array<[string,string,string]>=[];
+  const missing:MissingLicense[]=[];
   const fileFor=(modPath:string,version:string)=>{
     const slug=modPath.replace(/^github\.com\//,"").replaceAll("/","-").replaceAll("@","-");
     const verSlug=version.replace(/^v/,"").replaceAll(".","-");
     return `go-${slug}-v${verSlug}.txt`;
   };
-  for(const line of depLines){
-    const space=line.indexOf(" ");
-    if(space<0)continue;
-    const modPath=line.slice(0,space);
-    const version=line.slice(space+1);
-    if(!modPath||!version||modPath===mainModule)continue;
-  if(`${modPath}@${version}`===pinnedSingTun)continue;
-    const key=`${modPath}@${version}`;
-    if(seen.has(key))continue;
-    seen.add(key);
-    goModules.push([modPath,version,fileFor(modPath,version)]);
-  }
-  for(const [path,ver,file] of goModules)readGo(path,ver,file);
 
-  const manifest={generated:new Date().toISOString(),npm:npm.map(e=>`${e.id}@${e.version}`),go:goModules.map(([p,v])=>`${p}@${v}`)};
+  for(const {goos,goarch} of releaseGoTargets){
+    for(const [modPath,version] of listGoModulesForTarget(goos,goarch)){
+      if(!modPath||!version||modPath===mainModule)continue;
+      if(`${modPath}@${version}`===pinnedSingTun)continue;
+      const key=`${modPath}@${version}`;
+      if(seen.has(key))continue;
+      seen.add(key);
+      goModules.push([modPath,version,fileFor(modPath,version)]);
+    }
+  }
+
+  const supplements=loadSupplements();
+  for(const [path,ver,file] of goModules){
+    try{
+      readGo(path,ver,file,supplements);
+    }catch(err){
+      if(err instanceof Error&&"searched" in err){
+        const m=err as Error&MissingLicense;
+        missing.push({module:`${path}@${ver}`,dir:m.dir,searched:m.searched});
+      }else{
+        throw err;
+      }
+    }
+  }
+  if(missing.length){
+    const detail=missing.map(m=>`${m.module}: 未找到 ${m.searched.join(", ")}`).join("\n");
+    throw new Error(`以下 Go 模块缺少可发布的许可证文件：\n${detail}`);
+  }
+
+  const manifest={
+    generated:new Date().toISOString(),
+    goTargets:releaseGoTargets.map(t=>`${t.goos}/${t.goarch}`),
+    npm:npm.map(e=>`${e.id}@${e.version}`),
+    go:goModules.map(([p,v])=>`${p}@${v}`),
+  };
   writeFileSync(join(outDir,"MANIFEST.json"),JSON.stringify(manifest,null,2)+"\n","utf8");
   const keep=new Set([
     "MANIFEST.json","THIRD_PARTY_NOTICES.md","mihomo-GPL-3.0.txt","rocketscience-GPL-3.0.txt",
@@ -137,7 +207,7 @@ function main(){
     if(keep.has(name))continue;
     if(/^(go-|npm-)/.test(name))rmSync(join(outDir,name),{force:true});
   }
-  console.log(`Collected ${readdirSync(outDir).length} license files into resources/licenses/`);
+  console.log(`Collected ${readdirSync(outDir).length} license files into resources/licenses/ (go targets: ${manifest.goTargets.join(", ")})`);
 }
 
 try{main();}catch(e){console.error(e instanceof Error?e.message:String(e));process.exitCode=1;}

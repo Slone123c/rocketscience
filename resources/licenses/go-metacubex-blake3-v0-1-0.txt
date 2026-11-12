@@ -3,6 +3,8 @@ Version: v0.1.0
 License: MIT
 Origin: go (blake3)
 ---
+# LICENSE
+
 The MIT License (MIT)
 
 Copyright (c) 2020 Luke Champine

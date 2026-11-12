@@ -3,6 +3,8 @@ Version: v1.19.33
 License: GPL-3.0
 Origin: go (mihomo)
 ---
+# LICENSE
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
