@@ -14,6 +14,10 @@ func (b *journalTrapBackend) CompareAndSwap([]Change) ([]string, error) {
 	b.called = true
 	return nil, nil
 }
+func (b *journalTrapBackend) CompareAndSwapPartial([]Change) ([]string, error) {
+	b.called = true
+	return nil, nil
+}
 
 func TestMalformedJournalNeverCallsSystemBackend(t *testing.T) {
 	valid := func() Change {

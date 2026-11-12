@@ -1,3 +1,6 @@
 {
-  "github.com/metacubex/chacha@v0.1.5": "metacubex-chacha-v0.1.5.txt"
+  "github.com/metacubex/chacha@v0.1.5": {
+    "file": "metacubex-chacha-v0.1.5.txt",
+    "licenseHint": "MIT (upstream LICENSE blob 1440ef3906198ee444765c54715bce210c2ff6f4; see supplement)"
+  }
 }

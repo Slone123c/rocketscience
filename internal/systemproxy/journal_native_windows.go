@@ -2,18 +2,22 @@
 
 package systemproxy
 
-func nativeJournalChange(s Service, port int, _ *[]string) (Change, bool) {
+func nativeJournalChanges(s Service, port int, _ *[]string) []Change {
 	if s.ID != winINETServiceID {
-		return Change{}, false
+		return nil
 	}
-	nativeKeys := []string{winINETKeyProxyServerRaw, winINETKeyAutoConfigURL}
-	return Change{
-		ID:       s.ID,
-		Expected: pickKeys(s.Settings, nativeKeys),
-		Desired: Settings{
-			winINETKeyProxyServerRaw: rawString(proxyServerLine(port)),
-			winINETKeyAutoConfigURL:  rawString(""),
+	return []Change{
+		{
+			ID:       s.ID,
+			Expected: pickKeys(s.Settings, []string{winINETKeyProxyServerRaw}),
+			Desired:  Settings{winINETKeyProxyServerRaw: rawString(proxyServerLine(port))},
+			Keys:     []string{winINETKeyProxyServerRaw},
 		},
-		Keys: nativeKeys,
-	}, true
+		{
+			ID:       s.ID,
+			Expected: pickKeys(s.Settings, []string{winINETKeyAutoConfigURL}),
+			Desired:  Settings{winINETKeyAutoConfigURL: rawString("")},
+			Keys:     []string{winINETKeyAutoConfigURL},
+		},
+	}
 }

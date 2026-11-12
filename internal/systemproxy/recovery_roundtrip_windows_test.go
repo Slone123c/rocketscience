@@ -4,6 +4,7 @@ package systemproxy
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -30,6 +31,36 @@ func TestJournalAcceptsWinINETNativeFields(t *testing.T) {
 	}}
 	if err := validateJournalChanges(changes); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWindowsPartialRestoreExternalPACOnly(t *testing.T) {
+	original := winINETSnapshot{
+		ProxyEnable:   false,
+		ProxyServer:   "http=corp.example:8080",
+		AutoConfigURL: "http://pac.corp/proxy.pac",
+	}
+	mem := &memWinINET{snap: original}
+	journal := filepath.Join(t.TempDir(), "proxy-recovery.json")
+	if err := New(WindowsBackend{Access: mem}, journal).Apply(7890); err != nil {
+		t.Fatal(err)
+	}
+	mem.snap.AutoConfigURL = "http://user-edited.pac"
+	conflicts, err := New(WindowsBackend{Access: mem}, journal).Restore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conflicts) == 0 {
+		t.Fatal("expected PAC native group conflict")
+	}
+	if mem.snap.ProxyServer != original.ProxyServer {
+		t.Fatalf("ProxyServer=%q want %q", mem.snap.ProxyServer, original.ProxyServer)
+	}
+	if mem.snap.AutoConfigURL != "http://user-edited.pac" {
+		t.Fatalf("external PAC kept: %q", mem.snap.AutoConfigURL)
+	}
+	if _, err := os.Stat(journal); err != nil {
+		t.Fatal("journal must remain after partial restore")
 	}
 }
 

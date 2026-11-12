@@ -3,6 +3,7 @@
 package systemproxy
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -81,6 +82,45 @@ func TestLinuxBackendRecoveryRoundTrip_autoAndManual(t *testing.T) {
 		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
 		if ignore != `['corp.lan']` {
 			t.Fatalf("ignore-hosts=%q", ignore)
+		}
+	})
+
+	t.Run("external bypass edit partial restore", func(t *testing.T) {
+		originalIgnore := `['corp.lan']`
+		runner := &mapGSettings{data: map[string]string{
+			"org.gnome.system.proxy\x00mode":           `'manual'`,
+			"org.gnome.system.proxy.http\x00host":        `'127.0.0.1'`,
+			"org.gnome.system.proxy.http\x00port":        `uint32 1`,
+			"org.gnome.system.proxy.https\x00host":       `'127.0.0.1'`,
+			"org.gnome.system.proxy.https\x00port":       `uint32 1`,
+			"org.gnome.system.proxy.socks\x00host":       `'127.0.0.1'`,
+			"org.gnome.system.proxy.socks\x00port":       `uint32 1`,
+			"org.gnome.system.proxy\x00ignore-hosts":     originalIgnore,
+			"org.gnome.system.proxy\x00autoconfig-url":   `''`,
+		}}
+		j := filepath.Join(t.TempDir(), "proxy-recovery.json")
+		backend := LinuxBackend{Runner: runner}
+		if err := New(backend, j).Apply(7890); err != nil {
+			t.Fatal(err)
+		}
+		runner.data["org.gnome.system.proxy\x00ignore-hosts"] = `['user-edited']`
+		conflicts, err := New(LinuxBackend{Runner: runner}, j).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(conflicts) == 0 {
+			t.Fatal("expected ignore-hosts group conflict")
+		}
+		mode, _ := runner.Get("org.gnome.system.proxy", "mode")
+		if mode != `'none'` {
+			t.Fatalf("loopback groups restored mode=%q", mode)
+		}
+		ignore, _ := runner.Get("org.gnome.system.proxy", "ignore-hosts")
+		if ignore != `['user-edited']` {
+			t.Fatalf("external bypass kept: %q", ignore)
+		}
+		if _, err := os.Stat(j); err != nil {
+			t.Fatal("journal must remain after partial restore")
 		}
 	})
 

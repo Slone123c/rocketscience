@@ -77,13 +77,23 @@ function moduleDir(modPath:string,version:string):string{
   return info.Dir;
 }
 
-function loadSupplements():Record<string,string>{
+type SupplementRef={file:string;licenseHint:string};
+
+function loadSupplements():Record<string,SupplementRef>{
   if(!existsSync(supplementsManifest))return {};
-  const raw=JSON.parse(readFileSync(supplementsManifest,"utf8")) as Record<string,string>;
-  return raw;
+  const raw=JSON.parse(readFileSync(supplementsManifest,"utf8")) as Record<string,SupplementRef|string>;
+  const out:Record<string,SupplementRef>={};
+  for(const [key,val] of Object.entries(raw)){
+    if(typeof val==="string"){
+      out[key]={file:val,licenseHint:"See supplement"};
+    }else{
+      out[key]=val;
+    }
+  }
+  return out;
 }
 
-function readGo(modPath:string,version:string,filename:string,supplements:Record<string,string>){
+function readGo(modPath:string,version:string,filename:string,supplements:Record<string,SupplementRef>){
   execFileSync("go",["mod","download",`${modPath}@${version}`],{cwd:root,stdio:"ignore"});
   const dir=moduleDir(modPath,version);
   const key=`${modPath}@${version}`;
@@ -92,16 +102,16 @@ function readGo(modPath:string,version:string,filename:string,supplements:Record
   try{
     ({body,hint}=collectGoLicenseTexts(dir));
   }catch(err){
-    const rel=supplements[key];
-    if(!rel){
+    const ref=supplements[key];
+    if(!ref){
       throw err;
     }
-    const supPath=join(supplementsDir,rel);
+    const supPath=join(supplementsDir,ref.file);
     if(!existsSync(supPath)){
       throw new Error(`许可证补充文件缺失：${supPath}（${key}）`);
     }
     body=readFileSync(supPath,"utf8");
-    hint="See supplement (GPL-3.0 via mihomo)";
+    hint=ref.licenseHint;
   }
   writeEntry({id:modPath,version,licenseHint:hint,source:"go",path:modPath},body,filename);
 }

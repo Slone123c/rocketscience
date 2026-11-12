@@ -113,6 +113,14 @@ func (b WindowsBackend) Snapshot() ([]Service, error) {
 }
 
 func (b WindowsBackend) CompareAndSwap(changes []Change) ([]string, error) {
+	return b.compareAndSwap(changes, false)
+}
+
+func (b WindowsBackend) CompareAndSwapPartial(changes []Change) ([]string, error) {
+	return b.compareAndSwap(changes, true)
+}
+
+func (b WindowsBackend) compareAndSwap(changes []Change, partial bool) ([]string, error) {
 	services, err := b.Snapshot()
 	if err != nil {
 		return nil, err
@@ -121,19 +129,22 @@ func (b WindowsBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	conflicts, updated := applyChanges(services, changes)
-	if len(conflicts) > 0 {
-		return conflicts, nil
-	}
+	conflicts, updated, applied := applyChanges(services, changes)
 	if len(updated) != 1 || updated[0].ID != winINETServiceID {
 		return nil, fmt.Errorf("Internet 设置状态无效")
 	}
-	next := applyWinINETChanges(current, updated[0].Settings, changes)
+	if len(conflicts) > 0 && !partial {
+		return conflicts, nil
+	}
+	if len(applied) == 0 {
+		return conflicts, nil
+	}
+	next := applyWinINETChanges(current, updated[0].Settings, applied)
 	if err = b.access().Write(next); err != nil {
 		return nil, err
 	}
 	if err = b.access().Notify(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return conflicts, nil
 }

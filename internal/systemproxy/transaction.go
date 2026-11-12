@@ -30,6 +30,8 @@ type Change struct {
 type Backend interface {
 	Snapshot() ([]Service, error)
 	CompareAndSwap([]Change) ([]string, error)
+	// CompareAndSwapPartial applies matching journal groups even when other groups conflict (restore path).
+	CompareAndSwapPartial([]Change) ([]string, error)
 }
 type journal struct {
 	Version int      `json:"version"`
@@ -145,9 +147,7 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 			j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, group), Desired: pickKeys(desired, group), Keys: append([]string(nil), group...)})
 		}
 		j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, guardKeys), Desired: desired, Keys: []string{"__ProtocolEnabled"}, GuardKeys: guardKeys})
-		if native, ok := platformNativeJournalChange(s, port, bypass); ok {
-			j.Changes = append(j.Changes, native)
-		}
+		appendNativeJournalChanges(&j, s, port, bypass)
 	}
 	if len(j.Changes) == 0 {
 		return errors.New("没有支持代理协议的网络服务")
@@ -180,14 +180,17 @@ func (m *Manager) Restore() ([]string, error) {
 	for _, c := range j.Changes {
 		changes = append(changes, Change{ID: c.ID, Expected: c.Desired, Desired: c.Expected, Keys: c.Keys, GuardKeys: c.GuardKeys})
 	}
-	conflicts, err := m.backend.CompareAndSwap(changes)
+	conflicts, err := m.backend.CompareAndSwapPartial(changes)
 	if err != nil {
 		return nil, fmt.Errorf("恢复系统代理失败，保留恢复记录：%w", err)
 	}
-	if err = os.Remove(m.path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return conflicts, err
+	if len(conflicts) > 0 {
+		return conflicts, nil
 	}
-	return conflicts, nil
+	if err = os.Remove(m.path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	return nil, nil
 }
 func (m *Manager) Pending() (bool, error) {
 	m.mu.Lock()

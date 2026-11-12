@@ -242,6 +242,14 @@ func (b LinuxBackend) Snapshot() ([]Service, error) {
 }
 
 func (b LinuxBackend) CompareAndSwap(changes []Change) ([]string, error) {
+	return b.compareAndSwap(changes, false)
+}
+
+func (b LinuxBackend) CompareAndSwapPartial(changes []Change) ([]string, error) {
+	return b.compareAndSwap(changes, true)
+}
+
+func (b LinuxBackend) compareAndSwap(changes []Change, partial bool) ([]string, error) {
 	store, err := b.store()
 	if err != nil {
 		return nil, err
@@ -250,20 +258,23 @@ func (b LinuxBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	conflicts, updated := applyChanges(services, changes)
-	if len(conflicts) > 0 {
-		return conflicts, nil
-	}
+	conflicts, updated, applied := applyChanges(services, changes)
 	if len(updated) != 1 || updated[0].ID != gnomeServiceID {
 		return nil, fmt.Errorf("桌面代理状态无效")
+	}
+	if len(conflicts) > 0 && !partial {
+		return conflicts, nil
+	}
+	if len(applied) == 0 {
+		return conflicts, nil
 	}
 	current, err := store.read()
 	if err != nil {
 		return nil, err
 	}
-	next := applyGnomeChanges(current, updated[0].Settings, changes)
+	next := applyGnomeChanges(current, updated[0].Settings, applied)
 	if err = store.write(next); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return conflicts, nil
 }

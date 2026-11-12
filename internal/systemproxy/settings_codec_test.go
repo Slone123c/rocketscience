@@ -34,7 +34,7 @@ func TestApplyChangesMatchesTransactionSemantics(t *testing.T) {
 		"HTTPProxy":         json.RawMessage(`"old"`),
 		"HTTPPort":          json.RawMessage("8080"),
 	}}}
-	conflicts, updated := applyChanges(services, []Change{{
+	conflicts, updated, _ := applyChanges(services, []Change{{
 		ID: "wifi",
 		Expected: Settings{
 			"HTTPEnable": json.RawMessage("1"),

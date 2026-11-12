@@ -6,6 +6,8 @@ import "syscall"
 
 var (
 	modWininet                    = syscall.NewLazyDLL("wininet.dll")
+	modKernel32                   = syscall.NewLazyDLL("kernel32.dll")
+	procGlobalFree                = modKernel32.NewProc("GlobalFree")
 	procInternetSetOptionW        = modWininet.NewProc("InternetSetOptionW")
 	procInternetOpenW             = modWininet.NewProc("InternetOpenW")
 	procInternetCloseHandle       = modWininet.NewProc("InternetCloseHandle")

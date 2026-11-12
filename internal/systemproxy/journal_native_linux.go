@@ -4,31 +4,40 @@ package systemproxy
 
 import "encoding/json"
 
-func nativeJournalChange(s Service, port int, bypass *[]string) (Change, bool) {
+func nativeJournalChanges(s Service, port int, bypass *[]string) []Change {
 	if s.ID != gnomeServiceID {
-		return Change{}, false
+		return nil
 	}
-	nativeKeys := []string{gnomeKeyMode, gnomeKeyAutoURL, gnomeKeyIgnoreHosts}
-	expected := pickKeys(s.Settings, nativeKeys)
-	desired := Settings{
-		gnomeKeyMode:    rawString("manual"),
-		gnomeKeyAutoURL: rawString(""),
-	}
+	ignoreDesired := Settings{}
 	if bypass != nil {
 		value, err := json.Marshal(effectiveExceptions(*bypass))
 		if err != nil {
-			return Change{}, false
+			return nil
 		}
-		desired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), value...)
+		ignoreDesired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), value...)
 	} else if raw, ok := s.Settings[gnomeKeyIgnoreHosts]; ok {
-		desired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), raw...)
+		ignoreDesired[gnomeKeyIgnoreHosts] = append(json.RawMessage(nil), raw...)
 	} else {
-		desired[gnomeKeyIgnoreHosts] = rawJSON([]string(nil))
+		ignoreDesired[gnomeKeyIgnoreHosts] = rawJSON([]string(nil))
 	}
-	return Change{
-		ID:       s.ID,
-		Expected: expected,
-		Desired:  desired,
-		Keys:     nativeKeys,
-	}, true
+	return []Change{
+		{
+			ID:       s.ID,
+			Expected: pickKeys(s.Settings, []string{gnomeKeyMode}),
+			Desired:  Settings{gnomeKeyMode: rawString("manual")},
+			Keys:     []string{gnomeKeyMode},
+		},
+		{
+			ID:       s.ID,
+			Expected: pickKeys(s.Settings, []string{gnomeKeyAutoURL}),
+			Desired:  Settings{gnomeKeyAutoURL: rawString("")},
+			Keys:     []string{gnomeKeyAutoURL},
+		},
+		{
+			ID:       s.ID,
+			Expected: pickKeys(s.Settings, []string{gnomeKeyIgnoreHosts}),
+			Desired:  ignoreDesired,
+			Keys:     []string{gnomeKeyIgnoreHosts},
+		},
+	}
 }

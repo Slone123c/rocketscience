@@ -41,7 +41,7 @@ func TestApplyChangesValidatesAgainstPreTransactionSnapshot(t *testing.T) {
 		Keys:      []string{"__ProtocolEnabled"},
 		GuardKeys: guardKeys,
 	})
-	conflicts, updated := applyChanges(services, changes)
+	conflicts, updated, _ := applyChanges(services, changes)
 	if len(conflicts) > 0 {
 		t.Fatalf("journal-shaped batch must not conflict after prior in-batch mutations: %v", conflicts)
 	}
@@ -64,7 +64,7 @@ func TestApplyChangesDetectsExternalMutation(t *testing.T) {
 	}}
 	// Simulate concurrent edit before CAS: snapshot at write time differs from journal Expected.
 	services[0].Settings["HTTPPort"] = json.RawMessage("9999")
-	conflicts, _ := applyChanges(services, changes)
+	conflicts, _, _ := applyChanges(services, changes)
 	if len(conflicts) == 0 {
 		t.Fatal("expected conflict when live snapshot diverged from journal expected")
 	}

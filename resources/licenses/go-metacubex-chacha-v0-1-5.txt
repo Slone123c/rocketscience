@@ -1,13 +1,48 @@
 Component: github.com/metacubex/chacha
 Version: v0.1.5
-License: See supplement (GPL-3.0 via mihomo)
+License: MIT (upstream LICENSE blob 1440ef3906198ee444765c54715bce210c2ff6f4; see supplement)
 Origin: go (chacha)
 ---
 # github.com/metacubex/chacha v0.1.5 — license supplement
 
-The Go module tag v0.1.5 ships without LICENSE/COPYING/NOTICE in the module cache.
+The Go module tag **v0.1.5** (commit `07294f500ca8384015f6cc21311de7b6f093607d`, sum.golang.org pin) ships without `LICENSE` / `COPYING` / `NOTICE` in the module tree retrieved from the module proxy.
 
-Rocket Science distributes this code only as a transitive dependency of Metacubex Mihomo (GPL-3.0-only).
-For redistribution, treat it under the same obligations as `mihomo-GPL-3.0.txt` and `go-metacubex-mihomo-v1-19-33.txt` in this directory until upstream publishes a standalone license file in the module root.
+Official upstream license for MetaCubeX/chacha (not inferred from Mihomo/GPL):
 
-Upstream: https://github.com/metacubex/chacha
+| Field | Value |
+|-------|-------|
+| Repository | https://github.com/MetaCubeX/chacha |
+| SPDX-style name | MIT |
+| File | `LICENSE` |
+| Commit introducing file | `7b981d42c3baca5a004e7b0ecfb9b67ee20e583a` (`add LICENSE`) |
+| Fixed blob (verified) | `1440ef3906198ee444765c54715bce210c2ff6f4` |
+| Canonical raw URL | https://raw.githubusercontent.com/MetaCubeX/chacha/master/LICENSE |
+
+The package implements AEAD/ChaCha20-Poly1305; the original `aead/chacha20` portion remains under Andreas Auernhammer’s MIT terms (copyright 2016). MetaCubex’s 2025 copyright applies to the published module.
+
+Full license text below matches the upstream `LICENSE` blob above (retrieved 2026-11-12).
+
+---
+
+MIT License
+
+Copyright (c) 2016 Andreas Auernhammer
+Copyright (c) 2025 MetaCubex
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

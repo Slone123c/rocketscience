@@ -16,15 +16,26 @@ type fakeBackend struct {
 
 func (b *fakeBackend) Snapshot() ([]Service, error) { return b.services, nil }
 func (b *fakeBackend) CompareAndSwap(changes []Change) ([]string, error) {
+	return b.cas(changes, false)
+}
+
+func (b *fakeBackend) CompareAndSwapPartial(changes []Change) ([]string, error) {
+	return b.cas(changes, true)
+}
+
+func (b *fakeBackend) cas(changes []Change, partial bool) ([]string, error) {
 	if b.fail {
 		return nil, errors.New("write failed")
 	}
-	conflicts, updated := applyChanges(b.services, changes)
-	if len(conflicts) > 0 {
+	conflicts, updated, applied := applyChanges(b.services, changes)
+	if len(conflicts) > 0 && !partial {
+		return conflicts, nil
+	}
+	if len(applied) == 0 {
 		return conflicts, nil
 	}
 	b.services = updated
-	return nil, nil
+	return conflicts, nil
 }
 func TestRoundTripPreservesOriginalAndUnrelatedFields(t *testing.T) {
 	b := &fakeBackend{services: []Service{{ID: "wifi", Settings: Settings{"__ProtocolEnabled": json.RawMessage("false"), "HTTPEnable": json.RawMessage("1"), "HTTPProxy": json.RawMessage(`"old"`), "HTTPPort": json.RawMessage("8080"), "ExceptionsList": json.RawMessage(`["localhost"]`)}}}}
@@ -65,11 +76,11 @@ func TestExternalChangeIsNotOverwritten(t *testing.T) {
 	if err != nil || len(conflicts) == 0 || string(b.services[0].Settings["HTTPPort"]) != "9999" {
 		t.Fatalf("external change lost: %v %v", conflicts, err)
 	}
-	if parseString(b.services[0].Settings["HTTPSProxy"]) != "127.0.0.1" {
-		t.Fatal("conflicted restore must not write: other owned fields stay at takeover values")
+	if _, ok := b.services[0].Settings["HTTPSProxy"]; ok {
+		t.Fatal("partial restore should revert unconflicted owned proxy groups")
 	}
-	if string(b.services[0].Settings["__ProtocolEnabled"]) != "true" {
-		t.Fatal("external proxy change was disabled")
+	if _, err := os.Stat(m.path); err != nil {
+		t.Fatal("journal must remain until all owned groups restore without conflict")
 	}
 }
 func TestFailedApplyKeepsRecoveryRecord(t *testing.T) {

@@ -130,6 +130,10 @@ func (b *DarwinBackend) CompareAndSwap(changes []Change) ([]string, error) {
 	return result.Conflicts, nil
 }
 
+func (b *DarwinBackend) CompareAndSwapPartial(changes []Change) ([]string, error) {
+	return b.CompareAndSwap(changes)
+}
+
 // ensureSession starts the helper on the first write and keeps the
 // authorization it obtained. Called with mu held.
 func (b *DarwinBackend) ensureSession() error {
