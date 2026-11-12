@@ -41,21 +41,31 @@ func applyGnomeChanges(current gnomeSnapshot, merged Settings, changes []Change)
 			touched[k] = true
 		}
 	}
-	if touched["__ProtocolEnabled"] || touched["HTTPEnable"] || touched["HTTPSEnable"] || touched["SOCKSEnable"] {
-		if parseBool(merged["__ProtocolEnabled"]) ||
-			parseBool(merged["HTTPEnable"]) || parseBool(merged["HTTPSEnable"]) || parseBool(merged["SOCKSEnable"]) {
-			next.Mode = "manual"
-			next.HTTPHost = parseString(merged["HTTPProxy"])
-			next.HTTPPort = parsePort(merged["HTTPPort"])
-			next.HTTPSHost = parseString(merged["HTTPSProxy"])
-			next.HTTPSPort = parsePort(merged["HTTPSPort"])
-			next.SOCKSHost = parseString(merged["SOCKSProxy"])
-			next.SOCKSPort = parsePort(merged["SOCKSPort"])
-		} else if touched["__ProtocolEnabled"] {
-			next.Mode = "none"
-		}
+	applyGnomeManual := func() {
+		next.HTTPHost = parseString(merged["HTTPProxy"])
+		next.HTTPPort = parsePort(merged["HTTPPort"])
+		next.HTTPSHost = parseString(merged["HTTPSProxy"])
+		next.HTTPSPort = parsePort(merged["HTTPSPort"])
+		next.SOCKSHost = parseString(merged["SOCKSProxy"])
+		next.SOCKSPort = parsePort(merged["SOCKSPort"])
 	}
-	if touched["ProxyAutoConfigEnable"] {
+	if touched[gnomeKeyMode] || touched[gnomeKeyAutoURL] {
+		next.Mode = parseString(merged[gnomeKeyMode])
+		next.AutoURL = parseString(merged[gnomeKeyAutoURL])
+		switch next.Mode {
+		case "manual":
+			applyGnomeManual()
+		case "auto", "":
+			if next.Mode == "" {
+				next.Mode = "none"
+			}
+			if next.Mode == "auto" {
+				next.AutoURL = parseString(merged[gnomeKeyAutoURL])
+			}
+		case "none":
+			next.AutoURL = ""
+		}
+	} else if touched["ProxyAutoConfigEnable"] {
 		if parseBool(merged["ProxyAutoConfigEnable"]) {
 			next.Mode = "auto"
 			next.AutoURL = parseString(merged[gnomeKeyAutoURL])
@@ -64,6 +74,17 @@ func applyGnomeChanges(current gnomeSnapshot, merged Settings, changes []Change)
 			if next.Mode == "auto" {
 				next.Mode = "none"
 			}
+		}
+	}
+	if touched["__ProtocolEnabled"] || touched["HTTPEnable"] || touched["HTTPSEnable"] || touched["SOCKSEnable"] {
+		if parseBool(merged["__ProtocolEnabled"]) ||
+			parseBool(merged["HTTPEnable"]) || parseBool(merged["HTTPSEnable"]) || parseBool(merged["SOCKSEnable"]) {
+			next.Mode = "manual"
+			applyGnomeManual()
+		} else if !touched[gnomeKeyMode] && touched["__ProtocolEnabled"] {
+			next.Mode = "none"
+		} else if touched["HTTPEnable"] || touched["HTTPSEnable"] || touched["SOCKSEnable"] {
+			applyGnomeManual()
 		}
 	}
 	if touched["ExceptionsList"] {

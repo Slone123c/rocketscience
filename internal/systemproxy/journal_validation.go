@@ -8,11 +8,16 @@ import (
 	"strings"
 )
 
-func validateJournalChanges(changes []Change) error {
-	allowed := map[string]bool{}
-	for _, key := range keys {
-		allowed[key] = true
+func journalKeyAllowed(key string) bool {
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
 	}
+	return strings.HasPrefix(key, "__WinINET.") || strings.HasPrefix(key, "__Gnome.")
+}
+
+func validateJournalChanges(changes []Change) error {
 	for _, change := range changes {
 		if strings.TrimSpace(change.ID) == "" || change.Expected == nil || change.Desired == nil || len(change.Keys) == 0 {
 			return errors.New("恢复记录缺少服务标识、代理状态或变更字段")
@@ -20,7 +25,7 @@ func validateJournalChanges(changes []Change) error {
 		for _, list := range [][]string{change.Keys, change.GuardKeys} {
 			seen := map[string]bool{}
 			for _, key := range list {
-				if !allowed[key] || seen[key] {
+				if !journalKeyAllowed(key) || seen[key] {
 					return errors.New("恢复记录包含无效或重复的代理字段")
 				}
 				seen[key] = true
@@ -28,7 +33,7 @@ func validateJournalChanges(changes []Change) error {
 		}
 		for _, settings := range []Settings{change.Expected, change.Desired} {
 			for key, raw := range settings {
-				if !allowed[key] {
+				if !journalKeyAllowed(key) {
 					return errors.New("恢复记录包含未知代理字段")
 				}
 				if err := validateJournalValue(key, raw); err != nil {

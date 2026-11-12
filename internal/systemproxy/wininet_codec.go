@@ -44,9 +44,13 @@ func applyWinINETChanges(current winINETSnapshot, merged Settings, changes []Cha
 		next.ProxyEnable = parseBool(merged["__ProtocolEnabled"]) ||
 			parseBool(merged["HTTPEnable"]) || parseBool(merged["HTTPSEnable"]) || parseBool(merged["SOCKSEnable"])
 	}
-	if protocolKeysTouched(touched) {
+	if protocolKeysTouched(touched) || touched[winINETKeyProxyServerRaw] {
 		if line := buildProxyServerFromSettings(merged); line != "" {
 			next.ProxyServer = line
+		} else if raw := parseString(merged[winINETKeyProxyServerRaw]); raw != "" {
+			next.ProxyServer = raw
+		} else {
+			next.ProxyServer = ""
 		}
 	}
 	if touched["ExceptionsList"] {
@@ -56,11 +60,9 @@ func applyWinINETChanges(current winINETSnapshot, merged Settings, changes []Cha
 			next.ProxyOverride = ""
 		}
 	}
-	if touched["ProxyAutoConfigEnable"] {
+	if touched["ProxyAutoConfigEnable"] || touched[winINETKeyAutoConfigURL] {
 		if parseBool(merged["ProxyAutoConfigEnable"]) {
-			if url := parseString(merged[winINETKeyAutoConfigURL]); url != "" {
-				next.AutoConfigURL = url
-			}
+			next.AutoConfigURL = parseString(merged[winINETKeyAutoConfigURL])
 		} else {
 			next.AutoConfigURL = ""
 		}

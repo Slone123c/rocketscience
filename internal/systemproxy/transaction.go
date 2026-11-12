@@ -145,6 +145,9 @@ func (m *Manager) ApplyWithBypass(port int, bypass *[]string) error {
 			j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, group), Desired: pickKeys(desired, group), Keys: append([]string(nil), group...)})
 		}
 		j.Changes = append(j.Changes, Change{ID: s.ID, Expected: pickKeys(s.Settings, guardKeys), Desired: desired, Keys: []string{"__ProtocolEnabled"}, GuardKeys: guardKeys})
+		if native, ok := platformNativeJournalChange(s, port); ok {
+			j.Changes = append(j.Changes, native)
+		}
 	}
 	if len(j.Changes) == 0 {
 		return errors.New("没有支持代理协议的网络服务")
