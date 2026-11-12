@@ -1,0 +1,23 @@
+name: windows-core
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - advisor/001-publication-preparation
+    paths:
+      - "internal/core/**"
+      - ".github/workflows/windows-core.yml"
+
+jobs:
+  geo-security:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test GEO/journal Windows semantics
+        run: go test ./internal/core/ -run 'Geo|ProcessAlive' -count=1 -v
+        env:
+          GOFLAGS: -tags=with_gvisor

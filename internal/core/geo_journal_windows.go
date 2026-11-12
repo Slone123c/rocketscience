@@ -12,42 +12,44 @@ import (
 )
 
 func validGeoRuntime(runtime string) error {
-	original, err := os.Lstat(runtime)
+	handle, err := createFileNoFollow(runtime, windows.READ_CONTROL|windows.FILE_READ_ATTRIBUTES, true)
 	if err != nil {
 		return err
 	}
-	if !original.IsDir() || original.Mode()&os.ModeSymlink != 0 {
-		return errors.New("GEO 临时目录不能为符号链接")
-	}
-	root, err := filepath.EvalSymlinks(os.TempDir())
+	defer windows.CloseHandle(handle)
+	reparse, err := handleIsReparsePoint(handle)
 	if err != nil {
 		return err
 	}
-	actual, err := filepath.EvalSymlinks(runtime)
+	if reparse {
+		return errors.New("GEO 临时目录不能为重解析点")
+	}
+	isDir, err := handleIsDirectory(handle)
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(root, actual)
+	if !isDir {
+		return errors.New("GEO 临时目录不在预期位置")
+	}
+	finalPath, err := normalizedFinalPath(handle)
+	if err != nil {
+		return err
+	}
+	tempHandle, err := createFileNoFollow(os.TempDir(), windows.FILE_READ_ATTRIBUTES, true)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(tempHandle)
+	tempRoot, err := normalizedFinalPath(tempHandle)
+	if err != nil {
+		return err
+	}
+	rel, err := filepath.Rel(tempRoot, finalPath)
 	if err != nil || filepath.Dir(rel) != "." || !strings.HasPrefix(filepath.Base(rel), "rocketscience-core-") {
 		return errors.New("GEO 临时目录不在预期位置")
 	}
-	info, err := os.Lstat(actual)
-	if err != nil {
+	if err := validatePrivateDirectorySecurity(handle); err != nil {
 		return err
-	}
-	p, err := windows.UTF16PtrFromString(actual)
-	if err != nil {
-		return err
-	}
-	attrs, err := windows.GetFileAttributes(p)
-	if err != nil {
-		return err
-	}
-	if attrs&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-		return errors.New("GEO 临时目录不能为重解析点")
-	}
-	if !info.IsDir() || info.Mode().Perm()&0077 != 0 {
-		return errors.New("GEO 临时目录权限无效")
 	}
 	return nil
 }
@@ -56,10 +58,17 @@ func processAlive(pid int) bool {
 	if pid <= 1 {
 		return true
 	}
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
+		if errno, ok := err.(windows.Errno); ok && errno == windows.ERROR_ACCESS_DENIED {
+			return true
+		}
 		return false
 	}
-	_ = windows.CloseHandle(h)
-	return true
+	defer windows.CloseHandle(handle)
+	var code uint32
+	if err := windows.GetExitCodeProcess(handle, &code); err != nil {
+		return true
+	}
+	return code == stillActive
 }
