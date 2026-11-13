@@ -1,49 +1,78 @@
-# RocketScience · 开发验证版
+<div align="center">
+  <img src="site/assets/icon.png" alt="Rocket Science" width="84" height="84">
+  <h1>Rocket Science</h1>
+  <p>面向 macOS、Windows 与 Linux 的 mihomo 桌面代理客户端</p>
+  <p>
+    <a href="https://github.com/Slone123c/rocketscience/releases/latest">下载</a> ·
+    <a href="https://slone123c.github.io/rocketscience/">官网</a> ·
+    <a href="README.en.md">English</a> ·
+    <a href="LICENSE">许可证</a>
+  </p>
+  <p>
+    <a href="https://github.com/Slone123c/rocketscience/releases/latest"><img src="https://img.shields.io/github/v/release/Slone123c/rocketscience?label=Release" alt="Latest release"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="License: GPL-3.0"></a>
+    <img src="https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux-black" alt="Platforms: macOS, Windows, Linux">
+  </p>
+</div>
 
-跨平台桌面 Clash 客户端开发验证版（macOS / Windows / Linux）。使用 MyGo、React 和独立 mihomo 进程；界面运行时资源位于 `src/ui/`。当前进度与待验证项目见 [DEVELOPMENT.md](DEVELOPMENT.md)。首次使用需先导入并保存配置。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/screens/overview-dark.webp">
+  <img src="site/assets/screens/overview-light.webp" alt="Rocket Science 总览界面">
+</picture>
 
-## 运行
+## 功能
 
-需要 Go 1.27.3、Bun。macOS 打包另需命令行开发工具；最低目标系统为 macOS 13。Windows 需要 WebView2 运行时；Linux 桌面构建需要 GTK3 与 WebKitGTK。项目固定 MyGo 0.7.1，`bun.lock` 固定前端依赖。构建脚本下载并校验官方 mihomo v1.19.33，并将内核及许可证放入应用包。`bun run build:release` 可交叉编译多平台产物（macOS DMG 仍需在本机构建）。
+- **总览与即时控制**：实时展示内核运行状态、出口节点、上下行速率与 24 秒流量曲线，并在同页切换规则、全局、直连模式及接管方式，停止或退出时自动恢复原有网络设置。
+- **节点测速与路由轨迹**：按主出口与分流组展示策略链路，支持批量延迟测速与排序；总览底部内置连接轨迹地图，直观显示入口地、落地节点与逐跳链路。
+- **分步网络检查**：依次检查本机直连、代理接管与节点连通性；定位到可用节点后先向你确认再切换。
+- **订阅与规则覆盖**：支持订阅链接、本地 YAML 导入、定时更新与内置编辑器；启用的覆盖分组按顺序排在订阅规则之前，更新订阅不覆盖自定义规则。
+- **菜单栏与托盘速控**：直接查看实时速率、切换模式或节点、开关系统代理与可信 Wi-Fi 直连，并一键复制终端代理命令。
+
+<table>
+  <tr>
+    <td><img src="site/assets/screens/proxies-dark.webp" alt="节点与延迟测速"></td>
+    <td><img src="site/assets/screens/trajectory-dark.webp" alt="连接轨迹"></td>
+  </tr>
+  <tr>
+    <td><img src="site/assets/screens/rules-dark.webp" alt="规则覆盖"></td>
+    <td><a href="https://slone123c.github.io/rocketscience/#interactions"><img src="site/assets/clips/network-check-poster.webp" alt="分步网络检查交互演示"></a></td>
+  </tr>
+</table>
+
+## 下载与安装
+
+前往 [Releases](https://github.com/Slone123c/rocketscience/releases/latest) 下载对应平台包：
+
+| 平台 | 架构 | 安装包 | 首次启动说明 |
+| --- | --- | --- | --- |
+| macOS 13+ | Apple Silicon / Intel | DMG | 未签名/公证：右键应用选择「打开」，或执行 `xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"` |
+| Windows 10/11 | x86_64 | 安装程序 / 便携 ZIP | 需 WebView2 运行时；SmartScreen 提示时点击「更多信息」→「仍要运行」 |
+| Linux | x86_64 | `.deb` / `.tar.gz` | 需提前安装运行库：`sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0` |
+
+## 平台支持
+
+| 平台 | 系统代理 | TUN 增强模式 | 菜单栏 / 托盘 | 安装包格式 |
+| --- | --- | --- | --- | --- |
+| macOS 13+ | 支持（自动写入与恢复） | 支持（首次需一次管理员授权） | 菜单栏速控面板 | DMG |
+| Windows 10/11 | 支持（自动写入与恢复） | 暂未提供（仅 macOS） | 系统托盘面板 | 安装程序 / 便携 ZIP |
+| Linux | 支持（GNOME / KDE） | 暂未提供（仅 macOS） | 系统托盘面板 | `.deb` / `.tar.gz` |
+
+## 从源码构建
 
 ```sh
 bun install
-bun run dev
+bun run build:web
+bun run build:release --platform=darwin/arm64
 ```
 
-`bun run build` 生成应用和 DMG，并自动检查内核与辅助模块是否齐全、处理器架构与最低系统版本是否兼容、网络模块接口、许可证、签名完整性和镜像校验。可用 `bun run verify:bundle` 单独复查；也可在命令末尾传入另一份应用包路径。目前产物使用本地开发签名，尚未完成分发签名与公证。
+详细依赖、测试命令与跨平台构建说明见 [docs/BUILDING.md](docs/BUILDING.md)。
 
-`bun run build --arch=amd64` 构建 Intel 版本，`--arch=arm64` 构建 Apple Silicon 版本。跨架构构建会复制当前 Git 跟踪文件及未忽略的未跟踪源码到临时目录，包含尚未提交的修改，不覆盖本机开发资源。两种产物分别位于 `build.noindex/darwin-amd64` 和 `build.noindex/darwin-arm64`。单独复查 Intel 包使用 `bun run verify:bundle --arch=amd64`；内核内容检查需要对应架构的固定下载缓存。
+## 致谢
 
-两种架构的构建与静态包检查已通过。当前 Swift SDK 在 Intel 构建时提示 `libswiftCompatibilityPacks.a` 缺少 x86_64 切片；链接完成，但 Intel 真机与旧系统运行尚未验收，不能据此宣称兼容性已完成。
+- [mihomo](https://github.com/MetaCubeX/mihomo) — 代理内核
+- [MyGo](https://github.com/egoist/mygo) — 桌面应用框架
+- 其余第三方组件许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
-真实内核测试：
+## 许可证
 
-```sh
-ROCKETSCIENCE_MIHOMO=/absolute/path/to/mihomo go test ./...
-```
-
-GEO 外部下载验证需另行启用（会从 mihomo 默认的官方地址下载数据库，使用临时缓存与模拟系统代理，不修改当前网络设置）：
-
-```sh
-ROCKETSCIENCE_MIHOMO=/absolute/path/to/mihomo ROCKETSCIENCE_VERIFY_REMOTE_GEO=1 go test -race ./internal/core -run '^TestGeo' -count=1
-```
-
-## 当前边界
-
-内核由本应用启动、重启和停止；关闭窗口隐藏到菜单栏，退出应用时先恢复网络并停止内核。新安装默认使用系统代理，点击启动即可；启动前至少需要系统代理或 TUN 一种接管方式，两者都关闭时，点击启动会高亮开关引导选择，打开一个后继续启动；运行中关闭最后一种接管方式也会恢复网络并停止内核。已实现系统代理恢复、TUN 授权启动、局域网共享和菜单栏。TUN 参照常见 macOS 代理应用的“服务模式”：首次开启时请求一次管理员密码，把 `rs-tun-helper` 安装为 launchd 服务（`/Library/LaunchDaemons/com.rocketscience.tun-helper.plist`），之后由它以 root 创建虚拟网卡和路由，再把网卡交给应用内的 mihomo，不再询问密码；应用更新导致服务版本不同时会再请求一次。服务只接受安装时的用户，可在“TUN 高级参数”中卸载。真实 macOS 权限、网络修改与恢复、TUN 路由和登录项尚待实机验证；目前使用模拟接管与独立 mihomo 验证功能。面向分发的开发者签名与公证尚未完成。不要将真实订阅密钥提交到项目。
-
-出站模式可在待命时选择，启动时生效；本次运行期间停止后再启动仍保留所选模式，退出应用后恢复为配置文件的设置。内核设置可在待命时读取本机版本。重启会中断现有连接，保留当前出站模式与手动选择的节点；系统代理在节点恢复后重新接管。TUN 会重新启动；已安装 TUN 服务时不再请求管理员授权。重启失败会显示错误，可检查后重新启动。
-
-验证版覆盖配置中的混合端口、TUN、局域网开关及其他常见入站端口，也会替换控制接口和密钥；不会改写粘贴的原文。复杂配置中的相对路径、外部资源和自定义监听器尚未验证，只应使用可信配置。侧栏、启动、策略组、配置卡、覆盖规则、连接表、日志、遥测和开关已复用原型组件及其物理动效；其他组件与 Animate UI 尚未全部接入。
-
-## 设计审核记录
-
-1. 原型将系统代理和 TUN 表现为可立即启用的开关。建议保留开关，但在设置区增加可编辑的混合代理端口；端口变更在停止内核后生效。本验证版采用这一布局。
-2. 原型要求停止时关闭系统代理。建议改为保存并恢复应用接管前每个网络服务的完整配置，只在设置仍由本应用拥有时恢复。已获用户批准；恢复逻辑已实现，但真实系统写入和权限流程尚未验证。
-3. 原型地图根据节点名称推测位置，缺省为上海。改为未知时显示未知，并标记名称推测。已获用户批准并实现，最终视觉验收待完成。
-4. 原型网络检查建议自动选择最低延迟节点。改为向用户展示候选并确认切换，确认前复查当前选择。已获用户批准并实现。
-
-订阅自动更新只在应用运行时执行；应用下次启动会检查到期任务。内核重新加载可能影响部分现有连接或节点状态，应继续结合实际订阅验证。
-
-运行中可保存当前配置或切换配置，mihomo 校验通过后重新加载，无需先停止内核。应用管理的端口、接管方式和当前出站模式保持不变；仍存在的手动策略组及其选定节点会恢复，已移除的节点采用新配置的默认选择。保存失败会尝试恢复先前运行配置。编辑非当前配置只保存，不影响运行；过期编辑版本会被拒绝。文件选择或拖入 YAML 会打开原型配置抽屉，以文件名作为默认名称；文件需为 UTF-8 且不超过 10 MB，原文件不会被改写。添加订阅或更改订阅地址会先下载再保存；手动编辑已有订阅内容时不会重新下载覆盖输入。主窗口与菜单栏均要求先保存并选择配置，再启动代理。
+[GPL-3.0](LICENSE)
