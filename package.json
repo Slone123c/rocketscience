@@ -16,7 +16,8 @@
     "preview": "vite --mode preview --host 127.0.0.1 --port 4173 --strictPort",
     "build:web": "bun run verify:components && tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "verify:components": "bun test tests/menuBarPopover.test.ts tests/tourInteraction.test.ts tests/trajectory.test.tsx tests/connectivityPresentation.test.tsx tests/profileEditorInteraction.test.ts tests/settingsNavigation.test.ts"
+    "verify:components": "bun test tests/menuBarPopover.test.ts tests/tourInteraction.test.ts tests/trajectory.test.tsx tests/connectivityPresentation.test.tsx tests/profileEditorInteraction.test.ts tests/settingsNavigation.test.ts",
+    "shots": "bun scripts/site-shots.ts"
   },
   "dependencies": {
     "mygo-runtime": "latest",
@@ -27,6 +28,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "mygo-cli": "latest",
+    "playwright-core": "^1.65.0",
     "typescript": "^6.0.0",
     "vite": "^8.0.0"
   }

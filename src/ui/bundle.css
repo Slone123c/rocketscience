@@ -309,7 +309,11 @@ body {
 .lf-traj__route.is-active .lf-traj__hop { stroke: var(--ink); }
 .lf-traj__label { font: 400 11px var(--font-mono); fill: var(--ink-muted); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .lf-traj__route.is-active .lf-traj__label { fill: var(--ink); }
-.lf-traj__origin circle, .lf-traj__origin path { stroke: var(--ink); stroke-width: 1.5; }
+.lf-traj__origin-dot { fill: var(--ink); animation: lf-traj-origin-dot 1.6s ease-in-out infinite; }
+.lf-traj__origin-glow { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: lf-traj-origin-pulse 1.6s ease-out infinite; }
+@keyframes lf-traj-origin-pulse { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(3.5); opacity: 0; } }
+@keyframes lf-traj-origin-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) { .lf-traj__origin-dot { animation: none; opacity: 1; } .lf-traj__origin-glow { animation: none; transform: scale(2); opacity: 0.25; } }
 .lf-traj__caption { display: flex; justify-content: space-between; gap: var(--space-4); margin-top: var(--space-2); font: 500 11px/14px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
 
 /* ---------- Tables: connections, rules ---------- */

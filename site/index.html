@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rocket Science — 跨平台 mihomo 桌面代理客户端</title>
+  <meta name="description" content="Rocket Science 是基于 mihomo 内核的跨平台桌面代理客户端，支持 macOS、Windows 与 Linux，提供实时总览、节点测速、连接轨迹、分步网络检查与规则覆盖。">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rocket Science — 跨平台 mihomo 桌面代理客户端">
+  <meta property="og:description" content="面向 macOS、Windows 与 Linux 的 mihomo 桌面客户端。">
+  <meta property="og:image" content="https://slone123c.github.io/rocketscience/assets/og.png">
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-nav">
+    <div class="container site-nav__inner">
+      <a class="brand" href="#top">
+        <img src="assets/icon.png" alt="Rocket Science" width="28" height="28">
+        <span>Rocket Science</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#features">功能</a>
+        <a href="#interactions">交互</a>
+        <a href="#platforms">平台</a>
+        <a href="#download">下载</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-actions">
+        <button id="theme-toggle" class="icon-btn" type="button" data-label-light="浅色" data-label-dark="深色" aria-label="切换浅色/深色主题">深色</button>
+        <a class="pill-link" href="en/">EN</a>
+        <a class="pill-link" href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <div class="hero__badge"><span class="hero__dot" aria-hidden="true"></span>开源桌面代理客户端 · GPL-3.0</div>
+        <h1>清晰可控的 mihomo<br>桌面代理客户端</h1>
+        <p class="hero__sub">Rocket Science 是面向 macOS、Windows 与 Linux 的 mihomo 桌面客户端，将节点测速、分步网络检查、连接轨迹与规则覆盖整理进一套低噪稳定的桌面界面。</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">下载最新版本</a>
+          <a class="btn btn--secondary" href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub 仓库</a>
+        </div>
+        <p class="hero__platforms">macOS 13+（Apple Silicon / Intel） · Windows 10/11（x86_64 / ARM64） · Linux（x86_64 / ARM64）</p>
+        <div class="window-frame">
+          <div class="window-frame__bar" aria-hidden="true">
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__title">Rocket Science — 总览</span>
+          </div>
+          <img
+            src="assets/screens/overview-light.webp"
+            data-light="assets/screens/overview-light.webp"
+            data-dark="assets/screens/overview-dark.webp"
+            alt="Rocket Science 总览界面"
+            width="2560"
+            height="1600"
+          >
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">功能导览</span>
+          <h2>从启停到排障，每一步都看得见</h2>
+          <p>所有界面均直接呈现内核真实状态，不做隐藏猜测，停止或退出时自动恢复原有网络设置。</p>
+        </div>
+
+        <div class="feature-list">
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>实时速率仪表与流量曲线</h3>
+              <p>集中显示当前运行状态、出口节点、实时上下行速率与近 24 秒流量曲线，支持一键启停内核。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/overview-detail-light.webp" data-light="assets/screens/overview-detail-light.webp" data-dark="assets/screens/overview-detail-dark.webp" alt="实时速率仪表与流量曲线">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>节点分组与并发测速</h3>
+              <p>按主出口与分流组展示策略链路，支持一键批量延迟测速、按延迟排序与关键词筛选，切换节点即时生效。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/proxies-detail-light.webp" data-light="assets/screens/proxies-detail-light.webp" data-dark="assets/screens/proxies-detail-dark.webp" alt="代理节点与延迟测速">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>连接轨迹与地理路径</h3>
+              <p>在总览底部直观展示当前出口的入口地、落地节点与逐跳链路，配合缩放地图查看活跃出站路径。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/trajectory-detail-light.webp" data-light="assets/screens/trajectory-detail-light.webp" data-dark="assets/screens/trajectory-detail-dark.webp" alt="连接轨迹与地图视图">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>分步网络检查</h3>
+              <p>依次验证本机直连、代理接管与节点连通性；定位到可用节点后先向你确认再切换，不私自改动配置。</p>
+            </div>
+            <div class="feature-row__media window-frame window-frame--compact">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/network-check-detail-light.webp" data-light="assets/screens/network-check-detail-light.webp" data-dark="assets/screens/network-check-detail-dark.webp" alt="分步网络检查结果">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>订阅导入与本地编辑</h3>
+              <p>支持订阅链接导入、本地 YAML 文件导入及定时自动更新，并在内置编辑器中直接校验和修改配置。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/profiles-detail-light.webp" data-light="assets/screens/profiles-detail-light.webp" data-dark="assets/screens/profiles-detail-dark.webp" alt="订阅与配置编辑器">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>规则覆盖与交互向导</h3>
+              <p>启用的覆盖分组按顺序排在订阅规则之前，更新订阅也不会覆盖你的自定义规则，并提供内置模板与向导。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/rules-detail-light.webp" data-light="assets/screens/rules-detail-light.webp" data-dark="assets/screens/rules-detail-dark.webp" alt="规则覆盖管理">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>菜单栏与托盘速控面板</h3>
+              <p>无需切回主窗口即可查看实时速率、切换路由模式、选节点、开关系统代理或可信 Wi-Fi 直连，并复制终端代理命令。</p>
+            </div>
+            <div class="feature-row__media window-frame window-frame--tray">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/tray-light.webp" data-light="assets/screens/tray-light.webp" data-dark="assets/screens/tray-dark.webp" alt="菜单栏托盘面板" width="640" height="1280">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>接管设置与退出自动恢复</h3>
+              <p>精细配置系统代理、端口、DNS、局域网共享与 GEO 数据库；停止代理或退出应用时自动恢复用户的原始网络代理设置。</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="assets/screens/settings-proxy-detail-light.webp" data-light="assets/screens/settings-proxy-detail-light.webp" data-dark="assets/screens/settings-proxy-detail-dark.webp" alt="系统代理与接管设置">
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="interactions" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">交互演示</span>
+          <h2>看看它怎么用</h2>
+          <p>首次使用引导、分步网络检查、节点测速与切换。</p>
+        </div>
+
+        <div class="clips-grid">
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="assets/clips/onboarding-poster.webp" width="1280" height="800">
+                <source src="assets/clips/onboarding.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="播放" data-pause-label="暂停">播放</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>首次使用引导</h3>
+              <p>从导入配置、启动内核到测速选节点，逐步高亮对应控件。</p>
+            </div>
+          </article>
+
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="assets/clips/network-check-poster.webp" width="1280" height="800">
+                <source src="assets/clips/network-check.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="播放" data-pause-label="暂停">播放</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>分步网络检查</h3>
+              <p>逐项排查本机直连、代理接管与节点连通性并给出结果。</p>
+            </div>
+          </article>
+
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="assets/clips/proxy-test-poster.webp" width="1280" height="800">
+                <source src="assets/clips/proxy-test.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="播放" data-pause-label="暂停">播放</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>策略组测速与选点</h3>
+              <p>一键测试策略组延迟并在当前窗口直接切换目标节点。</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="platforms" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">平台能力</span>
+          <h2>平台支持</h2>
+          <p>macOS、Windows 与 Linux 均支持系统代理与退出自动恢复；TUN 增强模式目前仅提供于 macOS。</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>平台</th>
+                <th>系统代理</th>
+                <th>TUN 增强模式</th>
+                <th>菜单栏 / 托盘</th>
+                <th>发布格式</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>macOS 13+</strong><br><small>Apple Silicon / Intel</small></td>
+                <td>支持（自动写入与恢复）</td>
+                <td>支持（首次需一次管理员授权）</td>
+                <td>菜单栏速控面板</td>
+                <td>DMG</td>
+              </tr>
+              <tr>
+                <td><strong>Windows 10/11</strong><br><small>x86_64 / ARM64 · WebView2</small></td>
+                <td>支持（自动写入与恢复）</td>
+                <td>暂未提供（仅 macOS）</td>
+                <td>系统托盘面板</td>
+                <td>安装程序 / 便携 ZIP</td>
+              </tr>
+              <tr>
+                <td><strong>Linux</strong><br><small>x86_64 / ARM64 · GTK3 + WebKitGTK 4.1</small></td>
+                <td>支持（GNOME / KDE）</td>
+                <td>暂未提供（仅 macOS）</td>
+                <td>系统托盘面板</td>
+                <td>.deb / .tar.gz</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">下载与首次启动</span>
+          <h2>获取安装包</h2>
+          <p>当前发布的构建尚未进行商业代码签名或公证，请按对应平台的首次启动说明放行。</p>
+        </div>
+
+        <div class="cards-grid">
+          <article class="card">
+            <h3>macOS</h3>
+            <p>支持 macOS 13 及以上（Apple Silicon 与 Intel）。</p>
+            <p>首次打开若提示无法验证开发者，请右键应用选择「打开」，或在终端执行：</p>
+            <div class="code-block">
+              <pre><code>xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"</code></pre>
+              <button class="copy-btn" type="button" data-copied="已复制">复制</button>
+            </div>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">前往 Releases 下载</a>
+          </article>
+
+          <article class="card">
+            <h3>Windows</h3>
+            <p>支持 Windows 10/11（x86_64 / ARM64，需系统已安装 WebView2 运行时）。</p>
+            <p>若 SmartScreen 弹出保护提示，点击「更多信息」→「仍要运行」即可启动。</p>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">前往 Releases 下载</a>
+          </article>
+
+          <article class="card">
+            <h3>Linux</h3>
+            <p>支持 x86_64 与 ARM64。推荐下载 <code>.deb</code> 安装（会自动拉取 GTK3、WebKitGTK 4.1 与 <code>libayatana-appindicator3-1</code>），也可使用 <code>.tar.gz</code>：</p>
+            <div class="code-block">
+              <pre><code>sudo apt install ./rocketscience_&lt;version&gt;_&lt;arch&gt;.deb</code></pre>
+              <button class="copy-btn" type="button" data-copied="已复制">复制</button>
+            </div>
+            <p>GNOME 桌面下显示托盘图标需要 AppIndicator 扩展（Ubuntu 默认已启用）。</p>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">前往 Releases 下载</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">FAQ</span>
+          <h2>常见问题</h2>
+        </div>
+
+        <div class="faq-list">
+          <article class="faq-item">
+            <h3>会永久修改我的系统网络设置吗？</h3>
+            <p>不会。应用在开启系统代理或 TUN 前会记录原有网络配置，停止代理或退出应用时自动恢复。</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>订阅配置和本地数据保存在哪里？</h3>
+            <p>macOS 位于 <code>~/Library/Application Support/RocketScience</code>，Windows 位于 <code>%AppData%\RocketScience</code>，Linux 位于 <code>~/.config/RocketScience</code>（也可通过 <code>ROCKETSCIENCE_DATA_DIR</code> 自定义）。</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>应用会收集或上传我的使用数据吗？</h3>
+            <p>不会。代码中不包含任何遥测、统计或崩溃上报；所有网络请求仅限你配置的订阅拉取、连通性检测、节点 IP/位置查询与 GEO 数据库更新。</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>内置的 mihomo 内核版本是什么？</h3>
+            <p>内置 mihomo v1.19.33。</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>项目采用什么开源许可证？</h3>
+            <p>项目主代码采用 GPL-3.0 许可证，第三方依赖许可声明见仓库根目录的 <code>THIRD_PARTY_NOTICES.md</code>。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div>Rocket Science · GPL-3.0 · Powered by mihomo &amp; MyGo</div>
+      <div class="site-footer__links">
+        <a href="https://github.com/Slone123c/rocketscience/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">第三方许可声明</a>
+        <a href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub</a>
+        <a href="en/">English</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/main.js"></script>
+</body>
+</html>

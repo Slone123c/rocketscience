@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rocket Science — Cross-platform mihomo desktop client</title>
+  <meta name="description" content="Rocket Science is a cross-platform desktop proxy client powered by mihomo for macOS, Windows, and Linux, featuring live overview, latency testing, route trajectory, step-by-step network check, and rule overrides.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rocket Science — Cross-platform mihomo desktop client">
+  <meta property="og:description" content="A desktop client for the mihomo proxy core on macOS, Windows, and Linux.">
+  <meta property="og:image" content="https://slone123c.github.io/rocketscience/assets/og.png">
+  <link rel="icon" type="image/png" href="../assets/icon.png">
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="site-nav">
+    <div class="container site-nav__inner">
+      <a class="brand" href="#top">
+        <img src="../assets/icon.png" alt="Rocket Science" width="28" height="28">
+        <span>Rocket Science</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#interactions">Interactions</a>
+        <a href="#platforms">Platforms</a>
+        <a href="#download">Download</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-actions">
+        <button id="theme-toggle" class="icon-btn" type="button" data-label-light="Light" data-label-dark="Dark" aria-label="Toggle light/dark theme">Dark</button>
+        <a class="pill-link" href="../">中文</a>
+        <a class="pill-link" href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <div class="hero__badge"><span class="hero__dot" aria-hidden="true"></span>Open-source desktop proxy client · GPL-3.0</div>
+        <h1>Clear, controllable mihomo<br>on the desktop</h1>
+        <p class="hero__sub">Rocket Science is a desktop client for the mihomo core on macOS, Windows, and Linux—bringing latency testing, step-by-step network diagnostics, route trajectory, and rule overrides into one calm interface.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">Download latest</a>
+          <a class="btn btn--secondary" href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <p class="hero__platforms">macOS 13+ (Apple Silicon / Intel) · Windows 10/11 (x86_64 / ARM64) · Linux (x86_64 / ARM64)</p>
+        <div class="window-frame">
+          <div class="window-frame__bar" aria-hidden="true">
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__dot"></span>
+            <span class="window-frame__title">Rocket Science — Overview</span>
+          </div>
+          <img
+            src="../assets/screens/overview-light.webp"
+            data-light="../assets/screens/overview-light.webp"
+            data-dark="../assets/screens/overview-dark.webp"
+            alt="Rocket Science overview screen"
+            width="2560"
+            height="1600"
+          >
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">Feature Tour</span>
+          <h2>Visibility from launch to troubleshooting</h2>
+          <p>Every screen reflects live core state directly and restores your previous network settings whenever you stop or quit.</p>
+        </div>
+
+        <div class="feature-list">
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>Live throughput gauges and chart</h3>
+              <p>Inspect core status, active exit node, throughput gauges, and a 24-second traffic curve with one-click start and stop.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/overview-detail-light.webp" data-light="../assets/screens/overview-detail-light.webp" data-dark="../assets/screens/overview-detail-dark.webp" alt="Live throughput gauges and traffic chart">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>Proxy groups and latency testing</h3>
+              <p>View main and branch policy chains, run batch latency tests, sort or filter nodes, and switch exits immediately.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/proxies-detail-light.webp" data-light="../assets/screens/proxies-detail-light.webp" data-dark="../assets/screens/proxies-detail-dark.webp" alt="Proxy list and latency test">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>Route trajectory and hop map</h3>
+              <p>See entry location, landing node, and hop-by-hop latency across an interactive zoomable map right below the overview.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/trajectory-detail-light.webp" data-light="../assets/screens/trajectory-detail-light.webp" data-dark="../assets/screens/trajectory-detail-dark.webp" alt="Route trajectory map">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>Step-by-step network check</h3>
+              <p>Verify direct connectivity, proxy takeover, and node reachability in sequence, and confirm with you before switching to a working node.</p>
+            </div>
+            <div class="feature-row__media window-frame window-frame--compact">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/network-check-detail-light.webp" data-light="../assets/screens/network-check-detail-light.webp" data-dark="../assets/screens/network-check-detail-dark.webp" alt="Network check result">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>Profiles, subscriptions, and editor</h3>
+              <p>Import subscription URLs or local YAML files, schedule automatic updates, and edit configuration files directly with validation.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/profiles-detail-light.webp" data-light="../assets/screens/profiles-detail-light.webp" data-dark="../assets/screens/profiles-detail-dark.webp" alt="Profiles workspace and editor">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>Rule overrides and walkthrough</h3>
+              <p>Enabled override groups take precedence ahead of subscription rules and stay intact across subscription updates, backed by templates and a guided walkthrough.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/rules-detail-light.webp" data-light="../assets/screens/rules-detail-light.webp" data-dark="../assets/screens/rules-detail-dark.webp" alt="Rule overrides">
+            </div>
+          </article>
+
+          <article class="feature-row">
+            <div class="feature-row__text">
+              <h3>Menu-bar and tray panel</h3>
+              <p>Check live speeds, switch modes or nodes, toggle system proxy or Trusted Wi-Fi, and copy terminal proxy commands without opening the main window.</p>
+            </div>
+            <div class="feature-row__media window-frame window-frame--tray">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/tray-light.webp" data-light="../assets/screens/tray-light.webp" data-dark="../assets/screens/tray-dark.webp" alt="Menu-bar and tray panel" width="640" height="1280">
+            </div>
+          </article>
+
+          <article class="feature-row feature-row--reverse">
+            <div class="feature-row__text">
+              <h3>Settings and automatic restore</h3>
+              <p>Configure system proxy, ports, DNS, LAN sharing, and GEO data; stopping the core or quitting the app automatically restores your prior proxy settings.</p>
+            </div>
+            <div class="feature-row__media window-frame">
+              <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
+              <img loading="lazy" src="../assets/screens/settings-proxy-detail-light.webp" data-light="../assets/screens/settings-proxy-detail-light.webp" data-dark="../assets/screens/settings-proxy-detail-dark.webp" alt="Proxy and TUN settings">
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="interactions" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">Interactions</span>
+          <h2>See it in action</h2>
+          <p>Onboarding tour, step-by-step network check, and latency test + node selection.</p>
+        </div>
+
+        <div class="clips-grid">
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="../assets/clips/onboarding-poster.webp" width="1280" height="800">
+                <source src="../assets/clips/onboarding.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="Play" data-pause-label="Pause">Play</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>Onboarding tour</h3>
+              <p>Walks through profile import, launch, latency testing, and network recovery.</p>
+            </div>
+          </article>
+
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="../assets/clips/network-check-poster.webp" width="1280" height="800">
+                <source src="../assets/clips/network-check.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="Play" data-pause-label="Pause">Play</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>Network check</h3>
+              <p>Checks direct internet, proxy takeover, and node reachability step by step.</p>
+            </div>
+          </article>
+
+          <article class="clip-card">
+            <div class="clip-card__media">
+              <video data-clip muted loop playsinline preload="metadata" poster="../assets/clips/proxy-test-poster.webp" width="1280" height="800">
+                <source src="../assets/clips/proxy-test.mp4" type="video/mp4">
+              </video>
+              <button class="clip-card__play" type="button" data-play-label="Play" data-pause-label="Pause">Play</button>
+            </div>
+            <div class="clip-card__body">
+              <h3>Latency test &amp; node switch</h3>
+              <p>Tests a policy group and switches the active exit node in one view.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="platforms" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">Capabilities</span>
+          <h2>Platform support</h2>
+          <p>System proxy and automatic restore on stop/quit work across macOS, Windows, and Linux; TUN mode is currently macOS only.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Platform</th>
+                <th>System Proxy</th>
+                <th>TUN Mode</th>
+                <th>Menu Bar / Tray</th>
+                <th>Package Formats</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>macOS 13+</strong><br><small>Apple Silicon / Intel</small></td>
+                <td>Supported (auto set &amp; restore)</td>
+                <td>Supported (one-time admin authorization)</td>
+                <td>Menu-bar popover</td>
+                <td>DMG</td>
+              </tr>
+              <tr>
+                <td><strong>Windows 10/11</strong><br><small>x86_64 / ARM64 · WebView2</small></td>
+                <td>Supported (auto set &amp; restore)</td>
+                <td>Not available yet (macOS only)</td>
+                <td>System tray panel</td>
+                <td>Installer / Portable ZIP</td>
+              </tr>
+              <tr>
+                <td><strong>Linux</strong><br><small>x86_64 / ARM64 · GTK3 + WebKitGTK 4.1</small></td>
+                <td>Supported (GNOME / KDE)</td>
+                <td>Not available yet (macOS only)</td>
+                <td>System tray panel</td>
+                <td>.deb / .tar.gz</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">Download &amp; First Launch</span>
+          <h2>Get the release</h2>
+          <p>Release builds are not code-signed or notarized yet; follow the standard first-launch step for your OS.</p>
+        </div>
+
+        <div class="cards-grid">
+          <article class="card">
+            <h3>macOS</h3>
+            <p>macOS 13 or later (Apple Silicon and Intel).</p>
+            <p>If Gatekeeper warns on first launch, right-click the app and choose Open, or run:</p>
+            <div class="code-block">
+              <pre><code>xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"</code></pre>
+              <button class="copy-btn" type="button" data-copied="Copied">Copy</button>
+            </div>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">Download on Releases</a>
+          </article>
+
+          <article class="card">
+            <h3>Windows</h3>
+            <p>Windows 10/11 (x86_64 / ARM64, requires WebView2 Runtime).</p>
+            <p>If SmartScreen appears, choose More info → Run anyway.</p>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">Download on Releases</a>
+          </article>
+
+          <article class="card">
+            <h3>Linux</h3>
+            <p>x86_64 and ARM64. Installing the <code>.deb</code> package resolves GTK3, WebKitGTK 4.1, and <code>libayatana-appindicator3-1</code> automatically (<code>.tar.gz</code> is also available):</p>
+            <div class="code-block">
+              <pre><code>sudo apt install ./rocketscience_&lt;version&gt;_&lt;arch&gt;.deb</code></pre>
+              <button class="copy-btn" type="button" data-copied="Copied">Copy</button>
+            </div>
+            <p>On GNOME, the tray icon requires the AppIndicator extension (enabled by default on Ubuntu).</p>
+            <a class="btn btn--primary" href="https://github.com/Slone123c/rocketscience/releases/latest" target="_blank" rel="noopener">Download on Releases</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section__head">
+          <span class="section__eyebrow">FAQ</span>
+          <h2>Frequently asked questions</h2>
+        </div>
+
+        <div class="faq-list">
+          <article class="faq-item">
+            <h3>Does it permanently alter my network settings?</h3>
+            <p>No. Rocket Science records your prior proxy settings before enabling system proxy or TUN and restores them when you stop or quit.</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>Where are profiles and local data stored?</h3>
+            <p><code>~/Library/Application Support/RocketScience</code> on macOS, <code>%AppData%\RocketScience</code> on Windows, and <code>~/.config/RocketScience</code> on Linux (or <code>ROCKETSCIENCE_DATA_DIR</code> if set).</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>Does the app collect or send telemetry?</h3>
+            <p>No. There is no telemetry, analytics, or crash-reporting code; outbound requests only occur for your configured subscriptions, connectivity checks, node/IP lookups, and GEO updates.</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>Which mihomo core version is bundled?</h3>
+            <p>Bundles mihomo v1.19.33.</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>What license does Rocket Science use?</h3>
+            <p>GPL-3.0. Third-party dependency notices are listed in <code>THIRD_PARTY_NOTICES.md</code>.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div>Rocket Science · GPL-3.0 · Powered by mihomo &amp; MyGo</div>
+      <div class="site-footer__links">
+        <a href="https://github.com/Slone123c/rocketscience/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Third-Party Notices</a>
+        <a href="https://github.com/Slone123c/rocketscience" target="_blank" rel="noopener">GitHub</a>
+        <a href="../">中文</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../assets/main.js"></script>
+</body>
+</html>
