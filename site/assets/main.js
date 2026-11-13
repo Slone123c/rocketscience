@@ -84,3 +84,17 @@
     }
   }
 })();
+
+document.querySelectorAll(".copy-btn").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const code = btn.parentElement?.querySelector("code");
+    if (!code) return;
+    const orig = btn.textContent;
+    const done = btn.getAttribute("data-copied") || "Copied";
+    try {
+      await navigator.clipboard.writeText(code.textContent || "");
+      btn.textContent = done;
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch {}
+  });
+});

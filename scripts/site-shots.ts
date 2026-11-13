@@ -1,4 +1,4 @@
-import { chromium, type Page } from "playwright-core";
+import { chromium, type Locator, type Page } from "playwright-core";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -82,12 +82,11 @@ function toMp4AndPoster(webmPath: string, mp4Path: string, posterWebpPath: strin
   const posterPng = join(workDir, "poster.png");
   const pff = spawnSync(
     "ffmpeg",
-    ["-y", "-ss", "00:00:02.0", "-i", mp4Path, "-vframes", "1", posterPng],
+    ["-y", "-sseof", "-1", "-i", mp4Path, "-frames:v", "1", posterPng],
     { stdio: "pipe" }
   );
   if (pff.status !== 0 || !existsSync(posterPng)) {
-    // Fallback to first frame
-    spawnSync("ffmpeg", ["-y", "-i", mp4Path, "-vframes", "1", posterPng], { stdio: "pipe" });
+    spawnSync("ffmpeg", ["-y", "-i", mp4Path, "-frames:v", "1", posterPng], { stdio: "pipe" });
   }
   toWebp(posterPng, posterWebpPath);
 }
@@ -112,6 +111,17 @@ async function snap(page: Page, name: string, theme: "light" | "dark") {
   console.log(`Captured ${name}-${theme}.webp (${sizeKb} KB)`);
 }
 
+async function snapLocator(locator: Locator, name: string, theme: "light" | "dark") {
+  await locator.scrollIntoViewIfNeeded();
+  await locator.page().waitForTimeout(250);
+  const pngPath = join(workDir, `${name}-${theme}.png`);
+  const webpPath = join(screensDir, `${name}-${theme}.webp`);
+  await locator.screenshot({ path: pngPath });
+  toWebp(pngPath, webpPath);
+  const sizeKb = (statSync(webpPath).size / 1024).toFixed(1);
+  console.log(`Captured ${name}-${theme}.webp (${sizeKb} KB)`);
+}
+
 async function captureThemeScreens(browser: import("playwright-core").Browser, theme: "light" | "dark") {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
@@ -126,21 +136,26 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
   const page = await context.newPage();
   page.on("dialog", (d) => d.accept());
 
-  // 1. Overview (running)
+  // 1. Overview (running) + overview-detail (gauges/chart panel)
   await page.goto(`${baseUrl}/?preview=running`, { waitUntil: "networkidle" });
   await waitUiReady(page);
   await snap(page, "overview", theme);
+  const overviewPanel = page.locator(".hero > .panel").first();
+  if (await overviewPanel.count()) {
+    await snapLocator(overviewPanel, "overview-detail", theme);
+  }
 
-  // 2. Trajectory view (scroll down on overview to show trajectory panel)
+  // 2. Trajectory view (full + detail)
   const traj = page.locator("section.panel:has-text('连接轨迹')").first();
   if (await traj.count()) {
     await traj.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await snap(page, "trajectory", theme);
+    await snapLocator(traj, "trajectory-detail", theme);
     await page.evaluate(() => window.scrollTo(0, 0));
   }
 
-  // 3. Proxies (after triggering a latency test)
+  // 3. Proxies (after triggering a latency test) + proxies-detail (expanded main group card)
   await clickSidebar(page, "代理");
   const testBtn = page.locator("button:has-text('测速')").first();
   if (await testBtn.count()) {
@@ -148,16 +163,24 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
     await page.waitForTimeout(600);
   }
   await snap(page, "proxies", theme);
+  const mainGroup = page.locator("section.proxy-section[aria-label='主出口']").first();
+  if (await mainGroup.count()) {
+    await snapLocator(mainGroup, "proxies-detail", theme);
+  }
 
-  // 4. Rules walkthrough
+  // 4. Rules walkthrough + rules-detail
   await clickSidebar(page, "规则");
   await snap(page, "rules", theme);
+  const ovrPanel = page.locator(".ovr").first();
+  if (await ovrPanel.count()) {
+    await snapLocator(ovrPanel, "rules-detail", theme);
+  }
 
   // 5. Connections
   await clickSidebar(page, "连接");
   await snap(page, "connections", theme);
 
-  // 6. Profiles workspace + editor sheet
+  // 6. Profiles workspace + editor sheet + profiles-detail
   await clickSidebar(page, "配置");
   await snap(page, "profiles", theme);
   const editBtn = page.locator("button:has-text('编辑')").first();
@@ -165,14 +188,22 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
     await editBtn.click();
     await page.waitForTimeout(350);
     await snap(page, "profile-editor", theme);
+    const mainArea = page.locator("main").first();
+    if (await mainArea.count()) {
+      await snapLocator(mainArea, "profiles-detail", theme);
+    }
     const closeBtn = page.locator("button[aria-label*='关闭'], button:has-text('取消')").first();
     if (await closeBtn.count()) await closeBtn.click();
     await page.waitForTimeout(250);
   }
 
-  // 7. Settings -> system proxy / TUN page
+  // 7. Settings -> system proxy / TUN page + settings-proxy-detail
   await clickSidebar(page, "设置");
   await snap(page, "settings-proxy", theme);
+  const settingsTopic = page.locator(".settings-topic:not([hidden])").first();
+  if (await settingsTopic.count()) {
+    await snapLocator(settingsTopic, "settings-proxy-detail", theme);
+  }
 
   // 8. Onboarding tour first step
   const tourBtn = page.locator("button:has-text('第一次使用')").first();
@@ -182,7 +213,7 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
     await snap(page, "onboarding", theme);
   }
 
-  // 9. Network check (mid-flow and result)
+  // 9. Network check (mid-flow, result, and network-check-detail)
   await page.goto(`${baseUrl}/?preview=checkRecommend`, { waitUntil: "networkidle" });
   await waitUiReady(page);
   const checkBtn = page.locator("#tour-check button").first();
@@ -191,6 +222,10 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
   await snap(page, "network-check-mid", theme);
   await page.waitForTimeout(2400);
   await snap(page, "network-check-result", theme);
+  const checkPop = page.locator(".lf-chkpop__panel").first();
+  if (await checkPop.count()) {
+    await snapLocator(checkPop, "network-check-detail", theme);
+  }
 
   // 10. Tray / menu-bar panel
   const trayCtx = await browser.newContext({
@@ -258,7 +293,7 @@ async function main() {
     await recordClip(browser, "onboarding", async (page) => {
       await page.goto(`${baseUrl}/?preview=running`, { waitUntil: "networkidle" });
       await waitUiReady(page);
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(600);
       await page.locator("button:has-text('第一次使用')").first().click();
       await page.waitForTimeout(1400);
       for (let i = 0; i < 3; i++) {
@@ -268,23 +303,23 @@ async function main() {
           await page.waitForTimeout(1500);
         }
       }
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(1200);
     });
 
     // Clip 2: Network check (~6.5s)
     await recordClip(browser, "network-check", async (page) => {
       await page.goto(`${baseUrl}/?preview=checkRecommend`, { waitUntil: "networkidle" });
       await waitUiReady(page);
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(600);
       await page.locator("#tour-check button").first().click();
-      await page.waitForTimeout(4200);
+      await page.waitForTimeout(4500);
     });
 
     // Clip 3: Proxy group latency test + node selection (~6.5s)
     await recordClip(browser, "proxy-test", async (page) => {
       await page.goto(`${baseUrl}/?preview=running`, { waitUntil: "networkidle" });
       await waitUiReady(page);
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(500);
       await clickSidebar(page, "代理");
       await page.waitForTimeout(700);
       const testBtn = page.locator("button:has-text('测速')").first();
@@ -295,9 +330,9 @@ async function main() {
       const nodeBtn = page.locator("button:has-text('新加坡'), button:has-text('日本'), button:has-text('香港')").first();
       if (await nodeBtn.count()) {
         await nodeBtn.click();
-        await page.waitForTimeout(1400);
+        await page.waitForTimeout(1600);
       }
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(800);
     });
   } finally {
     await browser.close();

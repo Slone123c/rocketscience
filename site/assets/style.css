@@ -95,6 +95,10 @@ img, video {
   display: block;
 }
 
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
 a {
   color: inherit;
 }
@@ -352,9 +356,14 @@ code {
   margin: 0 auto;
 }
 
+.window-frame--compact {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
 /* Sections */
 .section {
-  padding: 56px 0;
+  padding: 48px 0;
   border-top: 1px solid var(--line);
 }
 
@@ -388,7 +397,7 @@ code {
 .feature-list {
   display: flex;
   flex-direction: column;
-  gap: 56px;
+  gap: 40px;
 }
 
 .feature-row {
@@ -400,8 +409,12 @@ code {
 
 @media (min-width: 860px) {
   .feature-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
     gap: var(--space-8);
+  }
+
+  .feature-row--reverse {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   }
 
   .feature-row--reverse .feature-row__text {
@@ -557,15 +570,46 @@ th {
   font-size: 0.92rem;
 }
 
+.code-block {
+  position: relative;
+}
+
 .card pre {
   margin: 0;
-  padding: var(--space-3);
+  padding: var(--space-3) 56px var(--space-3) var(--space-3);
   background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.card pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 /* FAQ */

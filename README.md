@@ -30,11 +30,11 @@
 
 <table>
   <tr>
-    <td><img src="site/assets/screens/proxies-dark.webp" alt="节点与延迟测速"></td>
-    <td><img src="site/assets/screens/trajectory-dark.webp" alt="连接轨迹"></td>
+    <td><img src="site/assets/screens/proxies-detail-dark.webp" alt="节点与延迟测速"></td>
+    <td><img src="site/assets/screens/trajectory-detail-dark.webp" alt="连接轨迹"></td>
   </tr>
   <tr>
-    <td><img src="site/assets/screens/rules-dark.webp" alt="规则覆盖"></td>
+    <td><img src="site/assets/screens/rules-detail-dark.webp" alt="规则覆盖"></td>
     <td><a href="https://slone123c.github.io/rocketscience/#interactions"><img src="site/assets/clips/network-check-poster.webp" alt="分步网络检查交互演示"></a></td>
   </tr>
 </table>
@@ -46,8 +46,8 @@
 | 平台 | 架构 | 安装包 | 首次启动说明 |
 | --- | --- | --- | --- |
 | macOS 13+ | Apple Silicon / Intel | DMG | 未签名/公证：右键应用选择「打开」，或执行 `xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"` |
-| Windows 10/11 | x86_64 | 安装程序 / 便携 ZIP | 需 WebView2 运行时；SmartScreen 提示时点击「更多信息」→「仍要运行」 |
-| Linux | x86_64 | `.deb` / `.tar.gz` | 需提前安装运行库：`sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0` |
+| Windows 10/11 | x86_64 / ARM64 | 安装程序 / 便携 ZIP | 需 WebView2 运行时；SmartScreen 提示时点击「更多信息」→「仍要运行」 |
+| Linux | x86_64 / ARM64 | `.deb` / `.tar.gz` | 推荐 `sudo apt install ./rocketscience_<version>_<arch>.deb`（自动安装 GTK3、WebKitGTK 4.1 与 `libayatana-appindicator3-1`）；GNOME 托盘图标需 AppIndicator 扩展（Ubuntu 默认已启用） |
 
 ## 平台支持
 

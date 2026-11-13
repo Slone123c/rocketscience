@@ -30,11 +30,11 @@
 
 <table>
   <tr>
-    <td><img src="site/assets/screens/proxies-dark.webp" alt="Proxies and latency testing"></td>
-    <td><img src="site/assets/screens/trajectory-dark.webp" alt="Route trajectory"></td>
+    <td><img src="site/assets/screens/proxies-detail-dark.webp" alt="Proxies and latency testing"></td>
+    <td><img src="site/assets/screens/trajectory-detail-dark.webp" alt="Route trajectory"></td>
   </tr>
   <tr>
-    <td><img src="site/assets/screens/rules-dark.webp" alt="Rule overrides"></td>
+    <td><img src="site/assets/screens/rules-detail-dark.webp" alt="Rule overrides"></td>
     <td><a href="https://slone123c.github.io/rocketscience/en/#interactions"><img src="site/assets/clips/network-check-poster.webp" alt="Network check interaction clip"></a></td>
   </tr>
 </table>
@@ -46,8 +46,8 @@ Get the latest build from [Releases](https://github.com/Slone123c/rocketscience/
 | Platform | Arch | Package | First-launch notes |
 | --- | --- | --- | --- |
 | macOS 13+ | Apple Silicon / Intel | DMG | Unsigned build: right-click → Open, or run `xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"` |
-| Windows 10/11 | x86_64 | Installer / Portable ZIP | Requires WebView2 Runtime; on SmartScreen choose More info → Run anyway |
-| Linux | x86_64 | `.deb` / `.tar.gz` | Install runtime libs first: `sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0` |
+| Windows 10/11 | x86_64 / ARM64 | Installer / Portable ZIP | Requires WebView2 Runtime; on SmartScreen choose More info → Run anyway |
+| Linux | x86_64 / ARM64 | `.deb` / `.tar.gz` | Recommended: `sudo apt install ./rocketscience_<version>_<arch>.deb` (resolves GTK3, WebKitGTK 4.1, and `libayatana-appindicator3-1`); GNOME tray icon requires the AppIndicator extension (enabled by default on Ubuntu) |
 
 ## Platform Support
 
