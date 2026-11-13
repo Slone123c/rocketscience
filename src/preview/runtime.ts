@@ -295,7 +295,7 @@ function connections(): ConnectionSnapshot {
 
 // `?preview=stopped|stoppedOff|runningTun|noProfile` opens the preview in that backend state.
 const scenario = new URLSearchParams(globalThis.location?.search ?? "").get("preview");
-if (scenario && scenario !== "running") {
+if (scenario && scenario !== "running" && scenario !== "checkRecommend") {
   if (scenario === "runningTun") state.tun = true;
   else {
     state.running = false;
@@ -577,7 +577,16 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
     state.connections = state.connections.filter(item => item.id !== String(args[0]));
   },
   "Service.CloseAllConnections": () => { requireRunning(); state.connections = []; },
-  "Service.CheckConnectivity": (): Connectivity => {
+  "Service.CheckConnectivity": async (): Promise<Connectivity> => {
+    if (scenario === "checkRecommend") {
+      const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+      emit("connectivity-progress", { local: false, localStatus: "running", localDetail: "", core: false, takeoverStatus: "idle", takeoverDetail: "", autoExited: false, request: false, message: "", step: "正在测试本机直连…", nodeStatus: "idle", nodeDetail: "", recommendations: [] });
+      await wait(900);
+      emit("connectivity-progress", { local: true, localStatus: "ok", localDetail: "无代理状态下本机网络正常", core: false, takeoverStatus: "running", takeoverDetail: "", autoExited: false, request: false, message: "", step: "正在启动代理并检测接管…", nodeStatus: "idle", nodeDetail: "", recommendations: [] });
+      await wait(900);
+      emit("connectivity-progress", { local: true, localStatus: "ok", localDetail: "无代理状态下本机网络正常", core: true, takeoverStatus: "ok", takeoverDetail: "开启代理后网络正常，未导致断网", autoExited: false, request: false, message: "", step: "正在测试可用节点…", nodeStatus: "running", nodeDetail: "", recommendations: [] });
+      await wait(1100);
+    }
     state.running = true;
     return {
       local: true,
@@ -610,12 +619,26 @@ const handlers: Record<string, (args: unknown[]) => unknown> = {
   "WiFi.Check": () => undefined,
 };
 
-/** Go events never fire in the browser preview, so subscribing does nothing. */
+const listeners = new Map<string, Set<(payload: unknown) => void>>();
+function emit(name: string, payload: unknown) {
+  for (const fn of listeners.get(name) ?? []) fn(payload);
+}
+
+/** Subscribe to preview events emitted by mock handlers. */
 export function event<T>(name: string) {
   return {
     name,
-    on: (_listener: (payload: T) => void) => () => {},
-    once: (_listener: (payload: T) => void) => () => {},
+    on: (listener: (payload: T) => void) => {
+      let set = listeners.get(name);
+      if (!set) { set = new Set(); listeners.set(name, set); }
+      const wrapped = (payload: unknown) => listener(payload as T);
+      set.add(wrapped);
+      return () => { set?.delete(wrapped); };
+    },
+    once: (listener: (payload: T) => void) => {
+      const off = event<T>(name).on((payload) => { off(); listener(payload); });
+      return off;
+    },
   };
 }
 
