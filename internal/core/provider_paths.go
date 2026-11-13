@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -125,16 +126,20 @@ func checkProviderSection(section string, rawSection any, seen map[string]string
 	return nil
 }
 
+func hasWindowsDrivePrefix(s string) bool {
+	return len(s) >= 2 && s[1] == ':' && ((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z'))
+}
+
 func checkProviderPath(provider, raw string, seen map[string]string) error {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return fmt.Errorf("配置中的 %s 路径不能为空", provider)
 	}
-	if filepath.IsAbs(trimmed) || strings.HasPrefix(trimmed, "~") || strings.ContainsRune(trimmed, '\\') {
+	if strings.HasPrefix(trimmed, "/") || filepath.VolumeName(trimmed) != "" || hasWindowsDrivePrefix(trimmed) || strings.HasPrefix(trimmed, "~") || strings.ContainsRune(trimmed, '\\') {
 		return fmt.Errorf("配置中的 %s 路径 %q 不能使用绝对路径或工作目录外路径", provider, raw)
 	}
-	clean := filepath.Clean(trimmed)
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+	clean := path.Clean(trimmed)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || !filepath.IsLocal(filepath.FromSlash(clean)) {
 		return fmt.Errorf("配置中的 %s 路径 %q 不能超出工作目录", provider, raw)
 	}
 	key := strings.ToLower(clean)

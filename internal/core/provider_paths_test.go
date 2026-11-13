@@ -66,6 +66,58 @@ rules:
 			wantErr: "保留文件冲突",
 		},
 		{
+			name: "nested relative path traversal",
+			content: `
+proxy-providers:
+  p1:
+    type: http
+    url: https://example.com/sub.yaml
+    path: a/../../x
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "不能超出工作目录",
+		},
+		{
+			name: "windows drive relative path",
+			content: `
+proxy-providers:
+  p1:
+    type: http
+    url: https://example.com/sub.yaml
+    path: C:x.yaml
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "不能使用绝对路径",
+		},
+		{
+			name: "windows drive absolute path",
+			content: `
+proxy-providers:
+  p1:
+    type: http
+    url: https://example.com/sub.yaml
+    path: C:/x.yaml
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "不能使用绝对路径",
+		},
+		{
+			name: "unc share path",
+			content: `
+proxy-providers:
+  p1:
+    type: http
+    url: https://example.com/sub.yaml
+    path: //server/share/x.yaml
+rules:
+  - MATCH,DIRECT
+`,
+			wantErr: "不能使用绝对路径",
+		},
+		{
 			name: "duplicate provider cache path",
 			content: `
 proxy-providers:
@@ -111,7 +163,7 @@ proxy-providers:
   p2:
     type: http
     url: https://example.com/sub2.yaml
-    path: ./providers/p2.yaml
+    path: providers/a.yaml
 rules:
   - MATCH,DIRECT
 `
@@ -190,4 +242,3 @@ rules:
 		t.Fatalf("expected circular dialer-proxy error from validateProfile, got: %v", err)
 	}
 }
-
