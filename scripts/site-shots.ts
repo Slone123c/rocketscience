@@ -163,10 +163,29 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
     await page.waitForTimeout(600);
   }
   await snap(page, "proxies", theme);
-  const mainGroup = page.locator("section.proxy-section[aria-label='主出口']").first();
+  const proxyDetailCtx = await browser.newContext({
+    viewport: { width: 760, height: 800 },
+    deviceScaleFactor: 2,
+    colorScheme: theme,
+  });
+  await proxyDetailCtx.addInitScript((t) => {
+    localStorage.setItem("rs-appearance", t);
+    localStorage.setItem("rs-first-run-dismissed", "1");
+  }, theme);
+  const proxyDetailPage = await proxyDetailCtx.newPage();
+  await proxyDetailPage.goto(`${baseUrl}/?preview=running`, { waitUntil: "networkidle" });
+  await waitUiReady(proxyDetailPage);
+  await clickSidebar(proxyDetailPage, "代理");
+  const pdTestBtn = proxyDetailPage.locator("button:has-text('测速')").first();
+  if (await pdTestBtn.count()) {
+    await pdTestBtn.click();
+    await proxyDetailPage.waitForTimeout(600);
+  }
+  const mainGroup = proxyDetailPage.locator("section.proxy-section[aria-label='主出口']").first();
   if (await mainGroup.count()) {
     await snapLocator(mainGroup, "proxies-detail", theme);
   }
+  await proxyDetailCtx.close();
 
   // 4. Rules walkthrough + rules-detail
   await clickSidebar(page, "规则");
@@ -200,7 +219,7 @@ async function captureThemeScreens(browser: import("playwright-core").Browser, t
   // 7. Settings -> system proxy / TUN page + settings-proxy-detail
   await clickSidebar(page, "设置");
   await snap(page, "settings-proxy", theme);
-  const settingsTopic = page.locator(".settings-topic:not([hidden])").first();
+  const settingsTopic = page.locator(".settings-topic:not([hidden]) .lf-set").first();
   if (await settingsTopic.count()) {
     await snapLocator(settingsTopic, "settings-proxy-detail", theme);
   }
