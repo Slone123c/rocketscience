@@ -7,6 +7,7 @@ import (
 )
 
 func TestCompactViewSnapshotsOmitBulkContent(t *testing.T) {
+	withAutomaticSystemProxy(t)
 	p := NewProfiles(t.TempDir())
 	if err := p.write(profileData{ActiveID: "active", MixedPort: 7891, SystemProxy: true, Profiles: []Profile{{ID: "active", Content: strings.Repeat("private-yaml", 10000), URL: "https://subscription.example/secret"}}}); err != nil {
 		t.Fatal(err)
@@ -19,6 +20,7 @@ func TestCompactViewSnapshotsOmitBulkContent(t *testing.T) {
 	if err != nil || len(data) > 200 || strings.Contains(string(data), "secret") || strings.Contains(string(data), "private-yaml") {
 		t.Fatal("summary copied bulk/private profile content")
 	}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.telemetry = Telemetry{Up: 12, Down: 24, Connected: true}
 	s.trafficSamples[0] = trafficSample{12, 24}

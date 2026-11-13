@@ -79,3 +79,50 @@ func TestUnsupportedSessionClearsPersistedSystemProxyAndManualStart(t *testing.T
 		t.Fatal("stop must not apply proxy in manual mode")
 	}
 }
+
+func TestMacOSTunProfileNormalizesAndStartsOnOtherOS(t *testing.T) {
+	systemproxy.SetAutomaticAvailableOverride(func() (bool, bool) { return true, true })
+	t.Cleanup(func() { systemproxy.SetAutomaticAvailableOverride(nil) })
+
+	dir := t.TempDir()
+	index := profileData{
+		Profiles:           []Profile{{ID: "active", Name: "active", Source: "file", Content: direct}},
+		ActiveID:           "active",
+		MixedPort:          freePort(t),
+		Tun:                true,
+		HideDockWhenClosed: true,
+		SystemProxy:        false,
+	}
+	b, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "profiles.json"), b, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	proxy := &fakeProxy{}
+	s := New()
+	s.proxy = proxy
+	s.geo.dir = testGeoDir(t)
+	t.Setenv("ROCKETSCIENCE_MIHOMO", filepath.Join(t.TempDir(), "missing"))
+	defer s.Shutdown()
+
+	p := NewProfilesWithService(dir, s)
+	if err := p.Initialize(); err != nil {
+		t.Fatalf("initialize with macOS TUN profile should not fail on non-darwin: %v", err)
+	}
+	st := s.Status()
+	if st.Tun {
+		t.Fatal("Tun must be normalized to false on non-darwin")
+	}
+	if err := p.StartActive(); err != nil {
+		t.Fatalf("StartActive after normalizing macOS TUN profile failed: %v", err)
+	}
+	if !s.Status().Running {
+		t.Fatal("core should be running after StartActive")
+	}
+}

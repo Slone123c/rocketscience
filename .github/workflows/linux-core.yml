@@ -5,11 +5,7 @@ on:
   push:
     branches:
       - main
-      - advisor/001-publication-preparation
-    paths:
-      - "internal/**"
-      - "scripts/**"
-      - ".github/workflows/linux-core.yml"
+  pull_request:
 
 jobs:
   systemproxy:
@@ -19,13 +15,23 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Test system proxy and GEO semantics
-        run: go test ./internal/systemproxy/... ./internal/core/ -count=1 -v
+      - name: Install GTK and WebKitGTK dev packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Seed bundled GEO databases for tests
+        run: |
+          mkdir -p "$HOME/.config/RocketScience/geo"
+          cp resources/geoip.metadb resources/geosite.dat "$HOME/.config/RocketScience/geo/"
+      - name: Run full Go test suite
+        run: go test ./... -count=1
         env:
           GOFLAGS: -tags=with_gvisor
           XDG_CURRENT_DESKTOP: GNOME
-      - name: GNOME bypass roundtrip (injected gsettings map)
-        run: go test ./internal/systemproxy/ -run 'Bypass|RecoveryRoundTrip' -count=1 -v
+      - name: GNOME bypass and restore roundtrip (injected gsettings map)
+        run: go test ./internal/systemproxy/ -run 'Bypass|RecoveryRoundTrip|LinuxPartialRestore' -count=1 -v
         env:
           GOFLAGS: -tags=with_gvisor
           XDG_CURRENT_DESKTOP: GNOME
+      - name: Build Linux application binary
+        run: go build -tags=with_gvisor -trimpath -o rocketscience .

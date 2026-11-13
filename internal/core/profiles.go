@@ -95,25 +95,32 @@ func (p *Profiles) directory() (string, error) {
 	return filepath.Join(path, "RocketScience"), nil
 }
 func (p *Profiles) load() (profileData, error) {
+	d, _, err := p.loadWithNormalization()
+	return d, err
+}
+
+func (p *Profiles) loadWithNormalization() (profileData, bool, error) {
 	// A new install uses the system proxy, so the first start needs no takeover choice.
 	// A saved file keeps its explicit value.
 	d := profileData{Profiles: []Profile{}, MixedPort: 7890, SystemProxy: true, Overrides: defaultOverrides()}
 	dir, err := p.directory()
 	if err != nil {
-		return d, err
+		return d, false, err
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "profiles.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		normalizePersistedTakeover(&d)
-		return d, nil
+		return d, false, nil
 	}
 	if err != nil {
-		return d, err
+		return d, false, err
 	}
 	if err = json.Unmarshal(b, &d); err != nil {
-		return d, fmt.Errorf("读取配置索引失败：%w", err)
+		return d, false, fmt.Errorf("读取配置索引失败：%w", err)
 	}
+	beforeTun, beforeProxy, beforeHideDock := d.Tun, d.SystemProxy, d.HideDockWhenClosed
 	normalizePersistedTakeover(&d)
+	changed := beforeTun != d.Tun || beforeProxy != d.SystemProxy || beforeHideDock != d.HideDockWhenClosed
 	if d.Profiles == nil {
 		d.Profiles = []Profile{}
 	}
@@ -142,7 +149,7 @@ func (p *Profiles) load() (profileData, error) {
 			d.ActiveID = d.Profiles[0].ID
 		}
 	}
-	return d, nil
+	return d, changed, nil
 }
 func (p *Profiles) write(d profileData) error {
 	dir, err := p.directory()

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
@@ -218,7 +219,8 @@ func TestConcurrentMultiSettingsPreserveAllFields(t *testing.T) {
 		t.Fatalf("TrayDisplay lost: %s %v", trayMode, err)
 	}
 	hideDock, err := reloaded.HideDockWhenClosed()
-	if err != nil || !hideDock {
-		t.Fatalf("HideDockWhenClosed lost: %v %v", hideDock, err)
+	wantHideDock := runtime.GOOS == "darwin"
+	if err != nil || hideDock != wantHideDock {
+		t.Fatalf("HideDockWhenClosed: got %v want %v (err=%v)", hideDock, wantHideDock, err)
 	}
 }

@@ -156,3 +156,115 @@ func TestEmptyCustomBypassRetainsLoopbackAndLocalExceptions(t *testing.T) {
 		t.Fatalf("original ExceptionsList not restored: %s", b.services[0].Settings["ExceptionsList"])
 	}
 }
+
+func TestRestorePartialConflictReleasesOwnershipAndDeletesJournal(t *testing.T) {
+	b := &fakeBackend{services: []Service{{ID: "wifi", Settings: Settings{
+		"__ProtocolEnabled":        json.RawMessage("false"),
+		"HTTPEnable":               json.RawMessage("1"),
+		"HTTPProxy":                json.RawMessage(`"corp-http"`),
+		"HTTPPort":                 json.RawMessage("8080"),
+		"HTTPSEnable":              json.RawMessage("1"),
+		"HTTPSProxy":               json.RawMessage(`"corp-https"`),
+		"HTTPSPort":                json.RawMessage("8443"),
+		"SOCKSEnable":              json.RawMessage("0"),
+		"ProxyAutoConfigEnable":    json.RawMessage("0"),
+		"ProxyAutoDiscoveryEnable": json.RawMessage("0"),
+	}}}}
+	journalPath := filepath.Join(t.TempDir(), "journal.json")
+	m := New(b, journalPath)
+	if err := m.Apply(7890); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(journalPath); err != nil {
+		t.Fatalf("expected journal after apply: %v", err)
+	}
+
+	// User externally edits HTTPSProxy; HTTP/SOCKS remain owned by RocketScience.
+	b.services[0].Settings["HTTPSProxy"] = json.RawMessage(`"user-https"`)
+	b.services[0].Settings["HTTPSPort"] = json.RawMessage("9443")
+
+	conflicts, err := m.Restore()
+	if err != nil {
+		t.Fatalf("partial restore returned error: %v", err)
+	}
+	if len(conflicts) == 0 {
+		t.Fatal("expected conflict for externally edited HTTPS group")
+	}
+	// (a) Owned HTTP group must be restored and journal removed.
+	if string(b.services[0].Settings["HTTPProxy"]) != `"corp-http"` || string(b.services[0].Settings["HTTPPort"]) != "8080" {
+		t.Fatalf("owned HTTP group not restored: %+v", b.services[0].Settings)
+	}
+	if _, err := os.Stat(journalPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("journal must be removed after partial restore, stat err=%v", err)
+	}
+	if pending, err := m.Pending(); err != nil || pending {
+		t.Fatalf("Pending=%v err=%v, want false", pending, err)
+	}
+	// (b) Externally edited HTTPS group must NOT be overwritten, and ownership is released (second Restore is a no-op).
+	if string(b.services[0].Settings["HTTPSProxy"]) != `"user-https"` || string(b.services[0].Settings["HTTPSPort"]) != "9443" {
+		t.Fatalf("external edit was overwritten: %+v", b.services[0].Settings)
+	}
+	if conflicts2, err := New(b, journalPath).Restore(); err != nil || len(conflicts2) != 0 {
+		t.Fatalf("second Restore should be no-op, got conflicts=%v err=%v", conflicts2, err)
+	}
+	if string(b.services[0].Settings["HTTPSProxy"]) != `"user-https"` {
+		t.Fatalf("second Restore mutated external edit: %+v", b.services[0].Settings)
+	}
+	// (d) Apply -> Restore -> Apply again must work.
+	if err := m.Apply(7891); err != nil {
+		t.Fatalf("re-apply after partial restore failed: %v", err)
+	}
+	if string(b.services[0].Settings["HTTPPort"]) != "7891" || string(b.services[0].Settings["HTTPSPort"]) != "7891" {
+		t.Fatalf("re-apply did not take over: %+v", b.services[0].Settings)
+	}
+}
+
+func TestRestoreFailurePreservesJournalForFreshManagerRecovery(t *testing.T) {
+	b := &fakeBackend{services: []Service{{ID: "wifi", Settings: Settings{
+		"__ProtocolEnabled":        json.RawMessage("false"),
+		"HTTPEnable":               json.RawMessage("1"),
+		"HTTPProxy":                json.RawMessage(`"corp-http"`),
+		"HTTPPort":                 json.RawMessage("8080"),
+		"ProxyAutoConfigEnable":    json.RawMessage("0"),
+		"ProxyAutoDiscoveryEnable": json.RawMessage("0"),
+	}}}}
+	journalPath := filepath.Join(t.TempDir(), "journal.json")
+	m1 := New(b, journalPath)
+	if err := m1.Apply(7890); err != nil {
+		t.Fatal(err)
+	}
+
+	b.fail = true
+	if _, err := m1.Restore(); err == nil {
+		t.Fatal("expected error when backend write fails")
+	}
+	// Journal must still exist and be readable when backend fails.
+	raw, err := os.ReadFile(journalPath)
+	if err != nil || len(raw) == 0 {
+		t.Fatalf("journal must remain intact on restore failure: len=%d err=%v", len(raw), err)
+	}
+	if pending, err := m1.Pending(); err != nil || !pending {
+		t.Fatalf("Pending=%v err=%v, want true", pending, err)
+	}
+
+	// (c) A fresh Manager started later recovers still-owned leftovers from the journal.
+	b.fail = false
+	m2 := New(b, journalPath)
+	if pending, err := m2.Pending(); err != nil || !pending {
+		t.Fatalf("fresh Manager Pending=%v err=%v, want true", pending, err)
+	}
+	conflicts, err := m2.Restore()
+	if err != nil || len(conflicts) > 0 {
+		t.Fatalf("fresh Manager Restore failed: conflicts=%v err=%v", conflicts, err)
+	}
+	if string(b.services[0].Settings["HTTPProxy"]) != `"corp-http"` || string(b.services[0].Settings["HTTPPort"]) != "8080" {
+		t.Fatalf("fresh Manager did not restore original settings: %+v", b.services[0].Settings)
+	}
+	if _, err := os.Stat(journalPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("journal must be removed after fresh Manager recovery, stat err=%v", err)
+	}
+	// (d) Apply again works after recovery.
+	if err := m2.Apply(7892); err != nil {
+		t.Fatalf("re-apply after recovery failed: %v", err)
+	}
+}

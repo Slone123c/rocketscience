@@ -5,11 +5,7 @@ on:
   push:
     branches:
       - main
-      - advisor/001-publication-preparation
-    paths:
-      - "internal/core/**"
-      - "internal/systemproxy/**"
-      - ".github/workflows/windows-core.yml"
+  pull_request:
 
 jobs:
   core-systemproxy:
@@ -19,11 +15,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Test GEO/journal and WinINET proxy semantics
-        run: go test ./internal/core/ -run 'Geo|ProcessAlive' -count=1 -v && go test ./internal/systemproxy/... -count=1 -v
+      - name: Seed bundled GEO databases for tests
+        shell: pwsh
+        run: |
+          $geoDir = Join-Path $env:APPDATA "RocketScience\geo"
+          New-Item -ItemType Directory -Force -Path $geoDir | Out-Null
+          Copy-Item resources\geoip.metadb, resources\geosite.dat $geoDir
+      - name: Run full Go test suite
+        run: go test ./... -count=1
         env:
           GOFLAGS: -tags=with_gvisor
       - name: Live WinINET apply/restore on ephemeral runner
         run: go test ./internal/systemproxy/ -run LiveWinINET -count=1 -v
         env:
           GOFLAGS: -tags=with_gvisor
+      - name: Build Windows application binary
+        run: go build -tags=with_gvisor -trimpath -o rocketscience.exe .

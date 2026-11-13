@@ -3,6 +3,8 @@ package core
 import (
 	"strings"
 	"testing"
+
+	"rocketscience/internal/systemproxy"
 )
 
 func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
@@ -39,12 +41,6 @@ func TestStartupPreferencesAndMissingTakeover(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := s.Status()
-	if !takeoverRequiredBeforeStart() {
-		if st.SystemProxy {
-			t.Fatalf("non-macOS saved choice without desktop API should stay manual: %+v", st)
-		}
-		return
-	}
 	if st.Running || !st.SystemProxy {
 		t.Fatalf("saved choice: %+v", st)
 	}
@@ -53,7 +49,7 @@ func TestNewInstallDefaultsToSystemProxyAndKeepsSavedChoice(t *testing.T) {
 	withAutomaticSystemProxy(t)
 	p := NewProfiles(t.TempDir())
 	summary, err := p.Summary()
-	wantDefault := takeoverRequiredBeforeStart()
+	wantDefault := systemproxy.AutomaticAvailable()
 	if err != nil || summary.SystemProxy != wantDefault {
 		t.Fatalf("new install: %+v %v want %v", summary, err, wantDefault)
 	}

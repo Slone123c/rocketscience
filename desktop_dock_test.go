@@ -2,6 +2,7 @@ package main
 
 import (
 	"rocketscience/internal/core"
+	"runtime"
 	"testing"
 )
 
@@ -38,16 +39,23 @@ func TestHideDockWhenClosedSettingBridge(t *testing.T) {
 	if err := d.SetHideDockWhenClosed(true); err != nil {
 		t.Fatal(err)
 	}
-	if value, err := d.HideDockWhenClosed(); err != nil || !value {
-		t.Fatalf("saved: %v %v", value, err)
-	}
-	if hidden != 1 || shown != 0 {
-		t.Fatalf("closed dashboard should hide Dock: shown=%d hidden=%d", shown, hidden)
-	}
-	if err := d.SetHideDockWhenClosed(false); err != nil {
-		t.Fatal(err)
-	}
-	if shown != 1 {
-		t.Fatalf("turning preference off should show Dock: shown=%d", shown)
+	value, err := d.HideDockWhenClosed()
+	if runtime.GOOS == "darwin" {
+		if err != nil || !value {
+			t.Fatalf("saved: %v %v", value, err)
+		}
+		if hidden != 1 || shown != 0 {
+			t.Fatalf("closed dashboard should hide Dock: shown=%d hidden=%d", shown, hidden)
+		}
+		if err := d.SetHideDockWhenClosed(false); err != nil {
+			t.Fatal(err)
+		}
+		if shown != 1 {
+			t.Fatalf("turning preference off should show Dock: shown=%d", shown)
+		}
+	} else {
+		if err != nil || value {
+			t.Fatalf("non-darwin should keep HideDockWhenClosed false: %v %v", value, err)
+		}
 	}
 }

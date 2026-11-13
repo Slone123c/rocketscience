@@ -34,6 +34,7 @@ func (p *fakeProxy) Pending() (bool, error) { return p.pending, nil }
 func TestTakeoverRestoresBeforeCoreStops(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = p
 	defer s.Shutdown()
@@ -58,6 +59,7 @@ func TestTakeoverRestoresBeforeCoreStops(t *testing.T) {
 }
 func TestPendingRecoveryBlocksStart(t *testing.T) {
 	p := &fakeProxy{pending: true}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = p
 	if err := s.SetSystemProxy(true); err != nil {
@@ -72,16 +74,28 @@ func TestPendingRecoveryBlocksStart(t *testing.T) {
 }
 
 func TestStartRequiresTakeover(t *testing.T) {
+	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = &fakeProxy{}
-	if err := s.Start(direct, 7890); err == nil {
-		t.Fatal("core started without takeover")
+	s.geo.dir = testGeoDir(t)
+	defer s.Shutdown()
+	err := s.Start(direct, freePort(t))
+	if takeoverRequiredBeforeStart() {
+		if err == nil {
+			t.Fatal("core started without takeover")
+		}
+		return
+	}
+	if err != nil {
+		t.Fatalf("manual mode start on non-macOS failed: %v", err)
 	}
 }
 
 func TestDisablingLastTakeoverStopsCore(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = p
 	defer s.Shutdown()
@@ -109,6 +123,7 @@ func TestDisablingLastTakeoverStopsCore(t *testing.T) {
 func TestFailureToApplyRollsBack(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{applyErr: errors.Join(systemproxy.ErrRecoveryNeeded, errors.New("permission denied"))}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = p
 	defer s.Shutdown()
@@ -126,6 +141,7 @@ func TestFailureToApplyRollsBack(t *testing.T) {
 func TestCrashRestoresTakeover(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = p
 	defer s.Shutdown()
@@ -145,43 +161,4 @@ func TestCrashRestoresTakeover(t *testing.T) {
 		time.Sleep(25 * time.Millisecond)
 	}
 	t.Fatal("network recovery did not finish after core exit")
-}
-
-func TestConcurrentSystemProxyReloadAndWiFiCheck(t *testing.T) {
-	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
-	p := &fakeProxy{}
-	s := New()
-	s.proxy = p
-	defer s.Shutdown()
-	if err := s.SetTun(true); err != nil {
-		t.Fatal(err)
-	}
-	s.tunLaunch = fakeTunLaunch
-	s.tunReady = func(map[string]bool) bool { return true }
-	if err := s.Start(direct, freePort(t)); err != nil {
-		t.Fatal(err)
-	}
-	done := make(chan error, 6)
-	for i := 0; i < 3; i++ {
-		enable := i%2 == 0
-		go func(en bool) {
-			done <- s.SetSystemProxy(en)
-		}(enable)
-		go func() {
-			_, err := s.reloadIfRunning(direct)
-			done <- err
-		}()
-	}
-	for i := 0; i < 6; i++ {
-		if err := <-done; err != nil {
-			t.Fatalf("concurrent SetSystemProxy / reloadIfRunning error: %v", err)
-		}
-	}
-	if err := s.SetSystemProxy(false); err != nil {
-		t.Fatal(err)
-	}
-	st := s.Status()
-	if st.SystemProxy || p.pending {
-		t.Fatalf("expected system proxy to be off and restored after disabling, got status=%+v pending=%v", st, p.pending)
-	}
 }

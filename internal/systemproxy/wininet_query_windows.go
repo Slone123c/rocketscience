@@ -11,24 +11,24 @@ import (
 )
 
 const (
-	internetOpenTypePreconfig           = 0
-	internetOptionProxy                 = 38
-	internetOpenTypeProxy               = 3
-	internetOptionPerConnectionOption   = 75
-	internetPerConnFlags                = 1
-	internetPerConnProxyServer          = 2
-	internetPerConnProxyBypass          = 3
-	internetPerConnAutoconfigURL        = 4
-	proxyTypeDirect                     = 0x00000001
-	proxyTypeProxy                      = 0x00000002
-	proxyTypeAutoProxyURL               = 0x00000004
-	proxyTypeAutoDetect                 = 0x00000008
+	internetOpenTypePreconfig         = 0
+	internetOptionProxy               = 38
+	internetOpenTypeProxy             = 3
+	internetOptionPerConnectionOption = 75
+	internetPerConnFlags              = 1
+	internetPerConnProxyServer        = 2
+	internetPerConnProxyBypass        = 3
+	internetPerConnAutoconfigURL      = 4
+	proxyTypeDirect                   = 0x00000001
+	proxyTypeProxy                    = 0x00000002
+	proxyTypeAutoProxyURL             = 0x00000004
+	proxyTypeAutoDetect               = 0x00000008
 )
 
 type internetProxyInfo struct {
 	AccessType uint32
-	Proxy      uintptr
-	Bypass     uintptr
+	Proxy      *uint16
+	Bypass     *uint16
 }
 
 type internetPerConnOption struct {
@@ -96,15 +96,15 @@ func queryWinINETPerConnection() (winINETUserSettings, error) {
 	}
 	out := winINETUserSettings{Flags: uint32(opts[0].Value)}
 	if opts[1].Value != 0 {
-		out.ProxyServer = windows.UTF16PtrToString((*uint16)(unsafe.Pointer(opts[1].Value)))
+		out.ProxyServer = windows.UTF16PtrToString(*(**uint16)(unsafe.Pointer(&opts[1].Value)))
 		freeWinINETAllocatedString(opts[1].Value)
 	}
 	if opts[2].Value != 0 {
-		out.ProxyBypass = windows.UTF16PtrToString((*uint16)(unsafe.Pointer(opts[2].Value)))
+		out.ProxyBypass = windows.UTF16PtrToString(*(**uint16)(unsafe.Pointer(&opts[2].Value)))
 		freeWinINETAllocatedString(opts[2].Value)
 	}
 	if opts[3].Value != 0 {
-		out.AutoConfigURL = windows.UTF16PtrToString((*uint16)(unsafe.Pointer(opts[3].Value)))
+		out.AutoConfigURL = windows.UTF16PtrToString(*(**uint16)(unsafe.Pointer(&opts[3].Value)))
 		freeWinINETAllocatedString(opts[3].Value)
 	}
 	return out, nil
@@ -140,11 +140,11 @@ func queryWinINETViaPreconfigHandle() (winINETUserSettings, error) {
 	if info.AccessType == internetOpenTypeProxy {
 		out.Flags = proxyTypeProxy | proxyTypeDirect
 	}
-	if info.Proxy != 0 {
-		out.ProxyServer = windows.UTF16PtrToString((*uint16)(unsafe.Pointer(info.Proxy)))
+	if info.Proxy != nil {
+		out.ProxyServer = windows.UTF16PtrToString(info.Proxy)
 	}
-	if info.Bypass != 0 {
-		out.ProxyBypass = windows.UTF16PtrToString((*uint16)(unsafe.Pointer(info.Bypass)))
+	if info.Bypass != nil {
+		out.ProxyBypass = windows.UTF16PtrToString(info.Bypass)
 	}
 	return out, nil
 }

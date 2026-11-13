@@ -47,13 +47,11 @@ func (p *Profiles) Initialize() error {
 	if p.service == nil {
 		return errors.New("内核服务不可用")
 	}
-	d, err := p.load()
+	d, changed, err := p.loadWithNormalization()
 	if err != nil {
 		return err
 	}
-	beforeTun, beforeProxy := d.Tun, d.SystemProxy
-	normalizePersistedTakeover(&d)
-	if beforeTun != d.Tun || beforeProxy != d.SystemProxy {
+	if changed {
 		if err = p.write(d); err != nil {
 			return fmt.Errorf("无法更新不支持环境的接管设置：%w", err)
 		}

@@ -78,6 +78,7 @@ func TestGeoCrashFixture(t *testing.T) {
 	if cacheDir == "" {
 		return
 	}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = &fakeProxy{}
 	s.geo.dir = cacheDir

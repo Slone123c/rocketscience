@@ -39,6 +39,7 @@ func TestProxyBypassPersistenceAndValidation(t *testing.T) {
 func TestProxyBypassFlowsIntoCoreTakeover(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	proxy := &fakeProxy{}
+	withAutomaticSystemProxy(t)
 	s := New()
 	s.proxy = proxy
 	defer s.Shutdown()

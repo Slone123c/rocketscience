@@ -124,15 +124,20 @@ func TestControllerOptionsIPv6BracketsAndZoneID(t *testing.T) {
 			t.Fatalf("Address(%q) = %q, want \"::1\"", raw, got.Address)
 		}
 	}
-	if _, err := p.SetControllerSettings(ControllerOptions{Address: "fe80::1%en0", Port: 19090}); err == nil {
+	ifaces, err := net.Interfaces()
+	if err != nil || len(ifaces) == 0 {
+		t.Fatalf("net.Interfaces: %v (len=%d)", err, len(ifaces))
+	}
+	zone := ifaces[0].Name
+	if _, err := p.SetControllerSettings(ControllerOptions{Address: "fe80::1%" + zone, Port: 19090}); err == nil {
 		t.Fatal("accepted link-local IPv6 without secret")
 	}
-	got, err := p.SetControllerSettings(ControllerOptions{Address: "[fe80::1%en0]", Port: 19090, Secret: "s"})
+	got, err := p.SetControllerSettings(ControllerOptions{Address: "[fe80::1%" + zone + "]", Port: 19090, Secret: "s"})
 	if err != nil {
-		t.Fatalf("SetControllerSettings([fe80::1%%en0]) failed: %v", err)
+		t.Fatalf("SetControllerSettings([fe80::1%%%s]) failed: %v", zone, err)
 	}
-	if got.Address != "fe80::1%en0" {
-		t.Fatalf("got.Address = %q, want \"fe80::1%%en0\"", got.Address)
+	if got.Address != "fe80::1%"+zone {
+		t.Fatalf("got.Address = %q, want %q", got.Address, "fe80::1%"+zone)
 	}
 	if _, err := p.SetControllerSettings(ControllerOptions{Address: "fe80::1%nonexistent999", Port: 19090, Secret: "s"}); err == nil {
 		t.Fatal("accepted non-existent IPv6 Zone ID")
