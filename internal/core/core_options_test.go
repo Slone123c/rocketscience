@@ -119,6 +119,7 @@ func TestNoOpSaveDoesNotReloadCore(t *testing.T) {
 }
 
 func TestConcurrentMultiSettingsPreserveAllFields(t *testing.T) {
+	withTestGeoHome(t)
 	p := NewProfiles(t.TempDir())
 	fns := []func() error{
 		func() error { return p.SetPort(47892) },

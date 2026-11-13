@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -83,6 +84,21 @@ func testGeoDir(t *testing.T) string {
 	dir := t.TempDir()
 	copyBundledGeoToDir(t, dir)
 	return dir
+}
+
+func withTestGeoHome(t *testing.T) {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	var geoDir string
+	if runtime.GOOS == "darwin" {
+		geoDir = filepath.Join(home, "Library", "Application Support", "RocketScience", "geo")
+	} else {
+		cfg := filepath.Join(home, ".config")
+		t.Setenv("XDG_CONFIG_HOME", cfg)
+		geoDir = filepath.Join(cfg, "RocketScience", "geo")
+	}
+	copyBundledGeoToDir(t, geoDir)
 }
 
 func newTestService(t *testing.T) *Service {

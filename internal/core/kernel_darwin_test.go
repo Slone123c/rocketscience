@@ -10,6 +10,7 @@ import (
 func TestKernelRestartTun(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
+	s.geo.dir = testGeoDir(t)
 	s.proxy = &fakeProxy{}
 	s.tunLaunch = fakeTunLaunch
 	s.tunReady = func(map[string]bool) bool { return true }

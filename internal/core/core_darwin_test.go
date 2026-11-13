@@ -81,6 +81,7 @@ func TestConcurrentSystemProxyReloadAndWiFiCheck(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	p := &fakeProxy{}
 	s := New()
+	s.geo.dir = testGeoDir(t)
 	s.proxy = p
 	defer s.Shutdown()
 	if err := s.SetTun(true); err != nil {

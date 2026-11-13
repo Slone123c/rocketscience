@@ -74,6 +74,7 @@ func fakeTunLaunch(_ string, dir string) (*tunLauncher, error) {
 func TestTunTakeoverLifecycle(t *testing.T) {
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	s := New()
+	s.geo.dir = testGeoDir(t)
 	proxy := &fakeProxy{}
 	s.proxy = proxy
 	s.tunLaunch = fakeTunLaunch
@@ -139,6 +140,7 @@ func TestTunRestartAndAuthorizationRollback(t *testing.T) {
 }
 func TestTunSettingsAndConfig(t *testing.T) {
 	s := New()
+	s.geo.dir = testGeoDir(t)
 	p := NewProfilesWithService(t.TempDir(), s)
 	if err := p.ChangeTun(true); err != nil {
 		t.Fatal(err)

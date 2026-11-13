@@ -75,6 +75,7 @@ func assertDNSPortsReleased(t *testing.T, address string) {
 }
 
 func TestDNSRuntimeModesIPv6AndListenerLifecycle(t *testing.T) {
+	withTestGeoHome(t)
 	t.Setenv("ROCKETSCIENCE_MIHOMO", t.TempDir()+"/missing")
 	upstream, closeUpstream := dnsFixture(t)
 	defer closeUpstream()

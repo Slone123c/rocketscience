@@ -16,6 +16,7 @@ import (
 )
 
 func TestDNSOptionsMergeAndValidation(t *testing.T) {
+	withTestGeoHome(t)
 	dns := DNSOptions{Enabled: ptr(true), EnhancedMode: ptr("fake-ip"), FakeIPRange: ptr("198.18.0.1/16"), DefaultNameservers: ptr([]string{"1.1.1.1"}), Nameservers: ptr([]string{"https://dns.example/dns-query"}), Fallback: ptr([]string{})}
 	opts := CoreOptions{DNS: &dns}
 	source := "dns:\n  enable: false\n  nameserver-policy:\n    example.com: 1.1.1.1\n  fallback: [8.8.8.8]\nrules: [MATCH,DIRECT]\n"
