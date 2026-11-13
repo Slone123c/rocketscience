@@ -8,6 +8,12 @@ const supplementsDir=join(outDir,"supplements");
 const supplementsManifest=join(outDir,"supplements.json");
 
 const releaseGoTargets=[{goos:"darwin",goarch:"amd64"},{goos:"windows",goarch:"amd64"},{goos:"linux",goarch:"amd64"}] as const;
+// Release builds always compile with gVisor; standalone collection must match or deps/licenses drift.
+const releaseGoFlags=[process.env.GOFLAGS,"-tags=with_gvisor"].filter(Boolean).join(" ");
+
+function goEnv(extra:Record<string,string|undefined>={}):NodeJS.ProcessEnv{
+  return {...process.env,...extra,GOFLAGS:releaseGoFlags};
+}
 
 const licenseFileNames=[
   "LICENSE","LICENSE.md","LICENSE.txt","LICENSE.gpl","LICENSE-MIT","LICENSE.APACHE","COPYING","COPYING.md",
@@ -71,7 +77,7 @@ function collectGoLicenseTexts(moduleDir:string):{body:string;files:string[];hin
 }
 
 function moduleDir(modPath:string,version:string):string{
-  const out=execFileSync("go",["list","-m","-json",`${modPath}@${version}`],{cwd:root,encoding:"utf8"});
+  const out=execFileSync("go",["list","-m","-json",`${modPath}@${version}`],{cwd:root,encoding:"utf8",env:goEnv()});
   const info=JSON.parse(out) as {Dir?:string};
   if(!info.Dir||!existsSync(info.Dir))throw new Error(`未下载 Go 模块：${modPath} ${version}`);
   return info.Dir;
@@ -94,7 +100,7 @@ function loadSupplements():Record<string,SupplementRef>{
 }
 
 function readGo(modPath:string,version:string,filename:string,supplements:Record<string,SupplementRef>){
-  execFileSync("go",["mod","download",`${modPath}@${version}`],{cwd:root,stdio:"ignore"});
+  execFileSync("go",["mod","download",`${modPath}@${version}`],{cwd:root,stdio:"ignore",env:goEnv()});
   const dir=moduleDir(modPath,version);
   const key=`${modPath}@${version}`;
   let body:string;
@@ -120,7 +126,7 @@ function listGoModulesForTarget(goos:string,goarch:string):Array<[string,string]
   const lines=execFileSync(
     "go",
     ["list","-deps","-f","{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}","./..."],
-    {cwd:root,encoding:"utf8",env:{...process.env,GOOS:goos,GOARCH:goarch}},
+    {cwd:root,encoding:"utf8",env:goEnv({GOOS:goos,GOARCH:goarch})},
   )
     .split("\n")
     .map(line=>line.trim())
@@ -161,7 +167,7 @@ function main(){
   );
   const pinnedSingTun="github.com/metacubex/sing-tun@v0.4.28";
 
-  const mainModule=execFileSync("go",["list","-m","-f","{{.Path}}"],{cwd:root,encoding:"utf8"}).trim();
+  const mainModule=execFileSync("go",["list","-m","-f","{{.Path}}"],{cwd:root,encoding:"utf8",env:goEnv()}).trim();
   const seen=new Set<string>();
   const goModules:Array<[string,string,string]>=[];
   const missing:MissingLicense[]=[];
@@ -201,10 +207,10 @@ function main(){
   }
 
   const manifest={
-    generated:new Date().toISOString(),
+    buildTags:"with_gvisor",
     goTargets:releaseGoTargets.map(t=>`${t.goos}/${t.goarch}`),
-    npm:npm.map(e=>`${e.id}@${e.version}`),
-    go:goModules.map(([p,v])=>`${p}@${v}`),
+    npm:[...npm.map(e=>`${e.id}@${e.version}`)].sort(),
+    go:[...goModules.map(([p,v])=>`${p}@${v}`)].sort(),
   };
   writeFileSync(join(outDir,"MANIFEST.json"),JSON.stringify(manifest,null,2)+"\n","utf8");
   const keep=new Set([
