@@ -3,7 +3,7 @@ export default defineConfig({
   name: "RocketScience",
   icon: "resources/icon.png",
   identifier: "app.rocketscience.desktop",
-  version: "0.1.0",
+  version: "0.2.0",
   devUrl: "http://localhost:5173",
   devCommand: "bun run dev:web",
   buildCommand: "bun run build:web",
