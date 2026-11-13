@@ -45,7 +45,7 @@ Get the latest build from [Releases](https://github.com/Slone123c/rocketscience/
 
 | Platform | Arch | Package | First-launch notes |
 | --- | --- | --- | --- |
-| macOS 13+ | Apple Silicon / Intel | DMG | Unsigned build: right-click → Open, or run `xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"` |
+| macOS 13+ | Apple Silicon / Intel | DMG | Unsigned build: right-click → Open, or run `xattr -dr com.apple.quarantine "/Applications/RocketScience.app"` |
 | Windows 10/11 | x86_64 / ARM64 | Installer / Portable ZIP | Requires WebView2 Runtime; on SmartScreen choose More info → Run anyway |
 | Linux | x86_64 / ARM64 | `.deb` / `.tar.gz` | Recommended: `sudo apt install ./rocketscience_<version>_<arch>.deb` (resolves GTK3, WebKitGTK 4.1, and `libayatana-appindicator3-1`); GNOME tray icon requires the AppIndicator extension (enabled by default on Ubuntu) |
 

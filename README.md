@@ -45,7 +45,7 @@
 
 | 平台 | 架构 | 安装包 | 首次启动说明 |
 | --- | --- | --- | --- |
-| macOS 13+ | Apple Silicon / Intel | DMG | 未签名/公证：右键应用选择「打开」，或执行 `xattr -dr com.apple.quarantine "/Applications/Rocket Science.app"` |
+| macOS 13+ | Apple Silicon / Intel | DMG | 未签名/公证：右键应用选择「打开」，或执行 `xattr -dr com.apple.quarantine "/Applications/RocketScience.app"` |
 | Windows 10/11 | x86_64 / ARM64 | 安装程序 / 便携 ZIP | 需 WebView2 运行时；SmartScreen 提示时点击「更多信息」→「仍要运行」 |
 | Linux | x86_64 / ARM64 | `.deb` / `.tar.gz` | 推荐 `sudo apt install ./rocketscience_<version>_<arch>.deb`（自动安装 GTK3、WebKitGTK 4.1 与 `libayatana-appindicator3-1`）；GNOME 托盘图标需 AppIndicator 扩展（Ubuntu 默认已启用） |
 
