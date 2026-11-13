@@ -86,6 +86,10 @@ describe("prototype trajectory safety",()=>{
     // The measured country replaces the flag guessed from the name; no code draws no flag.
     expect(markup).not.toContain("🇯🇵");
     expect(markup).toContain(">San Francisco<");
+    const originGroup = markup.match(/<g class="lf-traj__origin">.*?<\/g>/)?.[0] ?? "";
+    expect(originGroup).toContain("lf-traj__origin-dot");
+    expect(originGroup).toContain("lf-traj__origin-glow");
+    expect(originGroup).not.toContain("<path");
   });
   test("an unfinished trace ends in a segment saying where it stopped",async()=>{
     const host=globalThis as unknown as {window:Record<string,unknown>};

@@ -920,9 +920,9 @@
             markers, node, label);
         }),
         o && h('g', { className: 'lf-traj__origin' },
-          h('circle', { cx: o[0], cy: o[1], r: 9, fill: 'none' }),
-          h('path', { d: 'M' + (o[0] - 14) + ' ' + o[1] + 'h28M' + o[0] + ' ' + (o[1] - 14) + 'v28' }),
-          props.origin !== '' && h('text', { x: o[0] - 14, y: o[1] - 14, textAnchor: 'end', className: 'lf-traj__label' }, props.origin ? (emojiOfCode(props.originCountry) ? emojiOfCode(props.originCountry) + ' ' : '') + props.origin : '本机'))),
+          h('circle', { cx: o[0], cy: o[1], r: 3.5, className: 'lf-traj__origin-glow' }),
+          h('circle', { cx: o[0], cy: o[1], r: 3.5, className: 'lf-traj__origin-dot' }),
+          props.origin !== '' && h('text', { x: o[0] - 8, y: o[1] - 8, textAnchor: 'end', className: 'lf-traj__label' }, props.origin ? (emojiOfCode(props.originCountry) ? emojiOfCode(props.originCountry) + ' ' : '') + props.origin : '本机'))),
       zoomable && h('div', { className: 'lf-traj__zoom' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'plus', 'aria-label': '放大', disabled: k >= maxK - 0.01, onClick: function () { zoomAt(1.6, W / 2, H / 2, true); } }),
         h('span', { className: 'lf-traj__level', 'aria-live': 'polite' }, k.toFixed(1) + '×'),
