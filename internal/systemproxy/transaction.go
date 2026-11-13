@@ -247,11 +247,8 @@ func (m *Manager) write(j journal) error {
 	} else if err != nil {
 		return err
 	}
-	if directory, err := os.Open(dir); err == nil {
-		defer directory.Close()
-		if err = directory.Sync(); err != nil {
-			return errors.Join(ErrRecoveryNeeded, err)
-		}
+	if err := syncDir(dir); err != nil {
+		return errors.Join(ErrRecoveryNeeded, err)
 	}
 	return nil
 }
