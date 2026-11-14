@@ -31,6 +31,8 @@ try {
       const source=join(root,file);if(!existsSync(source))continue;
       const destination=join(stage,file);mkdirSync(dirname(destination),{recursive:true});cpSync(source,destination,{recursive:true});
     }
+    const gitDir=execFileSync("git",["rev-parse","--git-dir"],{cwd:root,encoding:"utf8"}).trim();
+    if(gitDir)symlinkSync(resolve(root,gitDir),join(stage,".git"),"dir");
     symlinkSync(join(root,"node_modules"),join(stage,"node_modules"),"dir");
     project=stage;
   }

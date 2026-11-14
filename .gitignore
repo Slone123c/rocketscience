@@ -26,3 +26,4 @@ build.noindex/
 /*.exe
 rocketscience
 .claude/
+mygo_windows_*.syso
