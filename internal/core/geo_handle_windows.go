@@ -3,7 +3,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"unsafe"
@@ -95,22 +94,26 @@ func validatePrivateDirectorySecurity(handle windows.Handle) error {
 	if err != nil {
 		return err
 	}
+	trustedWriters, err := trustedWriterSIDs()
+	if err != nil {
+		return err
+	}
 	owner, _, err := sd.Owner()
-	if err != nil || owner == nil || !owner.Equals(self) {
-		return errors.New("GEO 临时目录权限无效")
+	if err != nil || owner == nil {
+		return fmt.Errorf("GEO 临时目录权限无效：owner=%v err=%v", owner, err)
+	}
+	if !owner.Equals(self) && !trustedContains(trustedWriters, owner) {
+		return fmt.Errorf("GEO 临时目录权限无效：owner=%s self=%s", owner.String(), self.String())
 	}
 	dacl, _, err := sd.DACL()
 	if err != nil {
 		return err
 	}
 	if dacl == nil {
-		return errors.New("GEO 临时目录权限无效")
-	}
-	trustedWriters, err := trustedWriterSIDs()
-	if err != nil {
-		return err
+		return fmt.Errorf("GEO 临时目录权限无效：dacl=nil")
 	}
 	writeMask := windows.ACCESS_MASK(windows.FILE_WRITE_DATA | windows.FILE_APPEND_DATA | windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER | windows.GENERIC_WRITE | windows.GENERIC_ALL)
+	var offending []string
 	for i := uint32(0); i < uint32(dacl.AceCount); i++ {
 		var ace *windows.ACCESS_ALLOWED_ACE
 		if err := windows.GetAce(dacl, i, &ace); err != nil {
@@ -119,16 +122,19 @@ func validatePrivateDirectorySecurity(handle windows.Handle) error {
 		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
 			continue
 		}
-		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
-		if self.Equals(sid) {
+		if ace.Header.AceFlags&windows.INHERIT_ONLY_ACE != 0 {
 			continue
 		}
-		if trustedContains(trustedWriters, sid) {
+		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+		if self.Equals(sid) || owner.Equals(sid) || trustedContains(trustedWriters, sid) {
 			continue
 		}
 		if ace.Mask&writeMask != 0 {
-			return errors.New("GEO 临时目录权限无效")
+			offending = append(offending, fmt.Sprintf("sid=%s mask=%#x flags=%#x", sid.String(), uint32(ace.Mask), ace.Header.AceFlags))
 		}
+	}
+	if len(offending) > 0 {
+		return fmt.Errorf("GEO 临时目录权限无效：owner=%s self=%s offending=[%s]", owner.String(), self.String(), strings.Join(offending, ", "))
 	}
 	return nil
 }
