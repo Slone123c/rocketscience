@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"unicode/utf8"
 
@@ -67,15 +68,28 @@ func normalizeProfilePath(raw string) (string, error) {
 			return "", errors.New("只支持本机文件路径")
 		}
 		path = parsed.Path
-	} else {
+		if runtime.GOOS == "windows" {
+			if len(path) >= 3 && path[0] == '/' && ((path[1] >= 'a' && path[1] <= 'z') || (path[1] >= 'A' && path[1] <= 'Z')) && path[2] == ':' {
+				path = path[1:]
+			}
+			path = filepath.FromSlash(path)
+		}
+	} else if runtime.GOOS != "windows" {
 		path = unescapeShellPath(path)
 	}
-	if path == "~" || strings.HasPrefix(path, "~/") {
+	if path == "~" || strings.HasPrefix(path, "~/") || (runtime.GOOS == "windows" && strings.HasPrefix(path, `~\`)) {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
-		path = filepath.Join(home, path[1:])
+		if path == "~" {
+			path = home
+		} else {
+			path = filepath.Join(home, path[2:])
+		}
+	}
+	if runtime.GOOS == "windows" && (strings.HasPrefix(path, `\\`) || strings.HasPrefix(path, "//")) {
+		return "", errors.New("只支持本机文件路径")
 	}
 	if !filepath.IsAbs(path) {
 		return "", errors.New("请填写完整路径，例如 ~/Downloads/config.yaml")

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -56,15 +57,30 @@ func TestNormalizeProfilePathAcceptsCopiedForms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cases := map[string]string{
-		"  /tmp/my config.yaml\n":      "/tmp/my config.yaml",
-		`"/tmp/my config.yaml"`:        "/tmp/my config.yaml",
-		`'/tmp/my config.yaml'`:        "/tmp/my config.yaml",
-		`/tmp/my\ config\ \(1\).yaml`:  "/tmp/my config (1).yaml",
-		"file:///tmp/my%20config.yaml": "/tmp/my config.yaml",
-		"file://localhost/tmp/配置.yml":  "/tmp/配置.yml",
-		"~/Downloads/config.yaml":      filepath.Join(home, "Downloads/config.yaml"),
-		"/tmp/../tmp/config.yaml":      "/tmp/config.yaml",
+	var cases map[string]string
+	if runtime.GOOS == "windows" {
+		cases = map[string]string{
+			"  C:\\Users\\a\\config.yaml\n":                    `C:\Users\a\config.yaml`,
+			`"C:\\Users\\a\\my config.yaml"`:                  `C:\Users\a\my config.yaml`,
+			`'C:\\Users\\a\\my config.yaml'`:                  `C:\Users\a\my config.yaml`,
+			"file:///C:/Users/a/config.yaml":                  `C:\Users\a\config.yaml`,
+			"file:///C:/Users/a/my%20config.yaml":             `C:\Users\a\my config.yaml`,
+			"file://localhost/C:/Users/a/%E9%85%8D%E7%BD%AE.yml": `C:\Users\a\配置.yml`,
+			`~\Downloads\config.yaml`:                        filepath.Join(home, "Downloads", "config.yaml"),
+			"~/Downloads/config.yaml":                         filepath.Join(home, "Downloads", "config.yaml"),
+			`C:\Users\a\..\a\config.yaml`:                    `C:\Users\a\config.yaml`,
+		}
+	} else {
+		cases = map[string]string{
+			"  /tmp/my config.yaml\n":      "/tmp/my config.yaml",
+			`"/tmp/my config.yaml"`:        "/tmp/my config.yaml",
+			`'/tmp/my config.yaml'`:        "/tmp/my config.yaml",
+			`/tmp/my\ config\ \(1\).yaml`:  "/tmp/my config (1).yaml",
+			"file:///tmp/my%20config.yaml": "/tmp/my config.yaml",
+			"file://localhost/tmp/配置.yml":  "/tmp/配置.yml",
+			"~/Downloads/config.yaml":      filepath.Join(home, "Downloads/config.yaml"),
+			"/tmp/../tmp/config.yaml":      "/tmp/config.yaml",
+		}
 	}
 	for raw, want := range cases {
 		got, err := normalizeProfilePath(raw)
@@ -75,7 +91,7 @@ func TestNormalizeProfilePathAcceptsCopiedForms(t *testing.T) {
 }
 
 func TestNormalizeProfilePathRejectsWhatIsNotOneLocalPath(t *testing.T) {
-	for _, raw := range []string{"", "   ", "config.yaml", "./config.yaml", "/a.yaml\n/b.yaml", "file://server/a.yaml", "https://example.com/a.yaml"} {
+	for _, raw := range []string{"", "   ", "config.yaml", "./config.yaml", "/a.yaml\n/b.yaml", "file://server/a.yaml", `\\server\share\a.yaml`, "https://example.com/a.yaml"} {
 		if got, err := normalizeProfilePath(raw); err == nil {
 			t.Errorf("normalizeProfilePath(%q) = %q, want an error", raw, got)
 		}
