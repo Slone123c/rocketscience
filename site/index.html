@@ -46,20 +46,33 @@
         </div>
         <p class="hero__platforms">macOS 13+（Apple Silicon / Intel） · Windows 10/11（x86_64 / ARM64） · Linux（x86_64 / ARM64）</p>
         <div class="window-frame">
-          <div class="window-frame__bar" aria-hidden="true">
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__title">Rocket Science — 总览</span>
+          <div class="window-frame__bar">
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__title">Rocket Science</span>
+            <span class="window-frame__chip">在线演示 · 模拟数据，可直接点击操作</span>
+            <a class="skip-demo" href="#features">跳过演示</a>
           </div>
-          <img
-            src="assets/screens/overview-light.webp"
-            data-light="assets/screens/overview-light.webp"
-            data-dark="assets/screens/overview-dark.webp"
-            alt="Rocket Science 总览界面"
-            width="2560"
-            height="1600"
-          >
+          <div class="hero-demo" id="hero-demo">
+            <img
+              class="hero-demo__poster"
+              src="assets/screens/overview-light.webp"
+              data-light="assets/screens/overview-light.webp"
+              data-dark="assets/screens/overview-dark.webp"
+              alt="Rocket Science 总览界面"
+              width="2560"
+              height="1600"
+            >
+            <iframe
+              id="hero-demo-frame"
+              class="hero-demo__frame"
+              data-demo-src="demo/?preview=running"
+              title="Rocket Science 在线演示"
+              loading="lazy"
+            ></iframe>
+            <a class="btn btn--primary hero-demo__open" href="demo/?preview=running" target="_blank" rel="noopener">打开在线演示</a>
+          </div>
         </div>
       </div>
     </section>
@@ -80,7 +93,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/overview-detail-light.webp" data-light="assets/screens/overview-detail-light.webp" data-dark="assets/screens/overview-detail-dark.webp" alt="实时速率仪表与流量曲线">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-overview-light-poster.webp"
+                  data-light-src="assets/clips/feature-overview-light.mp4"
+                  data-dark-src="assets/clips/feature-overview-dark.mp4"
+                  data-light-poster="assets/clips/feature-overview-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-overview-dark-poster.webp"
+                  src="assets/clips/feature-overview-light.mp4"
+                  aria-label="实时速率仪表与流量曲线"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 实时速率仪表与流量曲线">播放</button>
+              </div>
             </div>
           </article>
 
@@ -91,7 +120,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/proxies-detail-light.webp" data-light="assets/screens/proxies-detail-light.webp" data-dark="assets/screens/proxies-detail-dark.webp" alt="代理节点与延迟测速">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-proxies-light-poster.webp"
+                  data-light-src="assets/clips/feature-proxies-light.mp4"
+                  data-dark-src="assets/clips/feature-proxies-dark.mp4"
+                  data-light-poster="assets/clips/feature-proxies-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-proxies-dark-poster.webp"
+                  src="assets/clips/feature-proxies-light.mp4"
+                  aria-label="代理节点与延迟测速"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 代理节点与延迟测速">播放</button>
+              </div>
             </div>
           </article>
 
@@ -102,7 +147,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/trajectory-detail-light.webp" data-light="assets/screens/trajectory-detail-light.webp" data-dark="assets/screens/trajectory-detail-dark.webp" alt="连接轨迹与地图视图">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-trajectory-light-poster.webp"
+                  data-light-src="assets/clips/feature-trajectory-light.mp4"
+                  data-dark-src="assets/clips/feature-trajectory-dark.mp4"
+                  data-light-poster="assets/clips/feature-trajectory-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-trajectory-dark-poster.webp"
+                  src="assets/clips/feature-trajectory-light.mp4"
+                  aria-label="连接轨迹与地图视图"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 连接轨迹与地图视图">播放</button>
+              </div>
             </div>
           </article>
 
@@ -113,7 +174,23 @@
             </div>
             <div class="feature-row__media window-frame window-frame--compact">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/network-check-detail-light.webp" data-light="assets/screens/network-check-detail-light.webp" data-dark="assets/screens/network-check-detail-dark.webp" alt="分步网络检查结果">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-network-check-light-poster.webp"
+                  data-light-src="assets/clips/feature-network-check-light.mp4"
+                  data-dark-src="assets/clips/feature-network-check-dark.mp4"
+                  data-light-poster="assets/clips/feature-network-check-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-network-check-dark-poster.webp"
+                  src="assets/clips/feature-network-check-light.mp4"
+                  aria-label="分步网络检查结果"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 分步网络检查结果">播放</button>
+              </div>
             </div>
           </article>
 
@@ -124,7 +201,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/profiles-detail-light.webp" data-light="assets/screens/profiles-detail-light.webp" data-dark="assets/screens/profiles-detail-dark.webp" alt="订阅与配置编辑器">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-profiles-light-poster.webp"
+                  data-light-src="assets/clips/feature-profiles-light.mp4"
+                  data-dark-src="assets/clips/feature-profiles-dark.mp4"
+                  data-light-poster="assets/clips/feature-profiles-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-profiles-dark-poster.webp"
+                  src="assets/clips/feature-profiles-light.mp4"
+                  aria-label="订阅与配置编辑器"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 订阅与配置编辑器">播放</button>
+              </div>
             </div>
           </article>
 
@@ -135,7 +228,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/rules-detail-light.webp" data-light="assets/screens/rules-detail-light.webp" data-dark="assets/screens/rules-detail-dark.webp" alt="规则覆盖管理">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-rules-light-poster.webp"
+                  data-light-src="assets/clips/feature-rules-light.mp4"
+                  data-dark-src="assets/clips/feature-rules-dark.mp4"
+                  data-light-poster="assets/clips/feature-rules-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-rules-dark-poster.webp"
+                  src="assets/clips/feature-rules-light.mp4"
+                  aria-label="规则覆盖管理"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 规则覆盖管理">播放</button>
+              </div>
             </div>
           </article>
 
@@ -146,7 +255,23 @@
             </div>
             <div class="feature-row__media window-frame window-frame--tray">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/tray-light.webp" data-light="assets/screens/tray-light.webp" data-dark="assets/screens/tray-dark.webp" alt="菜单栏托盘面板" width="640" height="1280">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-tray-light-poster.webp"
+                  data-light-src="assets/clips/feature-tray-light.mp4"
+                  data-dark-src="assets/clips/feature-tray-dark.mp4"
+                  data-light-poster="assets/clips/feature-tray-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-tray-dark-poster.webp"
+                  src="assets/clips/feature-tray-light.mp4"
+                  aria-label="菜单栏托盘面板"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 菜单栏托盘面板">播放</button>
+              </div>
             </div>
           </article>
 
@@ -157,7 +282,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="assets/screens/settings-proxy-detail-light.webp" data-light="assets/screens/settings-proxy-detail-light.webp" data-dark="assets/screens/settings-proxy-detail-dark.webp" alt="系统代理与接管设置">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="assets/clips/feature-settings-proxy-light-poster.webp"
+                  data-light-src="assets/clips/feature-settings-proxy-light.mp4"
+                  data-dark-src="assets/clips/feature-settings-proxy-dark.mp4"
+                  data-light-poster="assets/clips/feature-settings-proxy-light-poster.webp"
+                  data-dark-poster="assets/clips/feature-settings-proxy-dark-poster.webp"
+                  src="assets/clips/feature-settings-proxy-light.mp4"
+                  aria-label="系统代理与接管设置"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="播放" data-pause-label="暂停" aria-label="播放 系统代理与接管设置">播放</button>
+              </div>
             </div>
           </article>
         </div>

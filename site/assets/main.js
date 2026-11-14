@@ -10,6 +10,32 @@
     return mediaDark.matches ? "void" : "paper";
   }
 
+  function isFallbackDemo() {
+    return window.innerWidth < 760 || reducedMotion.matches;
+  }
+
+  function syncHeroDemo(theme) {
+    const box = document.getElementById("hero-demo");
+    const frame = document.getElementById("hero-demo-frame");
+    if (!box || !(frame instanceof HTMLIFrameElement)) return;
+
+    if (isFallbackDemo()) {
+      box.classList.add("is-fallback");
+      box.classList.remove("is-loaded");
+      if (frame.getAttribute("src")) frame.removeAttribute("src");
+      return;
+    }
+
+    box.classList.remove("is-fallback");
+    const base = frame.getAttribute("data-demo-src") || "demo/?preview=running";
+    const appearance = theme === "void" ? "dark" : "light";
+    const nextUrl = `${base}${base.includes("?") ? "&" : "?"}appearance=${appearance}`;
+    if (frame.getAttribute("src") !== nextUrl) {
+      box.classList.remove("is-loaded");
+      frame.setAttribute("src", nextUrl);
+    }
+  }
+
   function applyTheme(theme) {
     root.setAttribute("data-theme", theme);
     const isDark = theme === "void";
@@ -19,6 +45,23 @@
         img.setAttribute("src", target);
       }
     });
+    document.querySelectorAll("video[data-light-src][data-dark-src]").forEach((video) => {
+      if (!(video instanceof HTMLVideoElement)) return;
+      const targetSrc = isDark ? video.getAttribute("data-dark-src") : video.getAttribute("data-light-src");
+      const targetPoster = isDark ? video.getAttribute("data-dark-poster") : video.getAttribute("data-light-poster");
+      if (targetPoster && video.getAttribute("poster") !== targetPoster) {
+        video.setAttribute("poster", targetPoster);
+      }
+      if (targetSrc && video.getAttribute("src") !== targetSrc) {
+        const wasPlaying = !video.paused;
+        video.setAttribute("src", targetSrc);
+        video.load();
+        if (wasPlaying && !reducedMotion.matches) {
+          void video.play().catch(() => {});
+        }
+      }
+    });
+    syncHeroDemo(theme);
     const toggle = document.getElementById("theme-toggle");
     if (toggle) {
       const lightLabel = toggle.getAttribute("data-label-light") || "Light";
@@ -26,6 +69,31 @@
       toggle.textContent = isDark ? lightLabel : darkLabel;
       toggle.setAttribute("aria-pressed", String(isDark));
     }
+  }
+
+  const heroBox = document.getElementById("hero-demo");
+  const heroFrame = document.getElementById("hero-demo-frame");
+  if (heroBox && heroFrame instanceof HTMLIFrameElement) {
+    heroFrame.addEventListener("load", () => {
+      if (!isFallbackDemo() && heroFrame.getAttribute("src")) {
+        heroBox.classList.add("is-loaded");
+      }
+    });
+    const updateScale = () => {
+      const w = heroBox.clientWidth;
+      if (w > 0) {
+        heroBox.style.setProperty("--demo-scale", String(w / 1280));
+      }
+    };
+    updateScale();
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(updateScale).observe(heroBox);
+    }
+    window.addEventListener("resize", () => {
+      updateScale();
+      syncHeroDemo(resolvedTheme());
+    });
+    reducedMotion.addEventListener("change", () => syncHeroDemo(resolvedTheme()));
   }
 
   applyTheme(resolvedTheme());

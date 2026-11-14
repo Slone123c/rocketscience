@@ -33,7 +33,11 @@ export function applyAppearance(appearance: Appearance, root: ThemeRoot, media: 
 }
 
 export function useAppearance() {
-  const [appearance, setAppearance] = useState<Appearance>(() => readAppearance(localStorage.getItem(STORAGE_KEY)));
+  const [appearance, setAppearance] = useState<Appearance>(() => {
+    const params = new URLSearchParams(location.search);
+    const queryAppearance = params.has("preview") ? params.get("appearance") : null;
+    return readAppearance(queryAppearance ?? localStorage.getItem(STORAGE_KEY));
+  });
   useLayoutEffect(() => applyAppearance(appearance, document.documentElement, window.matchMedia("(prefers-color-scheme: dark)")), [appearance]);
   function choose(value: string) {
     if (value !== "light" && value !== "dark" && value !== "system") return;

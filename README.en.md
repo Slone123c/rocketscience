@@ -15,10 +15,12 @@
   </p>
 </div>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="site/assets/screens/overview-dark.webp">
-  <img src="site/assets/screens/overview-light.webp" alt="Rocket Science overview">
-</picture>
+<p align="center">
+  <img src="docs/assets/overview-live.webp" alt="Rocket Science live overview">
+</p>
+<p align="center">
+  <a href="https://slone123c.github.io/rocketscience/demo/?preview=running">Open interactive live demo (simulated data)</a>
+</p>
 
 ## Features
 

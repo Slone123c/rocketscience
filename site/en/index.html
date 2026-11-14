@@ -46,20 +46,33 @@
         </div>
         <p class="hero__platforms">macOS 13+ (Apple Silicon / Intel) · Windows 10/11 (x86_64 / ARM64) · Linux (x86_64 / ARM64)</p>
         <div class="window-frame">
-          <div class="window-frame__bar" aria-hidden="true">
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__dot"></span>
-            <span class="window-frame__title">Rocket Science — Overview</span>
+          <div class="window-frame__bar">
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__dot" aria-hidden="true"></span>
+            <span class="window-frame__title">Rocket Science</span>
+            <span class="window-frame__chip">Live demo · simulated data — click around</span>
+            <a class="skip-demo" href="#features">Skip demo</a>
           </div>
-          <img
-            src="../assets/screens/overview-light.webp"
-            data-light="../assets/screens/overview-light.webp"
-            data-dark="../assets/screens/overview-dark.webp"
-            alt="Rocket Science overview screen"
-            width="2560"
-            height="1600"
-          >
+          <div class="hero-demo" id="hero-demo">
+            <img
+              class="hero-demo__poster"
+              src="../assets/screens/overview-light.webp"
+              data-light="../assets/screens/overview-light.webp"
+              data-dark="../assets/screens/overview-dark.webp"
+              alt="Rocket Science overview screen"
+              width="2560"
+              height="1600"
+            >
+            <iframe
+              id="hero-demo-frame"
+              class="hero-demo__frame"
+              data-demo-src="../demo/?preview=running"
+              title="Rocket Science live demo"
+              loading="lazy"
+            ></iframe>
+            <a class="btn btn--primary hero-demo__open" href="../demo/?preview=running" target="_blank" rel="noopener">Open live demo</a>
+          </div>
         </div>
       </div>
     </section>
@@ -80,7 +93,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/overview-detail-light.webp" data-light="../assets/screens/overview-detail-light.webp" data-dark="../assets/screens/overview-detail-dark.webp" alt="Live throughput gauges and traffic chart">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-overview-light-poster.webp"
+                  data-light-src="../assets/clips/feature-overview-light.mp4"
+                  data-dark-src="../assets/clips/feature-overview-dark.mp4"
+                  data-light-poster="../assets/clips/feature-overview-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-overview-dark-poster.webp"
+                  src="../assets/clips/feature-overview-light.mp4"
+                  aria-label="Live throughput gauges and traffic chart"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Live throughput gauges and traffic chart">Play</button>
+              </div>
             </div>
           </article>
 
@@ -91,7 +120,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/proxies-detail-light.webp" data-light="../assets/screens/proxies-detail-light.webp" data-dark="../assets/screens/proxies-detail-dark.webp" alt="Proxy list and latency test">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-proxies-light-poster.webp"
+                  data-light-src="../assets/clips/feature-proxies-light.mp4"
+                  data-dark-src="../assets/clips/feature-proxies-dark.mp4"
+                  data-light-poster="../assets/clips/feature-proxies-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-proxies-dark-poster.webp"
+                  src="../assets/clips/feature-proxies-light.mp4"
+                  aria-label="Proxy list and latency test"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Proxy list and latency test">Play</button>
+              </div>
             </div>
           </article>
 
@@ -102,7 +147,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/trajectory-detail-light.webp" data-light="../assets/screens/trajectory-detail-light.webp" data-dark="../assets/screens/trajectory-detail-dark.webp" alt="Route trajectory map">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-trajectory-light-poster.webp"
+                  data-light-src="../assets/clips/feature-trajectory-light.mp4"
+                  data-dark-src="../assets/clips/feature-trajectory-dark.mp4"
+                  data-light-poster="../assets/clips/feature-trajectory-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-trajectory-dark-poster.webp"
+                  src="../assets/clips/feature-trajectory-light.mp4"
+                  aria-label="Route trajectory map"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Route trajectory map">Play</button>
+              </div>
             </div>
           </article>
 
@@ -113,7 +174,23 @@
             </div>
             <div class="feature-row__media window-frame window-frame--compact">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/network-check-detail-light.webp" data-light="../assets/screens/network-check-detail-light.webp" data-dark="../assets/screens/network-check-detail-dark.webp" alt="Network check result">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-network-check-light-poster.webp"
+                  data-light-src="../assets/clips/feature-network-check-light.mp4"
+                  data-dark-src="../assets/clips/feature-network-check-dark.mp4"
+                  data-light-poster="../assets/clips/feature-network-check-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-network-check-dark-poster.webp"
+                  src="../assets/clips/feature-network-check-light.mp4"
+                  aria-label="Network check result"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Network check result">Play</button>
+              </div>
             </div>
           </article>
 
@@ -124,7 +201,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/profiles-detail-light.webp" data-light="../assets/screens/profiles-detail-light.webp" data-dark="../assets/screens/profiles-detail-dark.webp" alt="Profiles workspace and editor">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-profiles-light-poster.webp"
+                  data-light-src="../assets/clips/feature-profiles-light.mp4"
+                  data-dark-src="../assets/clips/feature-profiles-dark.mp4"
+                  data-light-poster="../assets/clips/feature-profiles-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-profiles-dark-poster.webp"
+                  src="../assets/clips/feature-profiles-light.mp4"
+                  aria-label="Profiles workspace and editor"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Profiles workspace and editor">Play</button>
+              </div>
             </div>
           </article>
 
@@ -135,7 +228,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/rules-detail-light.webp" data-light="../assets/screens/rules-detail-light.webp" data-dark="../assets/screens/rules-detail-dark.webp" alt="Rule overrides">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-rules-light-poster.webp"
+                  data-light-src="../assets/clips/feature-rules-light.mp4"
+                  data-dark-src="../assets/clips/feature-rules-dark.mp4"
+                  data-light-poster="../assets/clips/feature-rules-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-rules-dark-poster.webp"
+                  src="../assets/clips/feature-rules-light.mp4"
+                  aria-label="Rule overrides"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Rule overrides">Play</button>
+              </div>
             </div>
           </article>
 
@@ -146,7 +255,23 @@
             </div>
             <div class="feature-row__media window-frame window-frame--tray">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/tray-light.webp" data-light="../assets/screens/tray-light.webp" data-dark="../assets/screens/tray-dark.webp" alt="Menu-bar and tray panel" width="640" height="1280">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-tray-light-poster.webp"
+                  data-light-src="../assets/clips/feature-tray-light.mp4"
+                  data-dark-src="../assets/clips/feature-tray-dark.mp4"
+                  data-light-poster="../assets/clips/feature-tray-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-tray-dark-poster.webp"
+                  src="../assets/clips/feature-tray-light.mp4"
+                  aria-label="Menu-bar and tray panel"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Menu-bar and tray panel">Play</button>
+              </div>
             </div>
           </article>
 
@@ -157,7 +282,23 @@
             </div>
             <div class="feature-row__media window-frame">
               <div class="window-frame__bar" aria-hidden="true"><span class="window-frame__dot"></span><span class="window-frame__dot"></span><span class="window-frame__dot"></span></div>
-              <img loading="lazy" src="../assets/screens/settings-proxy-detail-light.webp" data-light="../assets/screens/settings-proxy-detail-light.webp" data-dark="../assets/screens/settings-proxy-detail-dark.webp" alt="Proxy and TUN settings">
+              <div class="feature-clip">
+                <video
+                  data-clip
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster="../assets/clips/feature-settings-proxy-light-poster.webp"
+                  data-light-src="../assets/clips/feature-settings-proxy-light.mp4"
+                  data-dark-src="../assets/clips/feature-settings-proxy-dark.mp4"
+                  data-light-poster="../assets/clips/feature-settings-proxy-light-poster.webp"
+                  data-dark-poster="../assets/clips/feature-settings-proxy-dark-poster.webp"
+                  src="../assets/clips/feature-settings-proxy-light.mp4"
+                  aria-label="Proxy and TUN settings"
+                ></video>
+                <button type="button" class="clip-card__play" data-play-label="Play" data-pause-label="Pause" aria-label="Play Proxy and TUN settings">Play</button>
+              </div>
             </div>
           </article>
         </div>

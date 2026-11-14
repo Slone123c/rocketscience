@@ -17,7 +17,8 @@
     "build:web": "bun run verify:components && tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "verify:components": "bun test tests/menuBarPopover.test.ts tests/tourInteraction.test.ts tests/trajectory.test.tsx tests/connectivityPresentation.test.tsx tests/profileEditorInteraction.test.ts tests/settingsNavigation.test.ts",
-    "shots": "bun scripts/site-shots.ts"
+    "shots": "bun scripts/site-shots.ts",
+    "build:demo": "vite build --mode preview --base ./ --outDir site/demo --emptyOutDir"
   },
   "dependencies": {
     "mygo-runtime": "latest",
