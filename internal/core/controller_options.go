@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -65,6 +66,11 @@ func (s *Service) controllerAuthority() string {
 	auth := s.controllerAddress
 	if auth == "" {
 		auth = net.JoinHostPort("127.0.0.1", strconv.Itoa(s.port))
+	}
+	if host, port, err := net.SplitHostPort(auth); err == nil {
+		if addr, err := netip.ParseAddr(host); err == nil && addr.Zone() != "" {
+			return "[" + addr.WithZone("").String() + "%25" + url.PathEscape(addr.Zone()) + "]:" + port
+		}
 	}
 	return strings.ReplaceAll(auth, "%", "%25")
 }

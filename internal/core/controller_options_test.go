@@ -147,3 +147,14 @@ func TestControllerOptionsIPv6BracketsAndZoneID(t *testing.T) {
 		t.Fatalf("controllerAuthority URL failed: %v (authority=%q)", err, s.controllerAuthority())
 	}
 }
+
+func TestControllerAuthorityEscapesSpaceInZoneID(t *testing.T) {
+	s := &Service{controllerAddress: net.JoinHostPort("fe80::1%Ethernet 3", "19090")}
+	req, err := http.NewRequest("GET", "http://"+s.controllerAuthority()+"/version", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest failed: %v (authority=%q)", err, s.controllerAuthority())
+	}
+	if got := req.URL.Hostname(); got != "fe80::1%Ethernet 3" {
+		t.Fatalf("URL.Hostname() = %q, want %q", got, "fe80::1%Ethernet 3")
+	}
+}
