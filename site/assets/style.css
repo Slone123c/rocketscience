@@ -776,3 +776,10 @@ th {
 .feature-clip {
   position: relative;
 }
+
+.feature-clip video {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+}
