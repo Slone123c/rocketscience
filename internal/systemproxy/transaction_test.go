@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -47,8 +48,11 @@ func TestRoundTripPreservesOriginalAndUnrelatedFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	fi, err := os.Stat(path)
-	if err != nil || fi.Mode().Perm() != 0600 {
-		t.Fatalf("journal permissions: %v %v", fi, err)
+	if err != nil {
+		t.Fatalf("stat journal: %v", err)
+	}
+	if runtime.GOOS != "windows" && fi.Mode().Perm() != 0600 {
+		t.Fatalf("journal permissions: %v", fi.Mode().Perm())
 	}
 	b.services[0].Settings["ExceptionsList"] = json.RawMessage(`["later"]`)
 	conflicts, err := New(b, path).Restore()

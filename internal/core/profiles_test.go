@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -46,8 +47,11 @@ func TestProfilesPreserveValidConfiguration(t *testing.T) {
 		t.Fatal("port did not persist")
 	}
 	info, err := os.Stat(filepath.Join(dir, "profiles.json"))
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("unsafe permissions: %v %v", info, err)
+	if err != nil {
+		t.Fatalf("stat profiles.json: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+		t.Fatalf("unsafe permissions: %v", info.Mode().Perm())
 	}
 }
 func TestFetchSubscription(t *testing.T) {
