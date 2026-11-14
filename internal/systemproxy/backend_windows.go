@@ -3,6 +3,7 @@
 package systemproxy
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/sys/windows/registry"
@@ -65,16 +66,22 @@ func (registryWinINET) Write(s winINETSnapshot) error {
 		if err := k.SetStringValue("ProxyServer", s.ProxyServer); err != nil {
 			return err
 		}
+	} else if err := k.DeleteValue("ProxyServer"); err != nil && !errors.Is(err, registry.ErrNotExist) {
+		return err
 	}
-	if err := k.SetStringValue("ProxyOverride", s.ProxyOverride); err != nil {
+	if s.ProxyOverride != "" {
+		if err := k.SetStringValue("ProxyOverride", s.ProxyOverride); err != nil {
+			return err
+		}
+	} else if err := k.DeleteValue("ProxyOverride"); err != nil && !errors.Is(err, registry.ErrNotExist) {
 		return err
 	}
 	if s.AutoConfigURL != "" {
 		if err := k.SetStringValue("AutoConfigURL", s.AutoConfigURL); err != nil {
 			return err
 		}
-	} else {
-		_ = k.DeleteValue("AutoConfigURL")
+	} else if err := k.DeleteValue("AutoConfigURL"); err != nil && !errors.Is(err, registry.ErrNotExist) {
+		return err
 	}
 	detect := uint32(0)
 	if s.AutoDiscovery {
